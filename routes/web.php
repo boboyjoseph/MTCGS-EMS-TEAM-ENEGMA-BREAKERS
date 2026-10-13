@@ -308,6 +308,7 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+// Legacy URL; the controller enforces signed-device and fingerprint verification.
 Route::post('/attendance/clock', [App\Http\Controllers\Api\AttendanceController::class, 'clockAttendance']);
 
 // Biometric setup page (admin only)

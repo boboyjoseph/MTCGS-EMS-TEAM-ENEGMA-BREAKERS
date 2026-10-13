@@ -1296,16 +1296,21 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->assertNotNull($attendanceAfterTimeout);
         $this->assertSame('09:15:00', $attendanceAfterTimeout->pm_out->format('H:i:s'));
 
-        $clockOutResponse = (new AttendanceController())->clockAttendance(Request::create(
-            '/api/attendance/clock',
-            'POST',
-            [
-                'branch_id' => $branch->id,
-                'employee_number' => $employee->employee_number,
-                'attendance_type' => 'am_out',
-                'fingerprint_data' => 'suspension-test-template',
-            ]
-        ));
+        $clockOutPayload = $this->signedDevicePayload([
+            'branch_id' => $branch->id,
+            'employee_number' => $employee->employee_number,
+            'attendance_type' => 'am_out',
+            'fingerprint_data' => 'suspension-test-template',
+            'device_serial' => $device->serial_number,
+            'device_id' => (string) $device->id,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:FF',
+            'mac_address' => 'AA:BB:CC:DD:EE:FF',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'suspension-legacy-clock-out',
+        ], 'POST', '/api/attendance/clock');
+        $clockOutResponse = (new AttendanceController())->clockAttendance(
+            Request::create('/api/attendance/clock', 'POST', $clockOutPayload)
+        );
 
         $this->assertSame(200, $clockOutResponse->getStatusCode(), $clockOutResponse->getContent());
 
@@ -1321,16 +1326,21 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->assertSame(403, $legacyResponse->getStatusCode());
         $this->assertTrue(json_decode($legacyResponse->content(), true)['attendance_blocked']);
 
-        $clockResponse = (new AttendanceController())->clockAttendance(Request::create(
-            '/api/attendance/clock',
-            'POST',
-            [
-                'branch_id' => $branch->id,
-                'employee_number' => $employee->employee_number,
-                'attendance_type' => 'am_in',
-                'fingerprint_data' => 'suspension-test-template',
-            ]
-        ));
+        $clockPayload = $this->signedDevicePayload([
+            'branch_id' => $branch->id,
+            'employee_number' => $employee->employee_number,
+            'attendance_type' => 'am_in',
+            'fingerprint_data' => 'suspension-test-template',
+            'device_serial' => $device->serial_number,
+            'device_id' => (string) $device->id,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:FF',
+            'mac_address' => 'AA:BB:CC:DD:EE:FF',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'suspension-legacy-clock-in',
+        ], 'POST', '/api/attendance/clock');
+        $clockResponse = (new AttendanceController())->clockAttendance(
+            Request::create('/api/attendance/clock', 'POST', $clockPayload)
+        );
 
         $this->assertSame(403, $clockResponse->getStatusCode());
         $this->assertTrue(json_decode($clockResponse->content(), true)['attendance_blocked']);

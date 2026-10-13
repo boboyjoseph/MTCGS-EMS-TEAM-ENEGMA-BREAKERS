@@ -8,6 +8,7 @@ use App\Models\FinanceProfile;
 use App\Models\AdminProfile;
 use App\Models\BranchHeadProfile;
 use App\Models\AttendanceLog;
+use App\Models\Branch;
 use App\Models\Device;
 use App\Models\AuditLog;
 use App\Services\BiometricDeviceAuthenticator;
@@ -2000,6 +2001,7 @@ class BiometricController extends Controller
             'mac_address' => $request->mac_address,
             'device_id' => $request->device_id,
             'location' => $request->location,
+            'branch_id' => $device->branch_id,
             'action' => $action,
             'fingerprint_count' => $fingerprintCount,
             'database_saved' => (bool) $profile,
@@ -2122,6 +2124,14 @@ class BiometricController extends Controller
 
     public function getFingerprintTemp(Request $request)
     {
+        $user = $request->user();
+        if (!$user || (!$user->isSuperAdmin() && !$user->isBranchAdmin())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view fingerprint enrollment data.',
+            ], 403);
+        }
+
         $employeeNumber = $request->query('employee_number') ?? $request->input('employee_number');
 
         $fingerprintData = null;
@@ -2144,6 +2154,29 @@ class BiometricController extends Controller
                 'pending' => true,
                 'message' => 'No fingerprint data available yet.',
             ], 200);
+        }
+
+        if ($user->isBranchAdmin()) {
+            $profile = EmployeeProfile::where('employee_number', $employeeNumber)->first()
+                ?? FinanceProfile::where('employee_number', $employeeNumber)->first()
+                ?? AdminProfile::where('employee_number', $employeeNumber)->first()
+                ?? BranchHeadProfile::where('employee_number', $employeeNumber)->first();
+            $profileBranchId = $profile?->branch_id;
+            $payloadBranchId = $fingerprintData['branch_id'] ?? null;
+            $branchId = $profileBranchId ?? $payloadBranchId;
+
+            if (!$branchId && !empty($fingerprintData['branch'])) {
+                $branchId = Branch::where('branch_name', $fingerprintData['branch'])->value('id');
+            }
+
+            if (!$branchId
+                || (int) $branchId !== (int) $user->getEffectiveBranchId()
+                || ($profileBranchId && $payloadBranchId && (int) $profileBranchId !== (int) $payloadBranchId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only view fingerprint enrollment data for your branch.',
+                ], 403);
+            }
         }
 
         return response()->json([

@@ -7,6 +7,7 @@ use App\Models\EmployeeProfile;
 use App\Models\AttendanceLog;
 use App\Models\DTR;
 use App\Models\Branch;
+use App\Services\BiometricDeviceAuthenticator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -22,7 +23,15 @@ class AttendanceController extends Controller
             'branch_id' => 'required|exists:branches,id',
             'employee_number' => 'required|string',
             'attendance_type' => 'required|in:am_in,am_out,pm_in,pm_out',
-            'fingerprint_data' => 'required|string'
+            'fingerprint_data' => 'required|string',
+            'device_serial' => 'required|string|max:100',
+            'mac_address' => 'required|string|max:100',
+            'device_id' => 'nullable|string|max:100',
+            'wifi_mac' => 'nullable|string|max:100',
+            'reader_id' => 'nullable|string|max:100',
+            'timestamp' => 'required|string',
+            'nonce' => 'required|string|max:100',
+            'signature' => 'required|string|size:64',
         ]);
 
         if ($validator->fails()) {
@@ -31,6 +40,22 @@ class AttendanceController extends Controller
                 'message' => 'Invalid input data',
                 'errors' => $validator->errors()
             ], 422);
+        }
+
+        $deviceValidation = app(BiometricDeviceAuthenticator::class)->authenticate($request);
+        if (isset($deviceValidation['error'])) {
+            return response()->json([
+                'success' => false,
+                'message' => $deviceValidation['error'],
+            ], $deviceValidation['code']);
+        }
+
+        $device = $deviceValidation['device'];
+        if ($device->branch_id === null || (int) $device->branch_id !== (int) $request->branch_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This device is not assigned to the selected branch.',
+            ], 403);
         }
 
         try {
@@ -49,6 +74,16 @@ class AttendanceController extends Controller
                     'success' => false,
                     'message' => 'Employee not found in selected branch'
                 ], 404);
+            }
+
+            if (!app(BiometricController::class)->templatesMatch(
+                $employee->fingerprint_template,
+                $request->fingerprint_data
+            )) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Fingerprint not recognized',
+                ], 401);
             }
 
             // Check if employee is active

@@ -75,8 +75,8 @@ window.Echo = new Echo({
 ## How It Works
 
 ### When Attendance is Recorded:
-1. Biometric device sends attendance data to `/api/attendance/clock`
-2. AttendanceController processes and saves the attendance
+1. A registered biometric device sends a signed request and fingerprint scan to `/api/attendance/clock`
+2. AttendanceController validates the device, branch assignment, and fingerprint against the employee's saved template before saving attendance
 3. System sends email notification to employee (if email exists)
 4. System broadcasts real-time event to employee's private channel
 5. Employee sees notification on their dashboard (if logged in)

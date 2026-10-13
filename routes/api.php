@@ -9,10 +9,10 @@ use App\Http\Controllers\Api\MacAddressController;
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/ping', fn () => response()->json(['success' => true]));
 
-// Self-service attendance (no auth required for clocking in/out)
+// Attendance requires a registered, signed scanner and a matching fingerprint.
 Route::post('/attendance/clock', [App\Http\Controllers\Api\AttendanceController::class, 'clockAttendance']);
 
-// Fingerprint scanner time-in/time-out (no auth required)
+// Fingerprint scanner time-in/time-out (registered-device signature required).
 Route::get('/biometric/time-clock', fn () => response()->json([
     'success' => false,
     'message' => 'This endpoint accepts POST requests from the fingerprint attendance application only.',
@@ -28,7 +28,6 @@ Route::post('/biometric/verify', [BiometricController::class, 'verifyFingerprint
 
 // Temporary fingerprint storage during employee enrollment
 Route::post('/fingerprint-register-temp', [BiometricController::class, 'registerFingerprintTemp']);
-Route::get('/fingerprint-temp', [BiometricController::class, 'getFingerprintTemp']);
 Route::post('/fingerprint-check-status', [BiometricController::class, 'checkFingerprintStatus']);
 Route::get('/biometric/bridge-status', [BiometricController::class, 'getBridgeStatus']);
 
@@ -39,6 +38,7 @@ Route::get('/device-status', [MacAddressController::class, 'getDeviceStatus']);
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/fingerprint-temp', [BiometricController::class, 'getFingerprintTemp']);
     Route::post('/fingerprint-temp/clear', [BiometricController::class, 'clearFingerprintTempForEnrollment']);
     Route::post('/fingerprint-enrollment/rollback', [BiometricController::class, 'rollbackFingerprintEnrollment']);
     Route::post('/fingerprint-enrollment/commit', [BiometricController::class, 'commitFingerprintEnrollment']);
