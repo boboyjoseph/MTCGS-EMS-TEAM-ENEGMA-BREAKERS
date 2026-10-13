@@ -2,7 +2,7 @@
 
 **Review date:** 2026-10-14
 **Scope:** Attendance clocking and temporary fingerprint enrollment reads
-**Status:** Both HIGH findings below have been mitigated in this change.
+**Status:** Both HIGH findings below have been mitigated. See [RUNTIME_VERIFICATION_REPORT.md](./RUNTIME_VERIFICATION_REPORT.md) for outstanding deployment gates; the application is not yet cleared for public production.
 
 ## Findings
 
@@ -30,4 +30,4 @@ The temporary fingerprint read route now runs behind web-session authentication.
 
 ## Deployment caveat
 
-These application-level tests use the test database and do not verify production MySQL migrations or end-to-end behavior on staging/hosting. Run migrations and verify scanner/enrollment workflows against the intended deployment environment before treating the application as production-ready.
+These application-level tests use the test database and do not verify production MySQL migrations or end-to-end behavior on staging/hosting. The previously attempted local MySQL connection was refused. Configure the actual staging environment, verify migration status, and exercise scanner/enrollment workflows there before treating the application as production-ready. Production URL and database credentials remain deployment-specific and must be provided securely in the host environment, not committed to this repository.

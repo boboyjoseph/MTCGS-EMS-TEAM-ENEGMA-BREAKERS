@@ -1,237 +1,48 @@
-# ✅ MTCGS EMS - COMPLETE RUNTIME VERIFICATION REPORT
-**Date**: August 30, 2026
-**Status**: **🟢 PRODUCTION READY - ALL SYSTEMS FULLY FUNCTIONAL**
+# MTCGS EMS Runtime and Deployment Verification
 
----
+**Last updated:** 2026-10-14
+**Deployment status:** **NOT CLEARED FOR PUBLIC PRODUCTION**
 
-## 📊 TEST RESULTS SUMMARY
+This report replaces the previous report that stated “PRODUCTION READY.” The previous claims were based on older verification and must not be used as current deployment evidence.
 
-### ✅ **LARAVEL WEB APPLICATION**
-- **Status**: FULLY FUNCTIONAL
-- **Test Suite**: 45 passed (115 assertions)
-- **No Failures**: 0
+## Verified in this workspace
 
-#### Verified Features:
-1. ✅ Login/Authentication  
-   - Login page loads (HTTP 200)
-   - Authentication middleware working
-   - Session management functional
+- The biometric API security changes require a registered device signature, correct branch assignment, and a matching stored fingerprint before the legacy attendance clock records attendance.
+- Temporary fingerprint reads require an authenticated administrator and enforce branch scope for branch administrators.
+- Targeted Laravel regression suites passed:
+  - `tests/Feature/ApiBiometricEndpointSecurityTest.php`
+  - `tests/Feature/BiometricDeviceMetadataTest.php`
+  - `tests/Feature/EmployeeFingerprintRegistrationOnEditTest.php`
+  - Result: 28 tests passed, 187 assertions.
+- `git diff --check` passed for the change set.
 
-2. ✅ Landing Page
-   - Public page accessible (HTTP 200)
-   - Responsive design working
+These results cover the listed tests only. They do not constitute a full-suite result or a live-hosting verification.
 
-3. ✅ Protected Routes
-   - Dashboard protected by auth middleware
-   - Authorization checks working
+## Remaining deployment gates
 
-4. ✅ Employee Management
-   - Create employees with required fields
-   - Edit employees with fingerprint support
-   - Delete employees (soft delete to database)
-   - Test validation for date_hired and status fields
+| Check | Current status | Required before public deployment |
+|---|---|---|
+| Production URL and database credentials | Not configured in the committed example; values are intentionally placeholders | Set `APP_URL`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in the hosting environment. Do not commit real credentials. |
+| Production application key | Blank in the example, as expected for a template | Provision `APP_KEY` securely for the target environment; do not reuse a public or development key. |
+| Production logging | Example now uses `LOG_LEVEL=warning` | Confirm the hosting environment does not override it to `debug`. |
+| MySQL migration status | Not verified; the previously attempted local MySQL connection to `127.0.0.1:3306` was refused | From the actual staging/production-like environment, check `php artisan migrate:status`; review pending migrations and back up the database before applying them. |
+| MySQL migration execution | Not verified | Apply migrations in staging first, then validate schema and application behavior before production. Do not run migrations against production without an approved backup and deployment plan. |
+| Hosting end-to-end behavior | Not verified | Validate login, enrollment polling, fingerprint registration, device-signed attendance, and attendance/DTR results on staging with a registered device. |
+| Full Laravel suite and production build | Not established by the targeted tests listed above | Run the project's full test suite and production asset build in CI or staging for the release candidate. |
 
-5. ✅ Profile Management
-   - View profile information
-   - Update profile (PATCH /profile)
-   - Update password (PUT /password)
-   - Delete account (DELETE /profile)
+## Safe pre-deployment checks
 
-6. ✅ Authentication Flows
-   - Email verification working
-   - Password reset functional
-   - Password confirmation secure
-   - Account deletion with password validation
+Run these only after the staging environment is configured with its own database and secrets:
 
----
+```bash
+php artisan config:clear
+php artisan migrate:status
+php artisan test
+npm run build
+```
 
-### ✅ **LARAVEL API**
-- **Status**: FULLY FUNCTIONAL
-- **Endpoints**: Multiple routes active and responding
+Review the migration plan and take a database backup before running `php artisan migrate`. Do not copy development credentials, device secrets, or local `.env` values into source control.
 
-#### Verified API Endpoints:
-1. ✅ MAC Address Validation
-   - Endpoint: `POST /api/validate-mac-address`
-   - Invalid MAC: Returns **401 Unauthorized** ✓
-   - Valid MAC: Returns **200 OK** with device info ✓
-   
-   **Response Example (Valid MAC)**:
-   ```json
-   {
-     "success": true,
-     "message": "MAC address validated successfully",
-     "device": {
-       "id": 1,
-       "mac_address": "00:11:22:33:44:55",
-       "device_name": "Test Scanner",
-       "device_type": "biometric_scanner",
-       "branch_id": 1,
-       "location": "Test",
-       "status": "active"
-     }
-   }
-   ```
+## Conclusion
 
-2. ✅ Biometric Endpoints
-   - All biometric routes active and responding
-   - Time-clock endpoint: `/api/biometric/time-clock` (POST)
-   - Fingerprint verification: `/api/biometric/verify` (POST)
-   - Unregistered employees list: `/api/biometric/unregistered-employees` (GET)
-
-3. ✅ Device Management API
-   - Device registration
-   - Device listing
-   - Device status updates
-   - All secured with proper authentication
-
----
-
-### ✅ **DATABASE**
-- **Status**: SCHEMA COMPLETE
-- **Migrations**: All applied successfully
-- **Devices Table**: Populated with test data
-  - Example: `00:11:22:33:44:55` (Test Scanner)
-
-#### Key Tables Verified:
-- ✅ `users` - Authentication & user management
-- ✅ `devices` - Biometric scanner registry
-- ✅ `employee_profiles` - Employee data with fingerprint templates
-- ✅ `attendance_logs` - Attendance records with device metadata
-- ✅ `password_reset_tokens` - Password reset functionality
-- ✅ All relationships and constraints intact
-
----
-
-### ✅ **C# ENROLLMENT APPLICATION**
-- **Status**: CONFIGURED & READY
-- **Registry Path**: ✅ Verified
-  ```
-  C:\Users\Meg Rhyan\source\repos\MTCGS_Enroll\bin\Debug\MTCGS_Enroll.exe
-  ```
-- **Windows Registry**: ✅ Configured
-  - Custom URL protocol registered
-  - Can be launched from biometric registration page
-
----
-
-### ✅ **SECURITY FEATURES**
-1. ✅ MAC Address Validation
-   - Rejects unregistered/invalid MAC addresses (401 response)
-   - Accepts registered devices with proper normalization
-   - Device metadata tracked with attendance
-
-2. ✅ Authentication & Authorization
-   - Protected routes require authentication
-   - Role-based access control functional
-   - Session management secure
-
-3. ✅ Password Security
-   - Password hashing with bcrypt
-   - Password reset flow secure
-   - Current password verification for changes
-   - Account deletion requires password confirmation
-
-4. ✅ Email Verification
-   - Verification links generated correctly
-   - Hash validation working
-   - Email verification status tracked
-
----
-
-## 🧪 LIVE TESTS PERFORMED
-
-| Test # | Component | Test | Result |
-|--------|-----------|------|--------|
-| 1 | Login Page | HTTP GET /login | ✅ 200 OK |
-| 2 | Landing Page | HTTP GET / | ✅ 200 OK |
-| 3 | Auth Middleware | HTTP GET /dashboard (unauthenticated) | ✅ Protected |
-| 4 | MAC Validation | Invalid MAC POST | ✅ 401 Unauthorized |
-| 5 | MAC Validation | Valid MAC POST | ✅ 200 OK + Device Info |
-| 6 | API Routes | Biometric Endpoints | ✅ Active & Responding |
-| 7 | Employee CRUD | Create/Edit/Delete | ✅ Full CRUD Working |
-| 8 | Profile Management | View/Update/Delete | ✅ All Operations Working |
-
----
-
-## 🚀 **DEPLOYMENT STATUS**
-
-### Ready for Production ✅
-- [x] All unit tests passing
-- [x] All feature tests passing  
-- [x] Database schema complete
-- [x] API endpoints functional
-- [x] Web interface accessible
-- [x] Authentication & authorization working
-- [x] MAC address validation working
-- [x] C# application registered & configured
-- [x] No runtime errors or warnings
-- [x] Security features implemented
-
-### No Known Issues 🎉
-- ❌ No schema mismatches
-- ❌ No route conflicts
-- ❌ No authentication failures
-- ❌ No authorization issues
-- ❌ No database connection problems
-- ❌ No API response errors
-
----
-
-## 📋 VERIFICATION CHECKLIST
-
-### Laravel Web Application
-- [x] Server running on http://127.0.0.1:8000
-- [x] All routes responsive
-- [x] Database connected
-- [x] Migrations complete
-- [x] All tests passing (45/45)
-
-### Laravel API
-- [x] RESTful endpoints active
-- [x] MAC validation working
-- [x] Device management functional
-- [x] Biometric endpoints responding
-- [x] Authentication middleware active
-
-### Database
-- [x] All tables created
-- [x] Test data present
-- [x] Relationships intact
-- [x] Constraints applied
-- [x] Indexes optimized
-
-### Security
-- [x] Password hashing active
-- [x] Email verification enabled
-- [x] MAC address validation enforced
-- [x] Route protection implemented
-- [x] Session management secure
-
-### C# Integration
-- [x] Executable exists at expected path
-- [x] Registry entries configured
-- [x] URL protocol ready for launch
-- [x] API endpoints compatible
-
----
-
-## ✅ **CONCLUSION**
-
-**The MTCGS EMS system is 100% FUNCTIONAL and PRODUCTION-READY.**
-
-- ✅ Laravel web application fully operational
-- ✅ RESTful API endpoints active and validated
-- ✅ Database schema complete and populated
-- ✅ MAC address validation working correctly
-- ✅ Biometric device integration ready
-- ✅ C# enrollment application configured
-- ✅ All security features implemented
-- ✅ Complete test coverage with zero failures
-
-**No blockers. No issues. Ready to deploy.** 🚀
-
----
-
-**Report Generated**: 2026-08-30
-**Verification Level**: COMPLETE
-**Confidence Level**: 100%
+The two reported HIGH API access-control findings have been addressed and covered by targeted regression tests. Deployment remains **blocked pending real MySQL migration verification, production environment configuration, and staging end-to-end validation**.
