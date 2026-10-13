@@ -7,7 +7,9 @@ use App\Models\EmployeeProfile;
 use App\Models\AdminProfile;
 use App\Models\FinanceProfile;
 use App\Models\AttendanceLog;
+use App\Models\DTR;
 use App\Models\LeaveRequest;
+use App\Models\PayrollEntry;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,11 +32,13 @@ class DashboardDataController extends Controller
         
         $todayData = null;
         if ($todayAttendance) {
+            $timeIn = $todayAttendance->am_in;
+            $timeOut = $todayAttendance->pm_out ?: $todayAttendance->am_out;
             $todayData = [
-                'time_in' => $todayAttendance->time_in,
-                'time_out' => $todayAttendance->time_out,
-                'time_in_formatted' => $todayAttendance->time_in ? date('h:i A', strtotime($todayAttendance->time_in)) : null,
-                'time_out_formatted' => $todayAttendance->time_out ? date('h:i A', strtotime($todayAttendance->time_out)) : null,
+                'time_in' => $timeIn?->toDateTimeString(),
+                'time_out' => $timeOut?->toDateTimeString(),
+                'time_in_formatted' => $timeIn?->format('h:i A'),
+                'time_out_formatted' => $timeOut?->format('h:i A'),
                 'late_minutes' => $todayAttendance->late_minutes,
                 'status' => $todayAttendance->status,
             ];
@@ -53,6 +57,10 @@ class DashboardDataController extends Controller
                 ->whereIn('status', ['pending', 'pending_system_admin'])
                 ->count(),
         ];
+
+        $fingerprintTemplate = trim((string) ($profile->fingerprint_template ?? ''));
+        $hasFingerprint = (bool) $profile->is_fingerprint_registered
+            || ($fingerprintTemplate !== '' && strtolower($fingerprintTemplate) !== 'null');
         
         $recentAttendance = AttendanceLog::where('employee_profile_id', $profile->id)
             ->whereDate('attendance_date', today())
@@ -60,11 +68,16 @@ class DashboardDataController extends Controller
             ->limit(10)
             ->get()
             ->map(function($att) {
+                $timeIn = $att->am_in;
+                $timeOut = $att->pm_out ?: $att->am_out;
+
                 return [
                     'attendance_date' => date('M d, Y', strtotime($att->attendance_date)),
-                    'time_in' => $att->time_in ? date('h:i A', strtotime($att->time_in)) : '--',
-                    'time_out' => $att->time_out ? date('h:i A', strtotime($att->time_out)) : '--',
+                    'time_in' => $timeIn?->format('h:i A') ?? '--',
+                    'time_out' => $timeOut?->format('h:i A') ?? '--',
                     'status' => $att->status,
+                    'late_minutes' => $att->late_minutes,
+                    'verification_method' => $att->verification_method,
                 ];
             });
         
@@ -73,7 +86,7 @@ class DashboardDataController extends Controller
             'today_attendance' => $todayData,
             'stats' => $stats,
             'recent_attendance' => $recentAttendance,
-            'has_fingerprint' => $profile->is_fingerprint_registered ?? false,
+            'has_fingerprint' => $hasFingerprint,
             'current_date' => now()->format('l, F j, Y'),
         ]);
     }
@@ -199,6 +212,26 @@ class DashboardDataController extends Controller
             ->when($allowedBranchIds !== null, fn ($query) => $query->whereIn('branch_id', $allowedBranchIds))
             ->max('id') ?? 0);
 
+        $latestAttendanceUpdatedAt = AttendanceLog::whereDate('attendance_date', today())
+            ->when($employeeProfileId, fn ($query) => $query->where('employee_profile_id', $employeeProfileId))
+            ->when($allowedBranchIds !== null, fn ($query) => $query->whereIn('branch_id', $allowedBranchIds))
+            ->max('updated_at');
+
+        $dtrUpdateQuery = DTR::query()
+            ->whereHas('employeeProfile', function ($query) use ($user, $employeeProfileId, $allowedBranchIds) {
+                if ($user->role === 'employee' && $employeeProfileId) {
+                    $query->whereKey($employeeProfileId);
+                } elseif ($allowedBranchIds !== null) {
+                    $query->whereIn('branch_id', $allowedBranchIds);
+                }
+            });
+        $latestDtrUpdate = $dtrUpdateQuery->orderByDesc('updated_at')->orderByDesc('id')->first(['id', 'updated_at']);
+
+        $payrollUpdateQuery = PayrollEntry::query()
+            ->when($user->role === 'employee' && $employeeProfileId, fn ($query) => $query->where('employee_profile_id', $employeeProfileId))
+            ->when($allowedBranchIds !== null, fn ($query) => $query->whereIn('branch_id', $allowedBranchIds));
+        $latestPayrollUpdate = $payrollUpdateQuery->orderByDesc('updated_at')->orderByDesc('id')->first(['id', 'updated_at']);
+
         $ownAttendance = $employeeProfileId
             ? AttendanceLog::where('employee_profile_id', $employeeProfileId)->whereDate('attendance_date', today())->first()
             : null;
@@ -207,6 +240,12 @@ class DashboardDataController extends Controller
             'success' => true,
             'role' => $user->role,
             'latest_attendance_id' => $latestAttendanceId,
+            'latest_attendance_updated_at' => $latestAttendanceUpdatedAt,
+            'workflow_updates' => [
+                'attendance' => $latestAttendanceUpdatedAt,
+                'dtr' => $latestDtrUpdate ? $latestDtrUpdate->updated_at->toIso8601String() . ':' . $latestDtrUpdate->id : null,
+                'payroll' => $latestPayrollUpdate ? $latestPayrollUpdate->updated_at->toIso8601String() . ':' . $latestPayrollUpdate->id : null,
+            ],
             'unread_notifications' => $user->unreadNotifications()->count(),
             'own_attendance' => $ownAttendance ? [
                 'am_in' => $ownAttendance->am_in?->format('h:i A'),

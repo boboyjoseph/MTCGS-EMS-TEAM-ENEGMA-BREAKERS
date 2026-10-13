@@ -700,6 +700,7 @@ class EmployeeController extends Controller
             'basic_salary' => 'nullable|numeric|min:0',
             'fingerprint_data' => 'nullable|string',
             'clear_fingerprint' => 'nullable|boolean',
+            'remove_fingerprint_index' => 'nullable|integer|min:0',
         ]);
 
         $clearFingerprint = $request->boolean('clear_fingerprint');
@@ -715,8 +716,17 @@ class EmployeeController extends Controller
             && strtolower(trim($fingerprintTemplate)) !== 'null';
 
         if ($clearFingerprint) {
-            $fingerprintTemplate = null;
-            $isFingerprintRegistered = false;
+            $removeFingerprintIndex = $request->input('remove_fingerprint_index');
+            if ($removeFingerprintIndex !== null && $removeFingerprintIndex !== '') {
+                $fingerprintTemplate = $this->removeFingerprintTemplateAt(
+                    $employee->fingerprint_template,
+                    (int) $removeFingerprintIndex
+                );
+                $isFingerprintRegistered = $fingerprintTemplate !== null && $fingerprintTemplate !== '';
+            } else {
+                $fingerprintTemplate = null;
+                $isFingerprintRegistered = false;
+            }
         } else {
             $fingerprintTemplate = $hasNewFingerprint
                 ? $this->appendFingerprintTemplate($employee->fingerprint_template, $fingerprintTemplate)
@@ -1051,6 +1061,28 @@ class EmployeeController extends Controller
             'fingerprint_data' => base64_encode($incomingBytes),
         ];
         return json_encode(['version' => 2, 'templates' => $templates], JSON_UNESCAPED_SLASHES);
+    }
+
+    private function removeFingerprintTemplateAt($storedTemplate, int $index): ?string
+    {
+        $decoded = json_decode((string) $storedTemplate, true);
+        if (is_array($decoded) && isset($decoded['templates']) && is_array($decoded['templates'])) {
+            if (!array_key_exists($index, $decoded['templates'])) {
+                return (string) $storedTemplate;
+            }
+
+            array_splice($decoded['templates'], $index, 1);
+            if ($decoded['templates'] === []) {
+                return null;
+            }
+
+            return json_encode([
+                'version' => 2,
+                'templates' => array_values($decoded['templates']),
+            ], JSON_UNESCAPED_SLASHES);
+        }
+
+        return $index === 0 ? null : (string) $storedTemplate;
     }
 
     private function fingerprintTemplateList($storedTemplate): array

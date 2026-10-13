@@ -100,6 +100,7 @@ class BiometricDeviceMetadataTest extends TestCase
             'mac_address' => 'AA-BB-CC-DD-EE-51',
             'laptop_mac_address' => 'VERIFY-ONLY-DEVICE',
             'serial_number' => 'J62OE23640',
+            'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
             'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Verify Only Scanner',
             'device_type' => 'computer',
@@ -109,6 +110,7 @@ class BiometricDeviceMetadataTest extends TestCase
         $payload = $this->signedDevicePayload([
             'fingerprint_data' => $employee->fingerprint_template,
             'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
             'wifi_mac' => 'AA:BB:CC:DD:EE:51',
             'device_id' => $device->laptop_mac_address,
             'mac_address' => 'AA:BB:CC:DD:EE:51',
@@ -150,6 +152,7 @@ class BiometricDeviceMetadataTest extends TestCase
             'id_verification_status' => 'approved',
         ]);
         $fingerprint = base64_encode(str_repeat('offline-sync-template-', 8));
+        $readerId = '70315bbe-3635-8b41-b4af-04a0bcd6e941';
         $employee = EmployeeProfile::create([
             'user_id' => $user->id,
             'branch_id' => $branch->id,
@@ -165,6 +168,7 @@ class BiometricDeviceMetadataTest extends TestCase
             'mac_address' => 'AA-BB-CC-DD-EE-61',
             'laptop_mac_address' => 'OFFLINE-SYNC-DEVICE',
             'serial_number' => 'J62OE23640',
+            'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
             'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Offline Sync Scanner',
             'device_type' => 'computer',
@@ -176,6 +180,7 @@ class BiometricDeviceMetadataTest extends TestCase
             'fingerprint_data' => $fingerprint,
             'action' => 'TIME-IN',
             'device_serial' => $device->serial_number,
+            'reader_id' => $readerId,
             'wifi_mac' => 'AA:BB:CC:DD:EE:61',
             'device_id' => $device->laptop_mac_address,
             'mac_address' => 'AA:BB:CC:DD:EE:61',
@@ -201,11 +206,13 @@ class BiometricDeviceMetadataTest extends TestCase
                 ->firstOrFail()
                 ->am_in
                 ->toDateTimeString();
+            $this->assertSame('2026-10-12 08:00:00', $savedTimeIn);
             $retryPayload = $this->signedDevicePayload([
                 'employee_number' => $employee->employee_number,
                 'fingerprint_data' => $fingerprint,
                 'action' => 'TIME-IN',
                 'device_serial' => $device->serial_number,
+                'reader_id' => $readerId,
                 'wifi_mac' => 'AA:BB:CC:DD:EE:61',
                 'device_id' => $device->laptop_mac_address,
                 'mac_address' => 'AA:BB:CC:DD:EE:61',
@@ -218,9 +225,10 @@ class BiometricDeviceMetadataTest extends TestCase
             );
 
             $this->assertSame(200, $retryResponse->getStatusCode(), $retryResponse->content());
-            $this->assertTrue(json_decode($retryResponse->content(), true)['already_recorded']);
-                $this->assertSame(
-                $savedTimeIn,
+            $this->assertFalse(json_decode($retryResponse->content(), true)['already_recorded'] ?? false);
+            $this->assertSame('08:09 AM', json_decode($retryResponse->content(), true)['data']['action_time']);
+            $this->assertSame(
+                '2026-10-12 08:09:00',
                 AttendanceLog::where('employee_profile_id', $employee->id)
                     ->whereDate('attendance_date', now()->toDateString())
                     ->firstOrFail()
@@ -228,11 +236,69 @@ class BiometricDeviceMetadataTest extends TestCase
                     ->toDateTimeString()
             );
 
-                $serverTimeOutPayload = $this->signedDevicePayload([
+            $staleRetryPayload = $this->signedDevicePayload([
+                'employee_number' => $employee->employee_number,
+                'fingerprint_data' => $fingerprint,
+                'action' => 'TIME-IN',
+                'device_serial' => $device->serial_number,
+                'reader_id' => $readerId,
+                'wifi_mac' => 'AA:BB:CC:DD:EE:61',
+                'device_id' => $device->laptop_mac_address,
+                'mac_address' => 'AA:BB:CC:DD:EE:61',
+                'timestamp' => now()->toIso8601String(),
+                'attendance_timestamp' => now()->addMinutes(4)->toIso8601String(),
+                'nonce' => 'offline-sync-stale-time-in-retry',
+            ], 'POST', '/api/biometric/time-clock');
+            $staleRetryResponse = (new BiometricController())->processTimeClock(
+                Request::create('/api/biometric/time-clock', 'POST', $staleRetryPayload)
+            );
+            $this->assertSame(200, $staleRetryResponse->getStatusCode(), $staleRetryResponse->content());
+            $this->assertTrue(json_decode($staleRetryResponse->content(), true)['already_recorded']);
+            $this->assertSame(
+                '2026-10-12 08:09:00',
+                AttendanceLog::where('employee_profile_id', $employee->id)
+                    ->whereDate('attendance_date', now()->toDateString())
+                    ->firstOrFail()
+                    ->am_in
+                    ->toDateTimeString()
+            );
+
+            \Illuminate\Support\Carbon::setTestNow(now()->addMinutes(10));
+            $onlineUpdatePayload = $this->signedDevicePayload([
+                'employee_number' => $employee->employee_number,
+                'fingerprint_data' => $fingerprint,
+                'action' => 'TIME-IN',
+                'device_serial' => $device->serial_number,
+                'reader_id' => $readerId,
+                'wifi_mac' => 'AA:BB:CC:DD:EE:61',
+                'device_id' => $device->laptop_mac_address,
+                'mac_address' => 'AA:BB:CC:DD:EE:61',
+                'timestamp' => now()->toIso8601String(),
+                'nonce' => 'online-time-in-updates-saved-time',
+            ], 'POST', '/api/biometric/time-clock');
+            $onlineUpdateResponse = (new BiometricController())->processTimeClock(
+                Request::create('/api/biometric/time-clock', 'POST', $onlineUpdatePayload)
+            );
+            $onlineUpdateResponseData = json_decode($onlineUpdateResponse->content(), true);
+
+            $this->assertSame(200, $onlineUpdateResponse->getStatusCode(), $onlineUpdateResponse->content());
+            $this->assertFalse($onlineUpdateResponseData['already_recorded'] ?? false);
+            $this->assertSame('08:10 AM', $onlineUpdateResponseData['data']['time_in']);
+            $this->assertSame(
+                '2026-10-12 08:10:00',
+                AttendanceLog::where('employee_profile_id', $employee->id)
+                    ->whereDate('attendance_date', now()->toDateString())
+                    ->firstOrFail()
+                    ->am_in
+                    ->toDateTimeString()
+            );
+
+            $serverTimeOutPayload = $this->signedDevicePayload([
                     'employee_number' => $employee->employee_number,
                     'fingerprint_data' => $fingerprint,
                     'action' => 'TIME-OUT',
                     'device_serial' => $device->serial_number,
+                    'reader_id' => $readerId,
                     'wifi_mac' => 'AA:BB:CC:DD:EE:61',
                     'device_id' => $device->laptop_mac_address,
                     'mac_address' => 'AA:BB:CC:DD:EE:61',
@@ -240,16 +306,17 @@ class BiometricDeviceMetadataTest extends TestCase
                     'attendance_timestamp' => now()->setTime(10, 16)->toIso8601String(),
                     'nonce' => 'offline-sync-server-timeout',
                 ], 'POST', '/api/biometric/time-clock');
-                $serverTimeOutResponse = (new BiometricController())->processTimeClock(
-                    Request::create('/api/biometric/time-clock', 'POST', $serverTimeOutPayload)
-                );
-                $this->assertSame(200, $serverTimeOutResponse->getStatusCode(), $serverTimeOutResponse->content());
+            $serverTimeOutResponse = (new BiometricController())->processTimeClock(
+                Request::create('/api/biometric/time-clock', 'POST', $serverTimeOutPayload)
+            );
+            $this->assertSame(200, $serverTimeOutResponse->getStatusCode(), $serverTimeOutResponse->content());
 
-                $offlineTimeOutPayload = $this->signedDevicePayload([
+            $offlineTimeOutPayload = $this->signedDevicePayload([
                     'employee_number' => $employee->employee_number,
                     'fingerprint_data' => $fingerprint,
                     'action' => 'TIME-OUT',
                     'device_serial' => $device->serial_number,
+                    'reader_id' => $readerId,
                     'wifi_mac' => 'AA:BB:CC:DD:EE:61',
                     'device_id' => $device->laptop_mac_address,
                     'mac_address' => 'AA:BB:CC:DD:EE:61',
@@ -257,19 +324,49 @@ class BiometricDeviceMetadataTest extends TestCase
                     'attendance_timestamp' => now()->setTime(10, 7)->toIso8601String(),
                     'nonce' => 'offline-sync-earlier-timeout',
                 ], 'POST', '/api/biometric/time-clock');
-                $offlineTimeOutResponse = (new BiometricController())->processTimeClock(
-                    Request::create('/api/biometric/time-clock', 'POST', $offlineTimeOutPayload)
-                );
-                $this->assertSame(200, $offlineTimeOutResponse->getStatusCode(), $offlineTimeOutResponse->content());
-                $this->assertTrue(json_decode($offlineTimeOutResponse->content(), true)['offline_time_reconciled']);
-                $this->assertSame(
-                    '2026-10-12 10:07:00',
-                    AttendanceLog::where('employee_profile_id', $employee->id)
-                        ->whereDate('attendance_date', now()->toDateString())
-                        ->firstOrFail()
-                        ->pm_out
-                        ->toDateTimeString()
-                );
+            $offlineTimeOutResponse = (new BiometricController())->processTimeClock(
+                Request::create('/api/biometric/time-clock', 'POST', $offlineTimeOutPayload)
+            );
+            $this->assertSame(200, $offlineTimeOutResponse->getStatusCode(), $offlineTimeOutResponse->content());
+            $this->assertTrue(json_decode($offlineTimeOutResponse->content(), true)['already_recorded']);
+            $this->assertSame(
+                '2026-10-12 10:16:00',
+                AttendanceLog::where('employee_profile_id', $employee->id)
+                    ->whereDate('attendance_date', now()->toDateString())
+                    ->firstOrFail()
+                    ->pm_out
+                    ->toDateTimeString()
+            );
+
+            \Illuminate\Support\Carbon::setTestNow(now()->setTime(10, 17));
+            $onlineTimeOutPayload = $this->signedDevicePayload([
+                'employee_number' => $employee->employee_number,
+                'fingerprint_data' => $fingerprint,
+                'action' => 'TIME-OUT',
+                'device_serial' => $device->serial_number,
+                'reader_id' => $readerId,
+                'wifi_mac' => 'AA:BB:CC:DD:EE:61',
+                'device_id' => $device->laptop_mac_address,
+                'mac_address' => 'AA:BB:CC:DD:EE:61',
+                'timestamp' => now()->toIso8601String(),
+                'nonce' => 'online-time-out-updates-saved-time',
+            ], 'POST', '/api/biometric/time-clock');
+            $onlineTimeOutResponse = (new BiometricController())->processTimeClock(
+                Request::create('/api/biometric/time-clock', 'POST', $onlineTimeOutPayload)
+            );
+            $onlineTimeOutResponseData = json_decode($onlineTimeOutResponse->content(), true);
+
+            $this->assertSame(200, $onlineTimeOutResponse->getStatusCode(), $onlineTimeOutResponse->content());
+            $this->assertFalse($onlineTimeOutResponseData['already_recorded'] ?? false);
+            $this->assertSame('10:17 AM', $onlineTimeOutResponseData['data']['time_out']);
+            $this->assertSame(
+                '2026-10-12 10:17:00',
+                AttendanceLog::where('employee_profile_id', $employee->id)
+                    ->whereDate('attendance_date', now()->toDateString())
+                    ->firstOrFail()
+                    ->pm_out
+                    ->toDateTimeString()
+            );
         } finally {
             \Illuminate\Support\Carbon::setTestNow();
         }
@@ -430,6 +527,7 @@ class BiometricDeviceMetadataTest extends TestCase
             'mac_address' => 'AA-BB-CC-DD-EE-31',
             'laptop_mac_address' => 'IRIGA-LOCAL-PC-01',
             'serial_number' => 'J62OE23640',
+            'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
             'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Local Iriga Enrollment Scanner',
             'device_type' => 'computer',
@@ -442,6 +540,7 @@ class BiometricDeviceMetadataTest extends TestCase
                 'device_serial' => $device->serial_number,
                 'mac_address' => 'AA:BB:CC:DD:EE:31',
                 'device_id' => 'IRIGA-LOCAL-PC-01',
+                'reader_id' => $device->reader_id,
                 'timestamp' => now()->toIso8601String(),
                 'nonce' => $nonce,
             ], 'POST', '/api/fingerprint-register-temp');
@@ -452,6 +551,7 @@ class BiometricDeviceMetadataTest extends TestCase
             'device_serial' => $device->serial_number,
             'mac_address' => 'AA:BB:CC:DD:EE:31',
             'device_id' => 'IRIGA-LOCAL-PC-01',
+            'reader_id' => $device->reader_id,
             'timestamp' => now()->toIso8601String(),
             'nonce' => 'local-suspension-calendar-read',
         ], [], [], ['REMOTE_ADDR' => '127.0.0.1']);
@@ -463,6 +563,7 @@ class BiometricDeviceMetadataTest extends TestCase
                 'device_serial' => $device->serial_number,
                 'mac_address' => 'AA:BB:CC:DD:EE:31',
                 'device_id' => 'IRIGA-LOCAL-PC-01',
+                'reader_id' => $device->reader_id,
                 'timestamp' => now()->toIso8601String(),
                 'nonce' => 'local-suspension-calendar-endpoint',
                 'start_date' => now()->toDateString(),

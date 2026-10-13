@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\AdminProfile;
 use App\Models\AttendanceLog;
 use App\Models\Branch;
+use App\Models\DTR;
 use App\Models\EmployeeProfile;
+use App\Models\PayrollEntry;
+use App\Models\PayrollPeriod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -52,7 +55,8 @@ class AttendanceSingleStepUiTest extends TestCase
             'last_name' => 'User',
             'position' => 'Staff',
             'date_hired' => now()->subMonths(6)->toDateString(),
-            'is_fingerprint_registered' => true,
+            'fingerprint_template' => base64_encode('registered-template'),
+            'is_fingerprint_registered' => false,
         ]);
 
         EmployeeProfile::create([
@@ -69,8 +73,9 @@ class AttendanceSingleStepUiTest extends TestCase
         $response = $this->actingAs($user)->getJson('/api/biometric/unregistered-employees');
 
         $response->assertOk();
-        $response->assertJsonPath('count', 2);
-        $this->assertCount(2, $response->json('data'));
+        $response->assertJsonPath('count', 1);
+        $this->assertCount(1, $response->json('data'));
+        $response->assertJsonPath('data.0.employee_number', 'EMP-2002');
     }
 
     public function test_biometric_employee_list_returns_branch_grouping_metadata(): void
@@ -114,8 +119,8 @@ class AttendanceSingleStepUiTest extends TestCase
 
         $response->assertOk();
         $this->assertNotNull($response->json('data.0.branch_name'));
-        $this->assertNotNull($response->json('data.1.branch_name'));
         $this->assertEquals('MTC-IRIGA', $response->json('data.0.branch_name'));
+        $response->assertJsonPath('count', 1);
     }
 
     public function test_branch_admin_stats_only_count_branch_admins_not_hr_for_same_branch(): void
@@ -306,5 +311,136 @@ class AttendanceSingleStepUiTest extends TestCase
                 && $recentAttendance[0]['time_in'] !== '--'
                 && $recentAttendance[0]['time_out'] !== '--';
         });
+    }
+
+    public function test_live_updates_detect_attendance_time_out_updates_on_existing_record(): void
+    {
+        $user = User::create([
+            'name' => 'Super Admin',
+            'email' => 'live-attendance-update@test.com',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $employee = EmployeeProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => 1,
+            'employee_number' => 'EMP-LIVE-UPDATE',
+            'first_name' => 'Live',
+            'last_name' => 'Update',
+            'position' => 'Staff',
+            'date_hired' => now()->subMonths(6)->toDateString(),
+        ]);
+
+        $attendance = AttendanceLog::create([
+            'employee_id' => $employee->user_id,
+            'employee_profile_id' => $employee->id,
+            'branch_id' => 1,
+            'attendance_date' => today(),
+            'am_in' => now()->setTime(8, 0, 0),
+            'status' => 'present',
+            'verification_method' => 'fingerprint',
+        ]);
+
+        $firstResponse = $this->actingAs($user)->getJson('/live-updates');
+        $firstResponse->assertOk();
+        $firstUpdatedAt = $firstResponse->json('latest_attendance_updated_at');
+        $this->assertNotEmpty($firstUpdatedAt);
+
+        $attendance->forceFill([
+            'pm_out' => now()->setTime(17, 0, 0),
+            'updated_at' => now()->addSecond(),
+        ])->save();
+
+        $secondResponse = $this->getJson('/live-updates');
+        $secondResponse->assertOk();
+        $secondResponse->assertJsonPath('latest_attendance_id', $attendance->id);
+        $this->assertNotSame($firstUpdatedAt, $secondResponse->json('latest_attendance_updated_at'));
+
+        $firstWorkflowSnapshot = $secondResponse->json('workflow_updates');
+        $dtr = DTR::create([
+            'employee_profile_id' => $employee->id,
+            'period_start' => today()->startOfMonth(),
+            'period_end' => today()->endOfMonth(),
+            'status' => 'draft',
+        ]);
+        $dtr->forceFill(['status' => 'submitted', 'updated_at' => now()->addSeconds(2)])->save();
+
+        $thirdResponse = $this->getJson('/live-updates');
+        $thirdResponse->assertOk();
+        $this->assertNotSame($firstWorkflowSnapshot['dtr'], $thirdResponse->json('workflow_updates.dtr'));
+
+        $firstPayrollSnapshot = $thirdResponse->json('workflow_updates.payroll');
+        $period = PayrollPeriod::create([
+            'branch_id' => 1,
+            'period_code' => 'PRD-LIVE-UPDATE',
+            'start_date' => today()->startOfMonth(),
+            'end_date' => today()->endOfMonth(),
+            'payment_date' => today()->endOfMonth()->addDay(),
+            'status' => 'draft',
+        ]);
+        $payrollEntry = PayrollEntry::create([
+            'payroll_period_id' => $period->id,
+            'employee_profile_id' => $employee->id,
+            'branch_id' => 1,
+            'status' => 'draft',
+        ]);
+        $payrollEntry->forceFill(['status' => 'approved', 'updated_at' => now()->addSeconds(3)])->save();
+
+        $fourthResponse = $this->getJson('/live-updates');
+        $fourthResponse->assertOk();
+        $this->assertNotSame($firstPayrollSnapshot, $fourthResponse->json('workflow_updates.payroll'));
+    }
+
+    public function test_dashboard_and_dtr_refresh_only_after_server_side_updates(): void
+    {
+        $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
+
+        $this->assertStringContainsString('workflow_updates', $layout);
+        $this->assertStringContainsString('workflowWasUpdated', $layout);
+        $this->assertStringContainsString('!hasUnsavedAttendanceCorrection()', $layout);
+        $this->assertStringContainsString('[form^="attendance-correction-"]', $layout);
+        $this->assertStringNotContainsString('isAttendanceRefreshPage', $layout);
+    }
+
+    public function test_employee_dashboard_data_reads_attendance_time_in_and_time_out_columns(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'employee',
+            'profile_type' => EmployeeProfile::class,
+        ]);
+        $profile = EmployeeProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => 1,
+            'employee_number' => 'EMP-DASHBOARD-TIMES',
+            'first_name' => 'Dashboard',
+            'last_name' => 'Times',
+            'position' => 'Staff',
+            'date_hired' => now()->toDateString(),
+        ]);
+
+        AttendanceLog::create([
+            'employee_id' => $user->id,
+            'employee_profile_id' => $profile->id,
+            'branch_id' => 1,
+            'attendance_date' => today(),
+            'am_in' => today()->setTime(8, 3),
+            'am_out' => today()->setTime(12, 1),
+            'pm_out' => today()->setTime(17, 5),
+            'status' => 'present',
+            'verification_method' => 'fingerprint',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/employee/dashboard-data')
+            ->assertOk()
+            ->assertJsonPath('today_attendance.time_in_formatted', '08:03 AM')
+            ->assertJsonPath('today_attendance.time_out_formatted', '05:05 PM')
+            ->assertJsonPath('recent_attendance.0.time_in', '08:03 AM')
+            ->assertJsonPath('recent_attendance.0.time_out', '05:05 PM')
+            ->assertJsonPath('recent_attendance.0.verification_method', 'fingerprint');
     }
 }

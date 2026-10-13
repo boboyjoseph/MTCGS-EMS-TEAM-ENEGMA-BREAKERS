@@ -49,7 +49,8 @@
                     <h5 class="mb-0">Earnings</h5>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table mb-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0">
                         <tbody>
                             <tr>
                                 <th>Basic Pay</th>
@@ -68,7 +69,8 @@
                                 <td><strong>₱{{ number_format($computation['gross_pay'], 2) }}</strong></td>
                             </tr>
                         </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -79,7 +81,8 @@
                     <h5 class="mb-0">Deductions</h5>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table mb-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0">
                         <tbody>
                             <tr>
                                 <th>Late Deduction</th>
@@ -110,7 +113,8 @@
                                 <td><strong>₱{{ number_format($computation['total_deductions'], 2) }}</strong></td>
                             </tr>
                         </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

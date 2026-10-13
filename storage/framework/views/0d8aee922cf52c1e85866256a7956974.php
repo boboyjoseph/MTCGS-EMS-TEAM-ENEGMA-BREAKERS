@@ -1,5 +1,61 @@
 <?php $__env->startSection('title', 'Edit Employee'); ?>
 
+<?php $__env->startPush('styles'); ?>
+<style>
+    .fingerprint-registration-card .fingerprint-data-field {
+        min-width: 0;
+    }
+
+    .fingerprint-registration-card #fingerprint-data {
+        min-height: 8rem;
+        resize: vertical;
+        overflow-wrap: anywhere;
+    }
+
+    .fingerprint-registration-card #remove-fingerprint-index {
+        min-width: 0;
+        white-space: normal;
+    }
+
+    .fingerprint-registration-card #scanner-status {
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 576px) {
+        .fingerprint-registration-card .card-body {
+            padding: 0.85rem;
+        }
+
+        .fingerprint-registration-card .fingerprint-status-row {
+            align-items: stretch !important;
+        }
+
+        .fingerprint-registration-card .fingerprint-status-row > div {
+            width: 100%;
+        }
+
+        .fingerprint-registration-card .fingerprint-status-row button,
+        .fingerprint-registration-card .fingerprint-status-row .badge {
+            white-space: normal;
+        }
+
+        .fingerprint-registration-card .form-check-label,
+        .fingerprint-registration-card small {
+            overflow-wrap: anywhere;
+        }
+
+        .fingerprint-registration-card .d-flex.justify-content-between {
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .fingerprint-registration-card .d-flex.justify-content-between > * {
+            flex: 1 1 100%;
+        }
+    }
+</style>
+<?php $__env->stopPush(); ?>
+
 <?php $__env->startSection('content'); ?>
 <div class="container">
     <div class="row justify-content-center">
@@ -12,7 +68,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="<?php echo e(($employee->is_admin_profile ?? false) ? route('admin.admin-update', $employee->id) : route('admin.employee-update', $employee->id)); ?>">
+                    <form id="employee-edit-form" method="POST" action="<?php echo e(($employee->is_admin_profile ?? false) ? route('admin.admin-update', $employee->id) : route('admin.employee-update', $employee->id)); ?>">
                         <?php echo csrf_field(); ?>
                         <?php echo method_field('PUT'); ?>
                         
@@ -132,7 +188,7 @@
                         <hr>
                         
                         <!-- Fingerprint Registration Section -->
-                        <div class="card border-warning mb-4">
+                        <div class="card border-warning mb-4 fingerprint-registration-card">
                             <div class="card-header bg-warning text-dark">
                                 <h5 class="mb-0">
                                     <i class="fas fa-fingerprint"></i> Fingerprint Registration
@@ -156,6 +212,17 @@
                                             : base64_encode($storedFingerprint));
                                     }
                                     $fingerprintDisplayValue = $savedFingerprintData->implode("\n\n");
+                                    $fingerprintEntries = collect(is_array($fingerprintHistory['templates'] ?? null) ? $fingerprintHistory['templates'] : [])
+                                        ->values()
+                                        ->map(function ($template, $index) {
+                                            return [
+                                                'index' => $index,
+                                                'finger_name' => is_array($template) ? trim((string) ($template['finger_name'] ?? '')) : '',
+                                            ];
+                                        });
+                                    if ($fingerprintEntries->isEmpty() && !empty($employee->fingerprint_template)) {
+                                        $fingerprintEntries->push(['index' => 0, 'finger_name' => '']);
+                                    }
                                 ?>
                                 <div class="alert alert-secondary d-flex justify-content-between align-items-center">
                                     <span><i class="fas fa-list-ol"></i> Registered fingerprints</span>
@@ -166,7 +233,7 @@
                                     <strong>Important:</strong> Fingerprint registration is required for attendance tracking. Please register the employee's fingerprint now.
                                 </div>
 
-                                <div class="row">
+                                <div class="row fingerprint-status-row">
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <div class="form-label">Fingerprint Status</div>
@@ -189,8 +256,18 @@
                                             <small class="text-muted">Saved fingerprint template data. A new capture appears here only after the enrollment app confirms it was saved.</small>
                                             <div class="form-check mt-2">
                                                 <input type="checkbox" name="clear_fingerprint" id="clear-fingerprint" value="1" class="form-check-input">
-                                                <label for="clear-fingerprint" class="form-check-label">Remove saved fingerprints and return this employee to the unregistered enrollment list</label>
+                                                <label for="clear-fingerprint" class="form-check-label">Remove a saved fingerprint</label>
                                             </div>
+                                            <select name="remove_fingerprint_index" id="remove-fingerprint-index" class="form-select form-select-sm mt-2" disabled>
+                                                <option value="">Select the fingerprint to remove</option>
+                                                <?php $__currentLoopData = $fingerprintEntries; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $fingerprintEntry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <option value="<?php echo e($fingerprintEntry['index']); ?>">
+                                                        Finger <?php echo e($fingerprintEntry['index'] + 1); ?><?php echo e($fingerprintEntry['finger_name'] ? ' - ' . $fingerprintEntry['finger_name'] : ''); ?>
+
+                                                    </option>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                            </select>
+                                            <small class="text-muted">Only the selected saved fingerprint will be removed.</small>
                                         </div>
                                     </div>
                                 </div>
@@ -272,6 +349,9 @@
     let isScanning = false;
     let scanInterval;
     let fingerprintCheckInterval = null;
+    let pendingFingerprintRollbackToken = null;
+    let enrollmentCommitted = false;
+    const employeeNumberForEnrollment = <?php echo json_encode($employee->employee_number, 15, 512) ?>;
 
     // DOM Elements
     const registerFingerprintBtn = document.getElementById('register-fingerprint-btn');
@@ -280,6 +360,7 @@
     const fingerprintPayload = document.getElementById('fingerprint-payload');
     const fingerprintStatus = document.getElementById('fingerprint-status');
     const clearFingerprint = document.getElementById('clear-fingerprint');
+    const removeFingerprintIndex = document.getElementById('remove-fingerprint-index');
     const fingerprintCount = document.getElementById('fingerprint-count');
     let savedFingerprintDisplay = fingerprintData.value;
     const startScanBtn = document.getElementById('start-scan-btn');
@@ -291,11 +372,14 @@
     clearFingerprint.addEventListener('change', function() {
         if (this.checked) {
             fingerprintPayload.value = '';
-            fingerprintData.value = 'Saved fingerprints will be removed when this employee is updated.';
+            removeFingerprintIndex.disabled = false;
+            removeFingerprintIndex.required = true;
             fingerprintStatus.className = 'badge bg-danger me-2';
             fingerprintStatus.textContent = 'Removal pending';
-            fingerprintCount.textContent = '0';
         } else {
+            removeFingerprintIndex.value = '';
+            removeFingerprintIndex.disabled = true;
+            removeFingerprintIndex.required = false;
             fingerprintCount.textContent = fingerprintCount.dataset.savedCount;
             const savedCount = Number(fingerprintCount.dataset.savedCount || 0);
             fingerprintData.value = savedCount > 0 ? savedFingerprintDisplay : '';
@@ -306,8 +390,10 @@
 
     // Launch the desktop enrollment app using a custom URI scheme.
     async function launchEnrollmentApp() {
+        enrollmentCommitted = false;
         clearFingerprint.checked = false;
         fingerprintPayload.value = '';
+        fingerprintData.value = '';
 
         const firstName = document.querySelector('input[name="first_name"]').value.trim();
         const lastName = document.querySelector('input[name="last_name"]').value.trim();
@@ -457,9 +543,10 @@
                     // Perfect match
                     clearInterval(fingerprintCheckInterval);
                     fingerprintCheckInterval = null;
-                    fingerprintPayload.value = incomingData;
                     fingerprintData.value = incomingData;
                     savedFingerprintDisplay = incomingData;
+                    fingerprintPayload.value = '';
+                    pendingFingerprintRollbackToken = result.data.rollback_token || null;
                     clearFingerprint.checked = false;
                     if (Number.isFinite(fingerprintCount)) {
                         document.getElementById('fingerprint-count').textContent = fingerprintCount;
@@ -477,7 +564,7 @@
                     scannerStatus.className = 'alert alert-success';
                     scannerStatus.innerHTML = '<i class="fas fa-check-circle"></i> ✓ ' +
                         (registeredFinger ? registeredFinger + ' fingerprint ' + actionText + '!' : 'Fingerprint ' + actionText + '!') +
-                        ' Click "Register Again" to rescan if needed.';
+                        ' Saved temporarily. Click "Update Employee" to keep it. Click "Register Again" to rescan if needed.';
                 } else {
                     // Mismatch
                     fingerprintStatus.className = 'badge bg-warning me-2';
@@ -494,19 +581,59 @@
         }, 300);
     }
 
-    // Stop polling when leaving the page
-    window.addEventListener('beforeunload', function() {
+    function sendEnrollmentLifecycleRequest(endpoint) {
+        if (!pendingFingerprintRollbackToken) {
+            return;
+        }
+
+        fetch(endpoint, {
+            method: 'POST',
+            keepalive: true,
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                employee_number: employeeNumberForEnrollment,
+                rollback_token: pendingFingerprintRollbackToken,
+            })
+        });
+        pendingFingerprintRollbackToken = null;
+    }
+
+    // Roll back a C# save when the edit form is abandoned without Update.
+    window.addEventListener('pagehide', function() {
         if (fingerprintCheckInterval) {
             clearInterval(fingerprintCheckInterval);
             fingerprintCheckInterval = null;
         }
+        if (!enrollmentCommitted) {
+            sendEnrollmentLifecycleRequest('/api/fingerprint-enrollment/rollback');
+        }
     });
 
-    // Clear interval when form is submitted
-    document.querySelector('form').addEventListener('submit', function() {
+    document.getElementById('employee-edit-form').addEventListener('submit', function() {
+        enrollmentCommitted = true;
         if (fingerprintCheckInterval) {
             clearInterval(fingerprintCheckInterval);
             fingerprintCheckInterval = null;
+        }
+        if (pendingFingerprintRollbackToken) {
+            fetch('/api/fingerprint-enrollment/commit', {
+                method: 'POST',
+                keepalive: true,
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    employee_number: employeeNumberForEnrollment,
+                    rollback_token: pendingFingerprintRollbackToken,
+                })
+            });
+            pendingFingerprintRollbackToken = null;
         }
     });
 </script>

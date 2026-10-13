@@ -56,13 +56,13 @@
         <div class="col-lg-8 mb-4">
             <div class="card shadow-lg border-0">
                 <div class="card-header bg-white py-4">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                         <div>
                             <h4 class="mb-1" id="dtrMonth">MAY. 2026 DTR</h4>
                             <p class="text-muted mb-0">Daily Time Record - Real-time Updates</p>
                         </div>
                         <div>
-                            <input type="text" id="employeeSearchInput" class="form-control form-control-sm" placeholder="Search employee..." style="width: 200px;">
+                            <input type="text" id="employeeSearchInput" class="form-control form-control-sm scanner-search" placeholder="Search employee...">
                         </div>
                     </div>
                 </div>

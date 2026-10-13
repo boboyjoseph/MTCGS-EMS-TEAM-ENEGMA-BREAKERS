@@ -384,19 +384,6 @@ class DTRController extends Controller
         ]);
 
         $dtrStatus = $attendance->getDtrStatus();
-        $hasCorrection = $request->filled('corrected_time_in')
-            || $request->filled('corrected_pm_in')
-            || $request->filled('corrected_time_out');
-
-        $missingMorning = !$attendance->am_in && !$request->filled('corrected_time_in');
-        $missingAfternoon = (!$attendance->pm_in || !$attendance->pm_out)
-            && !$request->filled('corrected_pm_in')
-            && !$request->filled('corrected_time_out');
-
-        if (!$hasCorrection || ($dtrStatus === 'Half Day' && ($missingMorning || $missingAfternoon))) {
-            return back()->with('error', 'Please enter the corrected attendance time before submitting.');
-        }
-
         if (!in_array($dtrStatus, ['Half Day', 'Late', 'Late / Early Out', 'Early Out'], true)) {
             return back()->with('error', 'Only Half Day, late, or early-out attendance can request a Present adjustment.');
         }

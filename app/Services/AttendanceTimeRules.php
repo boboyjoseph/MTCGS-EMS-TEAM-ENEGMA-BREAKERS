@@ -12,7 +12,10 @@ class AttendanceTimeRules
             return 0;
         }
 
-        $lateSeconds = $scheduledStart->diffInSeconds($actualTime);
+        $lateSeconds = $scheduledStart->diffInSeconds($actualTime) - (max(0, $graceMinutes) * 60);
+        if ($lateSeconds <= 0) {
+            return 0;
+        }
 
         return max(1, (int) ceil($lateSeconds / 60));
     }

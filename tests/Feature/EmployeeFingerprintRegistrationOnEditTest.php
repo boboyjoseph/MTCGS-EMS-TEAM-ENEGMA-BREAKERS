@@ -15,6 +15,15 @@ class EmployeeFingerprintRegistrationOnEditTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_employee_edit_commit_handler_targets_the_update_form(): void
+    {
+        $blade = file_get_contents(base_path('resources/views/admin/employee-edit.blade.php'));
+
+        $this->assertStringContainsString('id="employee-edit-form"', $blade);
+        $this->assertStringContainsString("document.getElementById('employee-edit-form').addEventListener('submit'", $blade);
+        $this->assertStringNotContainsString("document.querySelector('form').addEventListener('submit'", $blade);
+    }
+
     public function test_branch_admin_can_save_finance_fingerprint_data_from_edit_page(): void
     {
         $branch = Branch::create([
@@ -344,6 +353,80 @@ class EmployeeFingerprintRegistrationOnEditTest extends TestCase
             'fingerprint_template' => null,
             'is_fingerprint_registered' => false,
         ]);
+    }
+
+    public function test_employee_edit_removes_only_the_selected_fingerprint(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-EDIT-REMOVE-ONE',
+            'branch_name' => 'Remove One Branch',
+            'address' => 'Remove One Address',
+        ]);
+        $admin = User::create([
+            'name' => 'System Admin',
+            'email' => 'admin-edit-remove-one@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employeeUser = User::create([
+            'name' => 'Jane Employee',
+            'email' => 'jane.employee.remove-one@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $savedTemplate = json_encode([
+            'version' => 2,
+            'templates' => [
+                ['finger_name' => 'Left Thumb', 'fingerprint_data' => base64_encode('remove-left')],
+                ['finger_name' => 'Right Thumb', 'fingerprint_data' => base64_encode('keep-right')],
+            ],
+        ]);
+        $employee = EmployeeProfile::create([
+            'user_id' => $employeeUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-EDIT-REMOVE-ONE',
+            'first_name' => 'Jane',
+            'last_name' => 'Employee',
+            'position' => 'Cashier',
+            'basic_salary' => 25000,
+            'date_hired' => now(),
+            'fingerprint_template' => $savedTemplate,
+            'is_fingerprint_registered' => true,
+        ]);
+        $employeeUser->profile_id = $employee->id;
+        $employeeUser->profile_type = EmployeeProfile::class;
+        $employeeUser->save();
+
+        $this->actingAs($admin)
+            ->put(route('admin.employee-update', $employee->id), [
+                'first_name' => 'Jane',
+                'last_name' => 'Employee',
+                'position' => 'Cashier',
+                'branch_id' => $branch->id,
+                'role' => 'employee',
+                'basic_salary' => '25000',
+                'is_active' => '1',
+                'date_hired' => now()->format('Y-m-d'),
+                'status' => 'Regular',
+                'clear_fingerprint' => '1',
+                'remove_fingerprint_index' => '0',
+            ])
+            ->assertRedirect(route('admin.employees', absolute: false));
+
+        $savedTemplates = json_decode($employee->fresh()->fingerprint_template, true)['templates'];
+        $this->assertCount(1, $savedTemplates);
+        $this->assertSame('Right Thumb', $savedTemplates[0]['finger_name']);
+        $this->assertSame(base64_encode('keep-right'), $savedTemplates[0]['fingerprint_data']);
+        $this->assertTrue($employee->fresh()->is_fingerprint_registered);
     }
 
     public function test_employee_edit_without_new_enrollment_leaves_saved_fingerprint_unchanged(): void

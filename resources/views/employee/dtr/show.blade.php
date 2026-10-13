@@ -491,18 +491,15 @@
                                                 <small class="text-muted">{{ $day['day_name'] }}</small>
                                             </td>
                                             <td class="text-center {{ $isLateTimeIn && !$isLeave && !$isLWOP ? 'dtr-late' : '' }}">
-                                                @if (!$isLeave && !$isLWOP && !$isSuspension && $canRequestCorrection)
-                                                    @if (in_array($attendanceStatus, ['Late', 'Late / Early Out', 'Half Day'], true) || $legacyApprovedWithoutCorrection)
-                                                        <label class="small d-block mb-1">Time-in</label>
-                                                        <input form="{{ $correctionFormId }}" type="time" name="corrected_time_in" class="form-control form-control-sm mb-1" value="{{ $day['log']->am_in?->format('H:i') }}" aria-label="Corrected time-in">
-                                                    @endif
+                                                @if ($canRequestCorrection)
+                                                    <input type="time" name="corrected_time_in" form="{{ $correctionFormId }}" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-in" value="{{ $day['log']->corrected_time_in?->format('H:i') ?? $day['log']->am_in?->format('H:i') }}">
                                                 @else
                                                     {{ !$isLeave && !$isLWOP && !$isSuspension ? ($day['am_in'] ?? '') : '--' }}
                                                 @endif
                                             </td>
                                             <td class="text-center {{ $isEarlyOut && !$isLeave && !$isLWOP ? 'dtr-late' : '' }}">
-                                                @if (!$isLeave && !$isLWOP && !$isSuspension && $canRequestCorrection && in_array($attendanceStatus, ['Early Out', 'Late / Early Out', 'Half Day'], true))
-                                                    <input form="{{ $correctionFormId }}" type="time" name="corrected_time_out" class="form-control form-control-sm mb-1" value="{{ $day['log']->pm_out?->format('H:i') }}" aria-label="Corrected time-out">
+                                                @if ($canRequestCorrection)
+                                                    <input type="time" name="corrected_time_out" form="{{ $correctionFormId }}" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-out" value="{{ $day['log']->corrected_time_out?->format('H:i') ?? $day['log']->pm_out?->format('H:i') }}">
                                                 @else
                                                     {{ !$isLeave && !$isLWOP && !$isSuspension ? ($day['pm_out'] ?? '') : '--' }}
                                                 @endif

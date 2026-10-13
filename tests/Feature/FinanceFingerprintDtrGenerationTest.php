@@ -1423,6 +1423,166 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         $this->assertSame(1, $view->getData()['stats']['days_present']);
     }
 
+    public function test_dtr_shows_recorded_times_and_reason_only_in_correction_column(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-DTR-CORRECTION-DISPLAY',
+            'branch_name' => 'Correction Display Branch',
+            'address' => 'Correction Display Address',
+        ]);
+        $user = User::create([
+            'name' => 'Correction Display Employee',
+            'email' => 'correction-display@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employeeProfile = EmployeeProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-DTR-CORRECTION-DISPLAY',
+            'first_name' => 'Correction Display',
+            'last_name' => 'Employee',
+            'position' => 'Staff',
+            'date_hired' => now(),
+        ]);
+        $user->profile_id = $employeeProfile->id;
+        $user->profile_type = EmployeeProfile::class;
+        $user->save();
+
+        $dtr = DTR::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'period_start' => now()->startOfMonth(),
+            'period_end' => now()->endOfMonth()->day <= 15 ? now()->day(15) : now()->endOfMonth(),
+            'status' => 'draft',
+        ]);
+        AttendanceLog::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'employee_id' => $user->id,
+            'branch_id' => $branch->id,
+            'attendance_date' => now()->toDateString(),
+            'am_in' => now()->setTime(1, 33),
+            'pm_out' => now()->setTime(1, 36),
+            'status' => 'present',
+        ]);
+
+        $this->actingAs($user);
+        $html = app(DTRController::class)->show($dtr->id)->render();
+        $document = new \DOMDocument();
+        $previousErrorMode = libxml_use_internal_errors(true);
+        $document->loadHTML($html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrorMode);
+
+        $xpath = new \DOMXPath($document);
+        $rows = $xpath->query('//tr[.//input[@name="reason"]]');
+        $this->assertSame(1, $rows->length);
+        $this->assertSame(1, $xpath->query('./td[2]//input[@name="corrected_time_in"]', $rows->item(0))->length);
+        $this->assertSame(1, $xpath->query('./td[3]//input[@name="corrected_time_out"]', $rows->item(0))->length);
+        $this->assertSame('01:33', $xpath->query('./td[2]//input[@name="corrected_time_in"]', $rows->item(0))->item(0)->getAttribute('value'));
+        $this->assertSame('01:36', $xpath->query('./td[3]//input[@name="corrected_time_out"]', $rows->item(0))->item(0)->getAttribute('value'));
+        $this->assertSame(1, $xpath->query('./td[5]//input[@name="reason"]', $rows->item(0))->length);
+        $this->assertSame(0, $xpath->query('./td[5]//input[@type="time"]', $rows->item(0))->length);
+        $formId = $xpath->query('./td[5]//form', $rows->item(0))->item(0)->getAttribute('id');
+        $this->assertSame($formId, $xpath->query('./td[2]//input[@name="corrected_time_in"]', $rows->item(0))->item(0)->getAttribute('form'));
+        $this->assertSame($formId, $xpath->query('./td[3]//input[@name="corrected_time_out"]', $rows->item(0))->item(0)->getAttribute('form'));
+    }
+
+    public function test_half_day_attendance_adjustment_submits_inline_time_edits_without_changing_recorded_times(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-DTR-REASON-ONLY',
+            'branch_name' => 'Reason Only Branch',
+            'address' => 'Reason Only Address',
+        ]);
+        $user = User::create([
+            'name' => 'Reason Only Employee',
+            'email' => 'reason-only@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employeeProfile = EmployeeProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-DTR-REASON-ONLY',
+            'first_name' => 'Reason Only',
+            'last_name' => 'Employee',
+            'position' => 'Staff',
+            'date_hired' => now(),
+        ]);
+        DTR::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'period_start' => now()->startOfMonth(),
+            'period_end' => now()->endOfMonth(),
+            'status' => 'draft',
+        ]);
+        $attendance = AttendanceLog::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'employee_id' => $user->id,
+            'branch_id' => $branch->id,
+            'attendance_date' => now()->toDateString(),
+            'am_in' => now()->setTime(8, 0),
+            'status' => 'present',
+            'verification_method' => 'fingerprint',
+        ]);
+
+        $response = $this->actingAs($user)->post(
+            route('employee.dtr.attendance.adjust-present', $attendance),
+            [
+                'reason' => 'Fingerprint reader recorded partial attendance',
+                'corrected_time_in' => '08:05',
+                'corrected_time_out' => '16:30',
+            ]
+        );
+
+        $response->assertRedirect();
+        $this->assertSame('pending_branch', $attendance->fresh()->override_status);
+        $this->assertSame('Fingerprint reader recorded partial attendance', $attendance->fresh()->override_reason);
+        $this->assertSame('08:00:00', $attendance->fresh()->am_in->format('H:i:s'));
+        $this->assertNull($attendance->fresh()->pm_out);
+        $this->assertSame('08:05:00', $attendance->fresh()->corrected_time_in->format('H:i:s'));
+        $this->assertSame('16:30:00', $attendance->fresh()->corrected_time_out->format('H:i:s'));
+
+        $branchAdmin = User::create([
+            'name' => 'Reason Only Branch Admin',
+            'email' => 'reason-only-branch-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+        ]);
+        $this->actingAs($branchAdmin)
+            ->post(route('admin.dtr.attendance.approve-adjustment', $attendance))
+            ->assertRedirect();
+        $this->assertSame('pending_system_admin', $attendance->fresh()->override_status);
+        $this->assertSame('08:00:00', $attendance->fresh()->am_in->format('H:i:s'));
+
+        $superAdmin = User::create([
+            'name' => 'Reason Only Super Admin',
+            'email' => 'reason-only-super-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'is_active' => true,
+        ]);
+        $this->actingAs($superAdmin)
+            ->post(route('admin.dtr.attendance.approve-adjustment', $attendance))
+            ->assertRedirect();
+
+        $approvedAttendance = $attendance->fresh();
+        $this->assertSame('approved', $approvedAttendance->override_status);
+        $this->assertSame('08:05:00', $approvedAttendance->am_in->format('H:i:s'));
+        $this->assertSame('16:30:00', $approvedAttendance->pm_out->format('H:i:s'));
+    }
+
     public function test_show_refreshes_stale_dtr_totals_from_live_logs(): void
     {
         $branch = Branch::create([
@@ -1750,6 +1910,16 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         $this->assertSame(0, \App\Services\AttendanceTimeRules::lateMinutes(now()->setTime(8, 0, 0), $scheduledStart));
         $this->assertSame(1, \App\Services\AttendanceTimeRules::lateMinutes(now()->setTime(8, 1, 0), $scheduledStart));
         $this->assertSame(30, \App\Services\AttendanceTimeRules::lateMinutes(now()->setTime(8, 30, 0), $scheduledStart));
+    }
+
+    public function test_late_rule_applies_grace_period_only_when_provided(): void
+    {
+        $scheduledStart = now()->setTime(8, 0, 0);
+
+        $this->assertSame(0, \App\Services\AttendanceTimeRules::lateMinutes(now()->setTime(8, 5, 0), $scheduledStart, 5));
+        $this->assertSame(1, \App\Services\AttendanceTimeRules::lateMinutes(now()->setTime(8, 6, 0), $scheduledStart, 5));
+        $this->assertSame(1, \App\Services\AttendanceTimeRules::lateMinutes(now()->setTime(8, 5, 1), $scheduledStart, 5));
+        $this->assertSame(1, \App\Services\AttendanceTimeRules::lateMinutes(now()->setTime(8, 1, 0), $scheduledStart, -5));
     }
 
     public function test_dtr_getters_recalculate_from_live_attendance_logs(): void

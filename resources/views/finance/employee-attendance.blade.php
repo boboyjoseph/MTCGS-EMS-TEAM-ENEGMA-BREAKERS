@@ -61,7 +61,10 @@
                                 $dateKey = $date->format('Y-m-d');
                                 $attendance = $attendanceByDate[$dateKey] ?? null;
                                 $isCurrentMonth = $date->month === $currentMonth->month;
-                                $statusClass = $attendance ? ($attendance->status === 'present' ? 'present' : 'late') : 'empty';
+                                $attendanceStatus = strtolower(trim((string) ($attendance->status ?? '')));
+                                $isLate = $attendance && ((int) $attendance->late_minutes > 0 || $attendanceStatus === 'late');
+                                $isPresent = in_array($attendanceStatus, ['present', 'complete'], true);
+                                $statusClass = !$attendance ? 'empty' : ($isLate ? 'late' : ($isPresent ? 'present' : 'other'));
                             @endphp
 
                             <div class="calendar-cell calendar-day {{ $isCurrentMonth ? '' : 'calendar-outside' }} {{ $statusClass }}">
@@ -74,7 +77,7 @@
 
                                 @if($attendance)
                                     <div class="text-truncate mb-2">
-                                        <span class="badge bg-{{ $attendance->late_minutes > 0 ? 'warning text-dark' : 'success' }}">{{ ucfirst($attendance->status) }}</span>
+                                        <span class="badge bg-{{ $isLate ? 'warning text-dark' : ($isPresent ? 'success' : 'secondary') }}">{{ ucfirst($attendance->status) }}</span>
                                     </div>
                                     <div class="calendar-time">
                                         <div><small class="text-muted">AM In</small><br>{{ $attendance->am_in ? date('h:i A', strtotime($attendance->am_in)) : '--' }}</div>
@@ -105,11 +108,11 @@
                             <p class="text-muted mb-0">Days Recorded</p>
                         </div>
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <h3 class="mb-0">{{ $attendanceLogs->where('status','present')->count() }}</h3>
+                            <h3 class="mb-0">{{ $attendanceLogs->filter(fn ($log) => in_array(strtolower(trim((string) $log->status)), ['present', 'complete'], true))->count() }}</h3>
                             <p class="text-muted mb-0">Present</p>
                         </div>
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <h3 class="mb-0">{{ $attendanceLogs->where('late_minutes','>',0)->count() }}</h3>
+                            <h3 class="mb-0">{{ $attendanceLogs->filter(fn ($log) => (int) $log->late_minutes > 0 || strtolower(trim((string) $log->status)) === 'late')->count() }}</h3>
                             <p class="text-muted mb-0">Late Days</p>
                         </div>
                         <div class="col-md-3">
@@ -158,6 +161,9 @@
 .calendar-day.late {
     background: #fff4e6;
 }
+.calendar-day.other {
+    background: #f8f9fa;
+}
 .calendar-day.empty {
     background: #f8f9fa;
 }
@@ -176,6 +182,20 @@
 @media (max-width: 767px) {
     .calendar-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+    .calendar-cell {
+        min-height: 96px;
+        padding: 0.55rem;
+        border-radius: 0.6rem;
+    }
+    .calendar-day-header,
+    .calendar-time,
+    .calendar-empty {
+        font-size: 0.75rem;
+    }
+    .calendar-empty {
+        margin-top: 0.55rem;
     }
 }
 </style>

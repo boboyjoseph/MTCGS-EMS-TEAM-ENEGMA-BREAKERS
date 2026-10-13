@@ -251,10 +251,14 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('turbo:load', function () {
     try {
+        if (typeof Chart === 'undefined') {
+            console.warn('Dashboard charts are unavailable because Chart.js did not load.');
+            return;
+        }
+
         const isMobile = window.innerWidth <= 768;
         const isSmallMobile = window.innerWidth <= 480;
 

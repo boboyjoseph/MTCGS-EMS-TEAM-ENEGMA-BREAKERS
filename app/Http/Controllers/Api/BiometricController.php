@@ -704,6 +704,28 @@ class BiometricController extends Controller
         return [$storedBytes !== '' ? base64_encode($storedBytes) : $stored];
     }
 
+    private function removeFingerprintTemplateAt($storedTemplate, int $index): ?string
+    {
+        $decoded = json_decode((string) $storedTemplate, true);
+        if (is_array($decoded) && isset($decoded['templates']) && is_array($decoded['templates'])) {
+            if (!array_key_exists($index, $decoded['templates'])) {
+                return (string) $storedTemplate;
+            }
+
+            array_splice($decoded['templates'], $index, 1);
+            if ($decoded['templates'] === []) {
+                return null;
+            }
+
+            return json_encode([
+                'version' => 2,
+                'templates' => array_values($decoded['templates']),
+            ], JSON_UNESCAPED_SLASHES);
+        }
+
+        return $index === 0 ? null : (string) $storedTemplate;
+    }
+
     private function appendFingerprintTemplate($storedTemplate, $incomingTemplate, ?string $fingerName = null): string
     {
         $incomingBytes = $this->fingerprintBytes($incomingTemplate);
@@ -1109,6 +1131,18 @@ class BiometricController extends Controller
         }
         
         $query = EmployeeProfile::query()
+            ->where(function ($fingerprintQuery) {
+                $fingerprintQuery
+                    ->where(function ($statusQuery) {
+                        $statusQuery->where('is_fingerprint_registered', false)
+                            ->orWhereNull('is_fingerprint_registered');
+                    })
+                    ->where(function ($templateQuery) {
+                        $templateQuery->whereNull('fingerprint_template')
+                            ->orWhere('fingerprint_template', '')
+                            ->orWhereRaw('LOWER(TRIM(fingerprint_template)) = ?', ['null']);
+                    });
+            })
             ->whereNotIn('id', FinanceProfile::query()->select('employee_profile_id')->whereNotNull('employee_profile_id'))
             ->whereDoesntHave('user', function ($userQuery) {
                 $userQuery->whereIn('role', ['finance_officer', 'finance_head']);
@@ -1121,6 +1155,10 @@ class BiometricController extends Controller
         }
 
         $employees = $query->with('branch')->get()->map(function($employee) {
+            $hasFingerprintTemplate = is_string($employee->fingerprint_template)
+                && trim($employee->fingerprint_template) !== ''
+                && strtolower(trim($employee->fingerprint_template)) !== 'null';
+
             return [
                 'id' => $employee->id,
                 'profile_type' => 'employee',
@@ -1132,7 +1170,7 @@ class BiometricController extends Controller
                 'profile_photo_url' => $employee->profile_photo && Storage::disk('public')->exists($employee->profile_photo)
                     ? asset('storage/' . ltrim($employee->profile_photo, '/') . '?v=' . $employee->updated_at?->timestamp)
                     : null,
-                'is_fingerprint_registered' => (bool) $employee->is_fingerprint_registered,
+                'is_fingerprint_registered' => $hasFingerprintTemplate || (bool) $employee->is_fingerprint_registered,
             ];
         });
         
@@ -1556,8 +1594,8 @@ class BiometricController extends Controller
             ? $attendance->am_in
             : $attendance->pm_out;
         $reconciledOfflineTime = false;
-        if ($attendance->exists && $existingActionTime) {
-            if ($now->greaterThanOrEqualTo($existingActionTime)) {
+        if ($request->filled('attendance_timestamp') && $attendance->exists && $existingActionTime) {
+            if ($now->lessThanOrEqualTo($existingActionTime)) {
                 return response()->json([
                     'success' => true,
                     'message' => $requestedAction . ' was already recorded; the existing time was kept.',
@@ -1565,6 +1603,12 @@ class BiometricController extends Controller
                     'already_recorded' => true,
                     'employee_name' => $employee->first_name . ' ' . $employee->last_name,
                     'attendance' => $attendance,
+                    'data' => [
+                        'date' => $attendance->attendance_date->format('m/d/Y'),
+                        'action_time' => $existingActionTime->format('h:i A'),
+                        'time_in' => $attendance->am_in?->format('h:i A') ?? '--',
+                        'time_out' => ($attendance->pm_out ?? $attendance->am_out)?->format('h:i A') ?? '--',
+                    ],
                 ]);
             }
 
@@ -1916,6 +1960,20 @@ class BiometricController extends Controller
         }
 
         if ($profile) {
+            $rollbackToken = bin2hex(random_bytes(32));
+            $rollbackCacheKey = $this->fingerprintEnrollmentRollbackCacheKey($employeeNumber);
+            if (!cache()->has($rollbackCacheKey)) {
+                cache()->put($rollbackCacheKey, [
+                    'token' => $rollbackToken,
+                    'profile_type' => get_class($profile),
+                    'profile_id' => $profile->getKey(),
+                    'fingerprint_template' => $profile->fingerprint_template,
+                    'is_fingerprint_registered' => (bool) $profile->is_fingerprint_registered,
+                ], now()->addMinutes(30));
+            } else {
+                $rollbackToken = (string) cache()->get($rollbackCacheKey)['token'];
+            }
+
             $profile->fingerprint_template = $this->appendFingerprintTemplate(
                 $profile->fingerprint_template,
                 $fingerprintTemplate,
@@ -1945,6 +2003,7 @@ class BiometricController extends Controller
             'action' => $action,
             'fingerprint_count' => $fingerprintCount,
             'database_saved' => (bool) $profile,
+            'rollback_token' => $profile ? $rollbackToken : null,
             'timestamp' => now(),
         ];
 
@@ -1967,7 +2026,73 @@ class BiometricController extends Controller
             'action' => $action,
             'finger_name' => $request->input('finger_name'),
             'fingerprint_count' => $fingerprintCount,
+            'rollback_token' => $profile ? $rollbackToken : null,
         ]);
+    }
+
+    public function rollbackFingerprintEnrollment(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_number' => 'required|string|max:100',
+            'rollback_token' => 'required|string|size:64',
+        ]);
+
+        $user = $request->user();
+        if (!$user || (!$user->isSuperAdmin() && !$user->isBranchAdmin())) {
+            return response()->json(['success' => false, 'message' => 'You are not authorized to rollback fingerprint enrollment.'], 403);
+        }
+
+        $employeeNumber = trim($validated['employee_number']);
+        $cacheKey = $this->fingerprintEnrollmentRollbackCacheKey($employeeNumber);
+        $snapshot = cache()->get($cacheKey);
+        if (!is_array($snapshot) || !hash_equals((string) ($snapshot['token'] ?? ''), $validated['rollback_token'])) {
+            return response()->json(['success' => true, 'rolled_back' => false]);
+        }
+
+        $profileClass = $snapshot['profile_type'] ?? null;
+        $allowedProfileClasses = [EmployeeProfile::class, FinanceProfile::class, AdminProfile::class, BranchHeadProfile::class];
+        if (!in_array($profileClass, $allowedProfileClasses, true)) {
+            cache()->forget($cacheKey);
+            return response()->json(['success' => false, 'message' => 'Invalid enrollment rollback snapshot.'], 422);
+        }
+
+        $profile = $profileClass::find($snapshot['profile_id'] ?? null);
+        if (!$profile || ($user->isBranchAdmin() && (int) $profile->branch_id !== (int) $user->getEffectiveBranchId())) {
+            return response()->json(['success' => false, 'message' => 'You are not authorized to rollback this profile.'], 403);
+        }
+
+        $profile->fingerprint_template = $snapshot['fingerprint_template'] ?? null;
+        $profile->is_fingerprint_registered = (bool) ($snapshot['is_fingerprint_registered'] ?? false);
+        $profile->save();
+        cache()->forget($cacheKey);
+
+        return response()->json(['success' => true, 'rolled_back' => true]);
+    }
+
+    public function commitFingerprintEnrollment(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_number' => 'required|string|max:100',
+            'rollback_token' => 'required|string|size:64',
+        ]);
+
+        $user = $request->user();
+        if (!$user || (!$user->isSuperAdmin() && !$user->isBranchAdmin())) {
+            return response()->json(['success' => false, 'message' => 'You are not authorized to commit fingerprint enrollment.'], 403);
+        }
+
+        $cacheKey = $this->fingerprintEnrollmentRollbackCacheKey(trim($validated['employee_number']));
+        $snapshot = cache()->get($cacheKey);
+        if (is_array($snapshot) && hash_equals((string) ($snapshot['token'] ?? ''), $validated['rollback_token'])) {
+            cache()->forget($cacheKey);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    private function fingerprintEnrollmentRollbackCacheKey(string $employeeNumber): string
+    {
+        return 'fingerprint_enrollment_rollback_' . sha1(strtolower(trim($employeeNumber)));
     }
 
     private function clearFingerprintTempCache(Request $request): void

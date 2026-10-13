@@ -825,9 +825,6 @@ class DTRManagementController
         if (!in_array($attendance->override_status, ['pending_system_admin'], true)) {
             return back()->with('error', 'This adjustment is not awaiting final review.');
         }
-        if (!$attendance->corrected_time_in && !$attendance->corrected_pm_in && !$attendance->corrected_time_out) {
-            return back()->with('error', 'This adjustment has no corrected attendance time and cannot be approved.');
-        }
 
         $updates = [
             'override_status' => 'approved',
@@ -855,7 +852,7 @@ class DTRManagementController
         }
         $attendance->employeeProfile?->user?->notify(new SystemNotification(
             'Attendance adjustment approved',
-            'Your attendance time correction was approved as Present.',
+            'Your attendance adjustment was approved as Present. Recorded attendance times were kept unless an administrator corrected them.',
             'attendance_adjustment_approved',
             route('employee.dtr.show', $this->dtrIdForAttendance($attendance))
         ));

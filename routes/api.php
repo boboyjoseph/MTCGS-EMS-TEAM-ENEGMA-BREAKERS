@@ -40,6 +40,8 @@ Route::get('/device-status', [MacAddressController::class, 'getDeviceStatus']);
 Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/fingerprint-temp/clear', [BiometricController::class, 'clearFingerprintTempForEnrollment']);
+    Route::post('/fingerprint-enrollment/rollback', [BiometricController::class, 'rollbackFingerprintEnrollment']);
+    Route::post('/fingerprint-enrollment/commit', [BiometricController::class, 'commitFingerprintEnrollment']);
 
     // Biometric attendance and registration for web-authenticated users
     Route::post('/biometric/register', [BiometricController::class, 'registerFingerprint']);

@@ -174,10 +174,11 @@
             gap: 0.75rem;
             flex-wrap: nowrap;
             flex-shrink: 0;
+            min-width: 0;
         }
         .navbar-actions .dropdown { position: relative; z-index: 1101; }
         .navbar-actions .dropdown-menu { z-index: 1102; }
-        .notification-menu { min-width: 320px; max-width: 360px; }
+        .notification-menu { width: min(360px, calc(100vw - 1rem)); min-width: min(320px, calc(100vw - 1rem)); max-width: calc(100vw - 1rem); }
         .notification-item { white-space: normal; }
         .notification-row { display: flex; align-items: flex-start; }
         .notification-row .notification-item { min-width: 0; flex: 1 1 auto; }
@@ -218,6 +219,13 @@
             flex-direction: column;
         }
         .main-content main { flex: 1; }
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: rgba(15, 23, 42, 0.42);
+        }
         .main-content > footer {
             margin-top: 2rem;
             padding: 1rem 0;
@@ -533,6 +541,7 @@
             .top-navbar { left: 0; width: 100%; padding-left: 72px; }
             .main-content { margin-left: 0; width: 100%; padding: calc(var(--navbar-height) + 1rem) 1rem 1rem; }
             .menu-toggle { display: flex; align-items: center; justify-content: center; }
+            .sidebar.is-open + .sidebar-backdrop { display: block; }
             /* keep the theme toggle compact, icon-only */
             .theme-toggle .theme-label { display: none; }
             .theme-toggle { padding: 0.375rem 0.6rem; }
@@ -548,6 +557,9 @@
             .main-content { padding-top: calc(64px + 1rem); }
             .navbar-brand-text { font-size: 0.9rem; gap: 0.35rem; }
             .navbar-actions { gap: 0.4rem; }
+            .navbar-actions > .dropdown:last-child .badge { display: none; }
+            .navbar-actions .btn { white-space: nowrap; }
+            .notification-menu { min-width: 0; }
             .stat-value { font-size: 1.5rem !important; }
             .welcome-title { font-size: 1.25rem !important; }
         }
@@ -559,7 +571,7 @@
     @stack('styles')
 </head>
 <body data-turbo="false">
-    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="sidebar"><i class="fas fa-bars"></i></button>
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -807,6 +819,7 @@
             </form>
         </nav>
     </div>
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
     <div class="top-navbar">
         <div class="navbar-brand-text">
@@ -939,6 +952,8 @@
         (function () {
             const liveUpdatesUrl = @json(route('live-updates'));
             let latestAttendanceId = 0;
+            let workflowUpdatesSnapshot = null;
+            let hasLiveUpdatesSnapshot = false;
             let liveRequestInFlight = false;
             let attendanceRefreshQueued = false;
             let livePollTimer = null;
@@ -973,15 +988,26 @@
                         badge.classList.toggle('d-none', count === 0);
                     }
                     const arrivals = Array.isArray(data.arrivals) ? data.arrivals : [];
-                    if (latestAttendanceId > 0) {
+                    const currentWorkflowUpdatesSnapshot = JSON.stringify(data.workflow_updates || {
+                        attendance: data.latest_attendance_updated_at || null,
+                        ownAttendance: data.own_attendance || null
+                    });
+                    const workflowWasUpdated = hasLiveUpdatesSnapshot
+                        && currentWorkflowUpdatesSnapshot !== workflowUpdatesSnapshot;
+                    const refreshOnAttendanceUrl = /(^|\/)(dashboard|dtr|attendance)(\/|$)|\/finance\/(employee|payroll)(\/|$)|\/admin\/dtr/i.test(window.location.pathname);
+                    if (hasLiveUpdatesSnapshot) {
                         arrivals.slice().reverse().forEach(showLiveArrival);
-                        const refreshOnAttendanceUrl = /(^|\/)(dashboard|dtr|attendance)(\/|$)|\/finance\/employee\//i.test(window.location.pathname);
-                        if (arrivals.length > 0 && refreshOnAttendanceUrl && !attendanceRefreshQueued) {
+                        if ((arrivals.length > 0 || workflowWasUpdated)
+                            && refreshOnAttendanceUrl
+                            && !attendanceRefreshQueued
+                            && !hasUnsavedAttendanceCorrection()) {
                             attendanceRefreshQueued = true;
                             window.setTimeout(() => window.location.reload(), 1200);
                         }
                     }
                     latestAttendanceId = Math.max(latestAttendanceId, Number(data.latest_attendance_id || 0));
+                    workflowUpdatesSnapshot = currentWorkflowUpdatesSnapshot;
+                    hasLiveUpdatesSnapshot = true;
                     document.dispatchEvent(new CustomEvent('mtcgs:live-updates', { detail: data }));
                 } catch (error) {
                     console.debug('Live updates unavailable:', error);
@@ -997,6 +1023,12 @@
                     if (!document.hidden) pollLiveUpdates();
                     else scheduleLivePoll();
                 }, 10000);
+            }
+
+            function hasUnsavedAttendanceCorrection() {
+                return Array.from(document.querySelectorAll(
+                    'form[id^="attendance-correction-"] input, form[id^="attendance-correction-"] textarea, form[id^="attendance-correction-"] select, [form^="attendance-correction-"]'
+                )).some((input) => input.value !== input.defaultValue);
             }
 
             if (liveUpdatesUrl) {
@@ -1096,6 +1128,7 @@
                 if (menuToggle && sidebar) {
                     event.stopPropagation();
                     sidebar.classList.toggle('is-open');
+                    menuToggle.setAttribute('aria-expanded', sidebar.classList.contains('is-open') ? 'true' : 'false');
                     return;
                 }
                 const currentSidebar = document.getElementById('sidebar');
@@ -1104,6 +1137,16 @@
                     if (!currentSidebar.contains(event.target) && !currentToggle?.contains(event.target)) {
                         closeSidebar();
                     }
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key !== 'Escape') return;
+                const sidebar = document.getElementById('sidebar');
+                const menuToggle = document.getElementById('menuToggle');
+                if (sidebar?.classList.contains('is-open')) {
+                    sidebar.classList.remove('is-open');
+                    menuToggle?.setAttribute('aria-expanded', 'false');
                 }
             });
 
