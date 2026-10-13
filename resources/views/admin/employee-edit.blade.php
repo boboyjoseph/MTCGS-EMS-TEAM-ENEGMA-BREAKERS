@@ -1,0 +1,515 @@
+@extends('layouts.app')
+
+@section('title', 'Edit Employee')
+
+@section('content')
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-edit text-warning"></i> Edit {{ ($employee->is_admin_profile ?? false) ? 'Admin Account' : 'Employee' }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ ($employee->is_admin_profile ?? false) ? route('admin.admin-update', $employee->id) : route('admin.employee-update', $employee->id) }}">
+                        @csrf
+                        @method('PUT')
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" id="first-name" name="first_name" class="form-control" value="{{ old('first_name', $employee->first_name) }}" autocomplete="given-name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last-name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" id="last-name" name="last_name" class="form-control" value="{{ old('last_name', $employee->last_name) }}" autocomplete="family-name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="position" class="form-label">Position</label>
+                                <input type="text" id="position" name="position" class="form-control" value="{{ $employee->position }}" autocomplete="organization-title">
+                            </div>
+                            <div class="col-md-6 mb-3" id="branch-field-wrapper">
+                                @if(Auth::user()->admin_type === 'super_admin')
+                                    <label for="branch-select" class="form-label">Branch</label>
+                                    <select id="branch-select" name="branch_id" class="form-control">
+                                        @foreach($branches as $branch)
+                                            <option value="{{ $branch->id }}" {{ $employee->branch_id == $branch->id ? 'selected' : '' }}>
+                                                {{ $branch->branch_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    @php $branch = $branches->first(); @endphp
+                                    <span class="form-label d-block text-light">Branch</span>
+                                    <input type="hidden" id="branch-hidden" name="branch_id" value="{{ $branch->id }}">
+                                    <div class="form-control bg-light text-dark">{{ $branch->branch_name ?? 'N/A' }}</div>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3" id="basic-salary-field-wrapper">
+                                <label for="basic-salary" class="form-label">Basic Salary</label>
+                                <input type="number" id="basic-salary" step="0.01" name="basic_salary" class="form-control" value="{{ $employee->basic_salary }}" autocomplete="off">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                @if(($employee->is_admin_profile ?? false))
+                                    <label for="role" class="form-label">Role</label>
+                                    <input type="text" id="role" class="form-control" value="{{ ucfirst($employee->user->role ?? 'admin') }}" readonly>
+                                    <input type="hidden" name="role" value="{{ $employee->user->role ?? 'admin' }}">
+                                @else
+                                    <label for="role" class="form-label">Role</label>
+                                    <select id="role" name="role" class="form-control" required>
+                                        <option value="employee" {{ $employee->user->role === 'employee' ? 'selected' : '' }}>
+                                            Employee
+                                        </option>
+                                        <option value="finance_officer" {{ $employee->user->role === 'finance_officer' ? 'selected' : '' }}>
+                                            Finance Officer
+                                        </option>
+                                        @if(Auth::user()->admin_type === 'super_admin' || blank(Auth::user()->admin_type))
+                                            <option value="finance_head" {{ $employee->user->role === 'finance_head' ? 'selected' : '' }}>
+                                                Finance Head
+                                            </option>
+                                        @endif
+                                    </select>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date-of-birth" class="form-label">Date of Birth</label>
+                                <input type="date" id="date-of-birth" name="date_of_birth" class="form-control" value="{{ old('date_of_birth', optional($employee->date_of_birth)->format('Y-m-d')) }}" autocomplete="off" max="{{ now()->toDateString() }}">
+                                <small id="age-display" class="form-text text-muted" aria-live="polite">Enter a date of birth to calculate age.</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="gender" class="form-label">Gender</label>
+                                <select id="gender" name="gender" class="form-select">
+                                    <option value="">-- Select Gender --</option>
+                                    <option value="Male" {{ old('gender', $employee->gender ?? '') === 'Male' ? 'selected' : '' }}>Male</option>
+                                    <option value="Female" {{ old('gender', $employee->gender ?? '') === 'Female' ? 'selected' : '' }}>Female</option>
+                                    <option value="Other" {{ old('gender', $employee->gender ?? '') === 'Other' ? 'selected' : '' }}>Other</option>
+                                </select>
+                                <small id="gender-suggestion" class="form-text text-muted" aria-live="polite">Gender suggestion is based on the given name only; please confirm.</small>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date-hired" class="form-label">Date Hired <span class="text-danger">*</span></label>
+                                <input type="date" id="date-hired" name="date_hired" class="form-control" value="{{ old('date_hired', optional($employee->date_hired)->format('Y-m-d')) }}" autocomplete="off" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                                <select id="status" name="status" class="form-select" required>
+                                    @php
+                                        $visibleStatus = old('status', $employee->pending_status ?? $employee->status ?? 'New Hire');
+                                    @endphp
+                                    <option value="New Hire" {{ $visibleStatus === 'New Hire' ? 'selected' : '' }}>New Hire</option>
+                                    <option value="1 Year of Service" {{ $visibleStatus === '1 Year of Service' ? 'selected' : '' }}>1 Year of Service</option>
+                                    <option value="3+ Years of Service" {{ $visibleStatus === '3+ Years of Service' ? 'selected' : '' }}>3+ Years of Service</option>
+                                    <option value="Regular" {{ $visibleStatus === 'Regular' ? 'selected' : '' }} style="display:none;">Regular</option>
+                                    <option value="1-2 Years in Service" {{ $visibleStatus === '1-2 Years in Service' ? 'selected' : '' }} style="display:none;">1-2 Years in Service</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" id="is-active" name="is_active" class="form-check-input" autocomplete="off" {{ ($employee->user && $employee->user->is_active) ? 'checked' : '' }}>
+                            <label for="is-active" class="form-check-label">Active</label>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 
+                            Password cannot be changed here. Use "Change Password" feature in profile.
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- Fingerprint Registration Section -->
+                        <div class="card border-warning mb-4">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-fingerprint"></i> Fingerprint Registration
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                @php
+                                    $fingerprintHistory = json_decode((string) ($employee->fingerprint_template ?? ''), true);
+                                    $registeredFingerprintCount = is_array($fingerprintHistory) && isset($fingerprintHistory['templates'])
+                                        ? count($fingerprintHistory['templates'])
+                                        : (!empty($employee->fingerprint_template) ? 1 : 0);
+                                    $hasSavedFingerprint = $registeredFingerprintCount > 0 || (bool) ($employee->is_fingerprint_registered ?? false);
+                                    $savedFingerprintData = collect(is_array($fingerprintHistory['templates'] ?? null) ? $fingerprintHistory['templates'] : [])
+                                        ->map(fn ($template) => is_array($template) ? ($template['fingerprint_data'] ?? '') : $template)
+                                        ->filter(fn ($template) => is_string($template) && $template !== '')
+                                        ->values();
+                                    if ($savedFingerprintData->isEmpty() && !empty($employee->fingerprint_template)) {
+                                        $storedFingerprint = (string) $employee->fingerprint_template;
+                                        $savedFingerprintData->push(mb_check_encoding($storedFingerprint, 'UTF-8')
+                                            ? $storedFingerprint
+                                            : base64_encode($storedFingerprint));
+                                    }
+                                    $fingerprintDisplayValue = $savedFingerprintData->implode("\n\n");
+                                @endphp
+                                <div class="alert alert-secondary d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-list-ol"></i> Registered fingerprints</span>
+                                    <strong id="fingerprint-count" data-saved-count="{{ $registeredFingerprintCount }}">{{ $registeredFingerprintCount }}</strong>
+                                </div>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <strong>Important:</strong> Fingerprint registration is required for attendance tracking. Please register the employee's fingerprint now.
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-label">Fingerprint Status</div>
+                                            <div class="d-flex align-items-center">
+                                                <span id="fingerprint-status" class="badge {{ $hasSavedFingerprint ? 'bg-success' : 'bg-secondary' }} me-2">
+                                                    {{ $hasSavedFingerprint ? 'Saved (' . $registeredFingerprintCount . ')' : 'Not registered' }}
+                                                </span>
+                                                <button type="button" id="register-fingerprint-btn" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-fingerprint"></i> Register Fingerprint
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="fingerprint-data" class="form-label">Fingerprint Data</label>
+                                            <textarea id="fingerprint-data" class="form-control" rows="5" readonly placeholder="No fingerprint is saved for this employee.">{{ $fingerprintDisplayValue }}</textarea>
+                                            <input type="hidden" name="fingerprint_data" id="fingerprint-payload" value="">
+                                            <small class="text-muted">Saved fingerprint template data. A new capture appears here only after the enrollment app confirms it was saved.</small>
+                                            <div class="form-check mt-2">
+                                                <input type="checkbox" name="clear_fingerprint" id="clear-fingerprint" value="1" class="form-check-input">
+                                                <label for="clear-fingerprint" class="form-check-label">Remove saved fingerprints and return this employee to the unregistered enrollment list</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden fingerprint scanner interface -->
+                                <div id="fingerprint-scanner" class="d-none">
+                                    <div class="border rounded p-3 bg-light">
+                                        <h6>Fingerprint Scanner</h6>
+                                        <div class="text-center mb-3">
+                                            <div id="scanner-status" class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i> Fingerprint capture requires the C# enrollment app and a connected scanner.
+                                            </div>
+                                        </div>
+                                        <div class="text-center">
+                                            <button type="button" id="start-scan-btn" class="btn btn-success me-2">
+                                                <i class="fas fa-play"></i> Start Scanning
+                                            </button>
+                                            <button type="button" id="stop-scan-btn" class="btn btn-danger" disabled>
+                                                <i class="fas fa-stop"></i> Stop Scanning
+                                            </button>
+                                        </div>
+                                        <div class="mt-3">
+                                            <div class="progress d-none" id="scan-progress">
+                                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ route('admin.employees') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update Employee
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateFinanceHeadRoleFields() {
+        const roleSelect = document.getElementById('role');
+        const branchFieldWrapper = document.getElementById('branch-field-wrapper');
+        const basicSalaryFieldWrapper = document.getElementById('basic-salary-field-wrapper');
+        const branchSelect = document.getElementById('branch-select');
+        const isFinanceHead = roleSelect && roleSelect.value === 'finance_head';
+
+        if (branchFieldWrapper) {
+            branchFieldWrapper.style.display = isFinanceHead ? 'none' : '';
+        }
+
+        if (basicSalaryFieldWrapper) {
+            basicSalaryFieldWrapper.style.display = isFinanceHead ? 'none' : '';
+        }
+
+        if (branchSelect) {
+            branchSelect.required = !isFinanceHead;
+        }
+    }
+
+    document.addEventListener('turbo:load', function () {
+        const roleSelect = document.getElementById('role');
+        if (roleSelect) {
+            roleSelect.addEventListener('change', updateFinanceHeadRoleFields);
+        }
+        updateFinanceHeadRoleFields();
+    });
+
+    // Fingerprint Registration Variables
+    let isScanning = false;
+    let scanInterval;
+    let fingerprintCheckInterval = null;
+
+    // DOM Elements
+    const registerFingerprintBtn = document.getElementById('register-fingerprint-btn');
+    const fingerprintScanner = document.getElementById('fingerprint-scanner');
+    const fingerprintData = document.getElementById('fingerprint-data');
+    const fingerprintPayload = document.getElementById('fingerprint-payload');
+    const fingerprintStatus = document.getElementById('fingerprint-status');
+    const clearFingerprint = document.getElementById('clear-fingerprint');
+    const fingerprintCount = document.getElementById('fingerprint-count');
+    let savedFingerprintDisplay = fingerprintData.value;
+    const startScanBtn = document.getElementById('start-scan-btn');
+    const stopScanBtn = document.getElementById('stop-scan-btn');
+    const scannerStatus = document.getElementById('scanner-status');
+    const scanProgress = document.getElementById('scan-progress');
+    const progressBar = scanProgress.querySelector('.progress-bar');
+
+    clearFingerprint.addEventListener('change', function() {
+        if (this.checked) {
+            fingerprintPayload.value = '';
+            fingerprintData.value = 'Saved fingerprints will be removed when this employee is updated.';
+            fingerprintStatus.className = 'badge bg-danger me-2';
+            fingerprintStatus.textContent = 'Removal pending';
+            fingerprintCount.textContent = '0';
+        } else {
+            fingerprintCount.textContent = fingerprintCount.dataset.savedCount;
+            const savedCount = Number(fingerprintCount.dataset.savedCount || 0);
+            fingerprintData.value = savedCount > 0 ? savedFingerprintDisplay : '';
+            fingerprintStatus.className = `badge ${savedCount > 0 ? 'bg-success' : 'bg-secondary'} me-2`;
+            fingerprintStatus.textContent = savedCount > 0 ? `Saved (${savedCount})` : 'Not registered';
+        }
+    });
+
+    // Launch the desktop enrollment app using a custom URI scheme.
+    async function launchEnrollmentApp() {
+        clearFingerprint.checked = false;
+        fingerprintPayload.value = '';
+
+        const firstName = document.querySelector('input[name="first_name"]').value.trim();
+        const lastName = document.querySelector('input[name="last_name"]').value.trim();
+        const employeeNumber = '{{ $employee->employee_number }}'; // Get from existing employee
+        const email = '{{ $employee->user->email ?? "" }}';
+        const role = '{{ $employee->user->role ?? "" }}';
+        const position = document.querySelector('input[name="position"]').value.trim();
+        
+        const branchSelect = document.querySelector('select[name="branch_id"]');
+        const fallbackBranchName = '{{ $employee->branch->branch_name ?? ($branches->first()->branch_name ?? '') }}';
+        const branchName = branchSelect
+            ? (branchSelect.options[branchSelect.selectedIndex]?.text || fallbackBranchName)
+            : fallbackBranchName;
+
+        if (!firstName || !lastName) {
+            alert('Please fill in First Name and Last Name before launching fingerprint enrollment.');
+            return;
+        }
+
+        registerFingerprintBtn.disabled = true;
+        scannerStatus.className = 'alert alert-info';
+        scannerStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing a fresh fingerprint scan...';
+        try {
+            const clearResponse = await fetch('/api/fingerprint-temp/clear', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ employee_number: employeeNumber })
+            });
+            const clearResult = await clearResponse.json();
+            if (!clearResponse.ok || !clearResult.success) {
+                throw new Error(clearResult.message || 'Could not prepare a fresh fingerprint scan.');
+            }
+        } catch (error) {
+            registerFingerprintBtn.disabled = false;
+            scannerStatus.className = 'alert alert-danger';
+            scannerStatus.textContent = error.message || 'Could not prepare a fresh fingerprint scan.';
+            return;
+        }
+
+        const uri = 'mtcgs-enroll:/register' +
+            '?first_name=' + encodeURIComponent(firstName) +
+            '&last_name=' + encodeURIComponent(lastName) +
+            '&employee_number=' + encodeURIComponent(employeeNumber) +
+            '&email=' + encodeURIComponent(email) +
+            '&role=' + encodeURIComponent(role) +
+            '&branch=' + encodeURIComponent(branchName) +
+            '&position=' + encodeURIComponent(position);
+
+        scannerStatus.className = 'alert alert-info';
+        scannerStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Launching fingerprint enrollment app...';
+        fingerprintScanner.classList.remove('d-none');
+        startFingerprintPolling(employeeNumber);
+
+        try {
+            window.location.href = uri;
+            fingerprintStatus.className = 'badge bg-warning me-2';
+            fingerprintStatus.innerHTML = '<i class="fas fa-external-link-alt"></i> Opening app';
+            registerFingerprintBtn.disabled = false;
+            registerFingerprintBtn.innerHTML = '<i class="fas fa-fingerprint"></i> Register Fingerprint';
+            registerFingerprintBtn.classList.remove('btn-success');
+            registerFingerprintBtn.classList.add('btn-outline-primary');
+            scannerStatus.className = 'alert alert-info';
+            scannerStatus.innerHTML = '<i class="fas fa-info-circle"></i> Waiting for a scanner capture. If no app opens, install/configure the C# enrollment app and its URI handler.';
+        } catch (error) {
+            const fallbackPath = '{{ env("MTCGS_ENROLL_EXE") ?: "" }}';
+            const fallbackText = fallbackPath ? ' Local fallback executable: ' + fallbackPath : '';
+            scannerStatus.className = 'alert alert-danger';
+            scannerStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Could not launch the enrollment app. Please make sure the custom URI handler is installed.' + fallbackText;
+        }
+    }
+
+    registerFingerprintBtn.addEventListener('click', function() {
+        launchEnrollmentApp();
+    });
+
+    startScanBtn.addEventListener('click', function() {
+        launchEnrollmentApp();
+    });
+
+    stopScanBtn.addEventListener('click', function() {
+        if (fingerprintCheckInterval) {
+            clearInterval(fingerprintCheckInterval);
+            fingerprintCheckInterval = null;
+        }
+        scannerStatus.className = 'alert alert-secondary';
+        scannerStatus.innerHTML = '<i class="fas fa-stop"></i> Enrollment app launch cancelled.';
+    });
+
+    // Poll only after the desktop enrollment app has been launched.
+    function startFingerprintPolling(employeeNumber) {
+        if (fingerprintCheckInterval) {
+            clearInterval(fingerprintCheckInterval);
+        }
+
+        const employeeNumberForPolling = String(employeeNumber || '').trim();
+
+        let pollAttempts = 0;
+        fingerprintCheckInterval = setInterval(async function() {
+        pollAttempts++;
+        if (pollAttempts > 400) {
+            clearInterval(fingerprintCheckInterval);
+            fingerprintCheckInterval = null;
+            scannerStatus.className = 'alert alert-warning';
+            scannerStatus.textContent = 'No fingerprint capture received. The C# enrollment app and scanner must be installed and running.';
+            registerFingerprintBtn.disabled = false;
+            return;
+        }
+        try {
+            let url = '/api/fingerprint-temp?employee_number=' + encodeURIComponent(employeeNumberForPolling);
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                return;
+            }
+
+            const result = await response.json();
+            console.log('Fingerprint poll result:', result);
+
+            // Only update UI if we have actual fingerprint data
+            if (result.success && result.data && result.data.fingerprint_data) {
+                if (result.data.database_saved !== true) {
+                    return;
+                }
+
+                const incomingData = result.data.fingerprint_data;
+                const incomingEmpNumber = String(result.data.employee_number || '').trim();
+                const registeredFinger = String(result.data.finger_name || '').trim();
+                const enrollmentAction = String(result.data.action || 'registered').trim().toLowerCase();
+                const actionText = enrollmentAction === 'updated' ? 'updated' : 'registered';
+                const fingerprintCount = Number(result.data.fingerprint_count);
+                
+                // Validate that fingerprint data is substantial
+                if (!incomingData || incomingData.trim().length < 100) {
+                    console.log('⏳ Fingerprint data incomplete, waiting for full capture...');
+                    return;
+                }
+
+                // Show the status badge
+                fingerprintStatus.classList.remove('d-none');
+
+                if (incomingEmpNumber.toLowerCase() === employeeNumber.toLowerCase()) {
+                    // Perfect match
+                    clearInterval(fingerprintCheckInterval);
+                    fingerprintCheckInterval = null;
+                    fingerprintPayload.value = incomingData;
+                    fingerprintData.value = incomingData;
+                    savedFingerprintDisplay = incomingData;
+                    clearFingerprint.checked = false;
+                    if (Number.isFinite(fingerprintCount)) {
+                        document.getElementById('fingerprint-count').textContent = fingerprintCount;
+                        document.getElementById('fingerprint-count').dataset.savedCount = fingerprintCount;
+                    }
+                    console.log('✓ Fingerprint data matched! Displaying in textarea.');
+                    
+                    fingerprintStatus.className = 'badge bg-success me-2';
+                    fingerprintStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' +
+                        (registeredFinger ? registeredFinger + ' ' + actionText + ' ✓' : actionText + ' ✓');
+                    registerFingerprintBtn.disabled = false;
+                    registerFingerprintBtn.innerHTML = '<i class="fas fa-redo"></i> Register Again';
+                    registerFingerprintBtn.classList.remove('btn-success');
+                    registerFingerprintBtn.classList.add('btn-outline-warning');
+                    scannerStatus.className = 'alert alert-success';
+                    scannerStatus.innerHTML = '<i class="fas fa-check-circle"></i> ✓ ' +
+                        (registeredFinger ? registeredFinger + ' fingerprint ' + actionText + '!' : 'Fingerprint ' + actionText + '!') +
+                        ' Click "Register Again" to rescan if needed.';
+                } else {
+                    // Mismatch
+                    fingerprintStatus.className = 'badge bg-warning me-2';
+                    fingerprintStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Employee ID Mismatch';
+                    scannerStatus.className = 'alert alert-warning';
+                    scannerStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <strong>Fingerprint is for ${incomingEmpNumber}</strong> but this employee is <strong>${employeeNumberForPolling}</strong>.`;
+                    registerFingerprintBtn.disabled = false;
+                    registerFingerprintBtn.innerHTML = '<i class="fas fa-fingerprint"></i> Scan Again';
+                }
+            }
+        } catch (error) {
+            console.log('Polling for fingerprint data...', error);
+        }
+        }, 300);
+    }
+
+    // Stop polling when leaving the page
+    window.addEventListener('beforeunload', function() {
+        if (fingerprintCheckInterval) {
+            clearInterval(fingerprintCheckInterval);
+            fingerprintCheckInterval = null;
+        }
+    });
+
+    // Clear interval when form is submitted
+    document.querySelector('form').addEventListener('submit', function() {
+        if (fingerprintCheckInterval) {
+            clearInterval(fingerprintCheckInterval);
+            fingerprintCheckInterval = null;
+        }
+    });
+</script>
+
+@include('admin.partials.employee-demographics-script')
+
+@endsection

@@ -1,0 +1,219 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Models\Device;
+use App\Services\BiometricDeviceAuthenticator;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
+
+class MacAddressController extends Controller
+{
+    /**
+     * Validate MAC address from C# application
+     * 
+     * Request: POST /api/validate-mac-address
+     * Body: {
+     *   "mac_address": "00:1A:2B:3C:4D:5E"
+     * }
+     */
+    public function validateMacAddress(Request $request)
+    {
+        $request->validate([
+            'device_serial' => 'required|string|max:100',
+            'mac_address' => 'required|string|max:20',
+            'device_id' => 'nullable|string|max:100',
+            'timestamp' => 'required|string',
+            'nonce' => 'required|string|max:100',
+            'signature' => 'required|string|size:64',
+        ]);
+
+        $validation = app(BiometricDeviceAuthenticator::class)->authenticate($request);
+        if (isset($validation['error'])) {
+            return response()->json([
+                'success' => false,
+                'message' => $validation['error'],
+            ], $validation['code']);
+        }
+        $device = $validation['device'];
+
+        $device->updateLastUsed();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'MAC address validated successfully',
+            'device' => [
+                'id' => $device->id,
+                'mac_address' => $device->mac_address,
+                'device_name' => $device->device_name,
+                'device_type' => $device->device_type,
+                'branch_id' => $device->branch_id,
+                'location' => $device->location,
+                'status' => $device->status,
+            ],
+        ]);
+    }
+
+    /**
+     * Get device info by MAC address
+     */
+    public function getDeviceInfo(Request $request)
+    {
+        $request->validate([
+            'device_serial' => 'required|string|max:100',
+            'mac_address' => 'required|string|max:20',
+            'device_id' => 'nullable|string|max:100',
+            'timestamp' => 'required|string',
+            'nonce' => 'required|string|max:100',
+            'signature' => 'required|string|size:64',
+        ]);
+
+        $validation = app(BiometricDeviceAuthenticator::class)->authenticate($request);
+        if (isset($validation['error'])) {
+            return response()->json([
+                'success' => false,
+                'message' => $validation['error'],
+            ], $validation['code']);
+        }
+        $device = $validation['device'];
+
+        return response()->json([
+            'success' => true,
+            'device' => [
+                'id' => $device->id,
+                'mac_address' => $device->mac_address,
+                'device_name' => $device->device_name,
+                'device_type' => $device->device_type,
+                'location' => $device->location,
+                'status' => $device->status,
+                'last_used_at' => $device->last_used_at,
+            ],
+        ]);
+    }
+
+    /**
+     * Return the current status of a registered device, including inactive devices.
+     */
+    public function getDeviceStatus(Request $request)
+    {
+        $request->validate([
+            'device_serial' => 'required|string|max:100',
+            'mac_address' => 'required|string|max:20',
+            'device_id' => 'nullable|string',
+            'timestamp' => 'required|string',
+            'nonce' => 'required|string|max:100',
+            'signature' => 'required|string|size:64',
+        ]);
+
+        $validation = app(BiometricDeviceAuthenticator::class)->authenticate($request, requireActive: false);
+        if (isset($validation['error'])) {
+            return response()->json(['success' => false, 'message' => $validation['error']], $validation['code']);
+        }
+        $device = $validation['device'];
+
+        return response()->json([
+            'success' => true,
+            'device' => [
+                'id' => $device->id,
+                'branch_id' => $device->branch_id,
+                'device_name' => $device->device_name,
+                'status' => $device->status,
+                'updated_at' => $device->updated_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
+     * Register a new device (Super Admin only)
+     */
+    public function registerDevice(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'admin' || $user->admin_type !== 'super_admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized - Only super administrators can register devices',
+            ], 403);
+        }
+
+        $request->validate([
+            'mac_address' => 'required|string|unique:devices',
+            'serial_number' => 'required|string|max:100|unique:devices,serial_number',
+            'device_name' => 'required|string',
+            'device_type' => 'required|in:biometric_scanner,kiosk,computer',
+            'branch_id' => 'required|exists:branches,id',
+            'location' => 'nullable|string',
+        ]);
+
+        $macAddress = Device::normalizeMacAddress($request->mac_address);
+        $credential = Str::random(64);
+
+        $device = Device::create([
+            'mac_address' => $macAddress,
+            'serial_number' => Device::normalizeSerialNumber($request->serial_number),
+            'api_secret' => $credential,
+            'device_name' => $request->device_name,
+            'device_type' => $request->device_type,
+            'branch_id' => $request->branch_id,
+            'location' => $request->location,
+            'status' => 'active',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Device registered successfully',
+            'device' => $device->only(['id', 'mac_address', 'serial_number', 'device_name', 'device_type', 'branch_id', 'location', 'status']),
+            'credential' => $credential,
+        ], 201);
+    }
+
+    /**
+     * Get all active devices (Super Admin only)
+     */
+    public function listDevices(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'admin' || $user->admin_type !== 'super_admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized - Only super administrators can list devices',
+            ], 403);
+        }
+
+        $devices = Device::where('status', 'active')
+                        ->orderBy('device_name')
+                        ->get();
+
+        return response()->json([
+            'success' => true,
+            'devices' => $devices,
+        ]);
+    }
+
+    /**
+     * Update device status (Super Admin only)
+     */
+    public function updateDeviceStatus(Request $request, Device $device)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'admin' || $user->admin_type !== 'super_admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized - Only super administrators can update device status',
+            ], 403);
+        }
+
+        $request->validate([
+            'status' => 'required|in:active,inactive,maintenance',
+        ]);
+
+        $device->update(['status' => $request->status]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Device status updated',
+            'device' => $device,
+        ]);
+    }
+}
