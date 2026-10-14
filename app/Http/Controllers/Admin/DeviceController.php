@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use App\Models\Branch;
 use App\Models\Device;
 use Illuminate\Http\Request;
@@ -161,7 +164,18 @@ class DeviceController extends Controller
 
         $device->load('branch');
 
-        return view('admin.devices.show', compact('device'));
+        $credentialStatus = 'not_provisioned';
+        if (filled($device->getRawOriginal('api_secret'))) {
+            try {
+                $credentialStatus = filled($device->api_secret)
+                    ? 'provisioned'
+                    : 'unreadable';
+            } catch (DecryptException) {
+                $credentialStatus = 'unreadable';
+            }
+        }
+
+        return view('admin.devices.show', compact('device', 'credentialStatus'));
     }
 
     public function rotateCredential(Device $device)
@@ -169,7 +183,12 @@ class DeviceController extends Controller
         $this->authorizeDeviceManagement();
 
         $credential = Str::random(64);
-        $device->update(['api_secret' => $credential]);
+        DB::table('devices')
+            ->where('id', $device->getKey())
+            ->update([
+                'api_secret' => Crypt::encryptString($credential),
+                'updated_at' => now(),
+            ]);
 
         return response()->json([
             'success' => true,
