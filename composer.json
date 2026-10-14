@@ -16,7 +16,9 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "3.13.0",
         "laravel/breeze": "^2.4",
+        "laravel/pint": "1.29.3",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "phpunit/phpunit": "^11.5"
@@ -50,6 +52,9 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
+        "test:mysql": "@php vendor/bin/phpunit --configuration phpunit.mysql.xml --do-not-cache-result",
+        "format:check": "@php vendor/bin/pint --test app routes tests database",
+        "analyse": "@php vendor/bin/phpstan analyse --no-progress",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

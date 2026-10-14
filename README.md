@@ -21,6 +21,39 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
+## Testing
+
+The existing `php artisan test` and `npm run test:e2e` workflows remain unchanged.
+
+- `composer format:check` checks PHP formatting without rewriting files.
+- `composer analyse` runs Larastan against the application at PHPStan level 3.
+- `composer audit` and `npm audit --package-lock-only` check locked dependencies without upgrading them.
+- `npm run test:e2e` runs the Playwright browser tests, including WCAG A/AA scans. Start the local app first; Playwright defaults to `http://127.0.0.1:8000`.
+
+### Optional MySQL integration tests
+
+The MySQL suite is separate from the default in-memory SQLite suite. It uses the fixed local database `mtcgs_ems_test`; tests using Laravel's `RefreshDatabase` trait can drop and recreate tables in that database. Never point this suite at a production or normal development database.
+
+Create an empty `mtcgs_ems_test` database in local XAMPP/MariaDB and use a dedicated test account with privileges only on that database. Then, in PowerShell, set `TEST_DB_USERNAME` (and `TEST_DB_PASSWORD` if the account has a password) and run:
+
+```powershell
+$env:TEST_DB_USERNAME = 'mtcgs_test_user'
+$env:TEST_DB_PASSWORD = 'your-test-only-password'
+composer test:mysql
+```
+
+The runner refuses to start unless the environment is `testing` and the connection is exactly `127.0.0.1:3306/mtcgs_ems_test`. It does not create the database or read database credentials from `.env`.
+
+### Optional k6 smoke test
+
+Install k6 separately to run this bounded, read-only check against the local app:
+
+```powershell
+k6 run tests/performance/smoke.js
+```
+
+It checks only `GET /` and `GET /login` with one virtual user for 10 seconds. Do not target production. Set `BASE_URL` only to a local or authorized staging environment.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
