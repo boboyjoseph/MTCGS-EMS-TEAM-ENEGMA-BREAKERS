@@ -35,3 +35,23 @@ foreach (['DB_USERNAME' => $username, 'DB_PASSWORD' => $password] as $name => $v
 }
 
 require dirname(__DIR__).'/vendor/autoload.php';
+
+$mysqlApp = require dirname(__DIR__).'/bootstrap/app.php';
+$mysqlApp->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+$mysql = $mysqlApp['config']->get('database.connections.mysql', []);
+$connectionIsSafe = $mysqlApp['config']->get('app.env') === 'testing'
+    && $mysqlApp['config']->get('database.default') === 'mysql'
+    && ($mysql['driver'] ?? null) === 'mysql'
+    && ($mysql['url'] ?? '') === ''
+    && ($mysql['host'] ?? null) === '127.0.0.1'
+    && (string) ($mysql['port'] ?? '') === '3306'
+    && ($mysql['database'] ?? null) === 'mtcgs_ems_test'
+    && ($mysql['username'] ?? null) === $username
+    && ($mysql['password'] ?? null) === $password
+    && ($mysql['unix_socket'] ?? '') === '';
+
+if (!$connectionIsSafe) {
+    fwrite(STDERR, "Refusing to run MySQL tests: Laravel's effective connection is not the dedicated local test database.\n");
+    exit(1);
+}

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Device;
+use App\Models\AttendanceLog;
 use App\Models\EmployeeProfile;
 use App\Models\User;
 use App\Services\BiometricDeviceAuthenticator;
@@ -51,6 +52,78 @@ class ApiBiometricEndpointSecurityTest extends TestCase
         );
 
         return $payload;
+    }
+
+    private function makeSignedDeviceQuery(Device $device, string $path): array
+    {
+        $payload = [
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:42',
+            'device_id' => '',
+            'mac_address' => 'AA:BB:CC:DD:EE:42',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'today-dtr-' . bin2hex(random_bytes(8)),
+            'reader_id' => '',
+        ];
+        $request = Request::create('/' . ltrim($path, '/'), 'GET', $payload);
+        $payload['signature'] = hash_hmac(
+            'sha256',
+            app(BiometricDeviceAuthenticator::class)->signingPayload($request),
+            self::DEVICE_SECRET
+        );
+
+        return $payload;
+    }
+
+    public function test_signed_today_dtr_endpoint_returns_attendance_for_the_device_branch(): void
+    {
+        $branch = $this->makeBranch('BR-DTR-API', 'Daily Attendance API Branch');
+        $employeeUser = User::create([
+            'name' => 'Daily Attendance Employee',
+            'email' => 'daily.attendance.employee@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employee = EmployeeProfile::create([
+            'user_id' => $employeeUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-DTR-API',
+            'first_name' => 'Daily',
+            'last_name' => 'Attendance',
+            'position' => 'Staff',
+            'date_hired' => today()->toDateString(),
+        ]);
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-42',
+            'serial_number' => 'DTR-API-SERIAL-01',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'Daily Attendance API Test Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+        AttendanceLog::create([
+            'employee_id' => $employeeUser->id,
+            'employee_profile_id' => $employee->id,
+            'branch_id' => $branch->id,
+            'attendance_date' => today(),
+            'am_in' => now()->setTime(8, 0),
+            'pm_out' => now()->setTime(17, 0),
+            'status' => 'present',
+        ]);
+
+        $query = $this->makeSignedDeviceQuery($device, 'api/biometric/dtr-today');
+        $this->getJson('/api/biometric/dtr-today?' . http_build_query($query))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('records.0.employee_number', $employee->employee_number)
+            ->assertJsonPath('records.0.employee_name', 'Daily Attendance')
+            ->assertJsonPath('records.0.date', today()->format('m/d/Y'));
     }
 
     public function test_attendance_clock_rejects_untrusted_devices_and_unmatched_fingerprints(): void

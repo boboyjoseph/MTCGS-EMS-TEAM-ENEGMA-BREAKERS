@@ -34,15 +34,21 @@ The existing `php artisan test` and `npm run test:e2e` workflows remain unchange
 
 The MySQL suite is separate from the default in-memory SQLite suite. It uses the fixed local database `mtcgs_ems_test`; tests using Laravel's `RefreshDatabase` trait can drop and recreate tables in that database. Never point this suite at a production or normal development database.
 
-Create an empty `mtcgs_ems_test` database in local XAMPP/MariaDB and use a dedicated test account with privileges only on that database. Then, in PowerShell, set `TEST_DB_USERNAME` (and `TEST_DB_PASSWORD` if the account has a password) and run:
+Create an empty `mtcgs_ems_test` database in local XAMPP/MariaDB and use a dedicated test account with privileges only on that database. If the test database already contains tables from an older or incomplete schema, refresh it first. This command drops **all tables and data** in `mtcgs_ems_test` and reruns the current migrations; use it only for the dedicated disposable test database, never for development or production data:
 
 ```powershell
 $env:TEST_DB_USERNAME = 'mtcgs_test_user'
 $env:TEST_DB_PASSWORD = 'your-test-only-password'
+php tests/refresh-mysql-test-database.php
+```
+
+The refresh command checks Laravel's effective connection (including cached config) and refuses to run unless it is exactly `127.0.0.1:3306/mtcgs_ems_test` with the dedicated test credentials. Then run the integration suite:
+
+```powershell
 composer test:mysql
 ```
 
-The runner refuses to start unless the environment is `testing` and the connection is exactly `127.0.0.1:3306/mtcgs_ems_test`. It does not create the database or read database credentials from `.env`.
+The PHPUnit runner refuses to start unless the environment is `testing` and the connection is exactly `127.0.0.1:3306/mtcgs_ems_test`. It does not create the database or read database credentials from `.env`.
 
 ### Optional k6 smoke test
 

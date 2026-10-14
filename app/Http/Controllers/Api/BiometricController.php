@@ -1781,16 +1781,19 @@ class BiometricController extends Controller
         
         $attendances = AttendanceLog::where('attendance_date', today())
             ->where('branch_id', $device->branch_id)
-            ->with('employee')
+            ->with('employeeProfile')
+            ->whereHas('employeeProfile')
             ->orderBy('created_at', 'desc')
             ->get();
         
         $dtrData = $attendances->map(function($attendance) {
+            $employee = $attendance->employeeProfile;
+
             return [
                 'id' => $attendance->id,
                 'date' => $attendance->attendance_date->format('m/d/Y'),
-                'employee_name' => $attendance->employee->first_name . ' ' . $attendance->employee->last_name,
-                'employee_number' => $attendance->employee->employee_number,
+                'employee_name' => trim($employee->first_name . ' ' . $employee->last_name),
+                'employee_number' => $employee->employee_number,
                 'time_in' => $attendance->am_in ? $attendance->am_in->format('h:i A') : '--',
                 'time_out' => $attendance->pm_out ? $attendance->pm_out->format('h:i A') : ($attendance->am_out ? $attendance->am_out->format('h:i A') : '--'),
                 'late_minutes' => $attendance->late_minutes ?? 0,

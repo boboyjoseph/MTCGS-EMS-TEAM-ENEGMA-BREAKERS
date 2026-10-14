@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Http\Controllers\LeaveController;
 use App\Models\AttendanceLog;
+use App\Models\Branch;
 use App\Models\DTR;
 use App\Models\EmployeeProfile;
 use App\Models\LeaveBalance;
@@ -13,6 +14,7 @@ use App\Services\PayrollComputationService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DTRSubmitWorkflowTest extends TestCase
@@ -145,7 +147,11 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_dtr_can_be_submitted_for_branch_head_approval(): void
     {
-        $dtr = new DTR([
+        $profile = $this->createEmployeeProfile();
+        $dtr = DTR::create([
+            'employee_profile_id' => $profile->id,
+            'period_start' => '2026-10-01',
+            'period_end' => '2026-10-15',
             'status' => 'draft',
         ]);
 
@@ -160,19 +166,23 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_branch_head_approval_forwards_dtr_to_system_admin_review(): void
     {
-        $dtr = new DTR([
+        $profile = $this->createEmployeeProfile();
+        $dtr = DTR::create([
+            'employee_profile_id' => $profile->id,
+            'period_start' => '2026-10-01',
+            'period_end' => '2026-10-15',
             'status' => 'submitted',
         ]);
 
-        $dtr->approve(10, 'branch_admin');
+        $dtr->approve($profile->user_id, 'branch_admin');
 
         $this->assertSame('pending_system_admin', $dtr->status);
 
-        $dtr->approve(20, 'super_admin');
+        $dtr->approve($profile->user_id, 'super_admin');
 
         $this->assertSame('pending_finance_head', $dtr->status);
 
-        $dtr->approve(30, 'finance_head');
+        $dtr->approve($profile->user_id, 'finance_head');
 
         $this->assertSame('approved', $dtr->status);
     }
@@ -239,15 +249,18 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_dtr_breakdown_counts_half_day_attendance(): void
     {
+        $profile = $this->createEmployeeProfile();
+
         $dtr = DTR::create([
-            'employee_profile_id' => 1,
+            'employee_profile_id' => $profile->id,
             'period_start' => '2026-08-17',
             'period_end' => '2026-08-17',
             'status' => 'draft',
         ]);
 
         AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-17',
             'am_in' => '2026-08-17 08:00:00',
             'pm_out' => '2026-08-17 09:30:00',
@@ -262,15 +275,18 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_calculate_totals_counts_approved_leave_and_absent_days_correctly(): void
     {
+        $profile = $this->createEmployeeProfile();
+
         $dtr = DTR::create([
-            'employee_profile_id' => 1,
+            'employee_profile_id' => $profile->id,
             'period_start' => '2026-08-17',
             'period_end' => '2026-08-20',
             'status' => 'draft',
         ]);
 
         AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-17',
             'am_in' => '2026-08-17 06:32:00',
             'pm_out' => '2026-08-17 17:33:00',
@@ -278,7 +294,8 @@ class DTRSubmitWorkflowTest extends TestCase
         ]);
 
         AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-18',
             'am_in' => '2026-08-18 06:48:00',
             'pm_out' => '2026-08-18 17:00:00',
@@ -286,19 +303,25 @@ class DTRSubmitWorkflowTest extends TestCase
         ]);
 
         AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-19',
             'status' => 'absent',
         ]);
 
-        LeaveRequest::create([
-            'employee_profile_id' => 1,
+        $leaveAttributes = [
+            'employee_profile_id' => $profile->id,
+            'employee_id' => $profile->user_id,
             'start_date' => '2026-08-20',
             'end_date' => '2026-08-20',
             'leave_type' => 'vacation',
             'status' => 'approved',
+            'total_days' => 1,
+            'reason' => 'Approved test leave',
             'is_absent' => false,
-        ]);
+        ];
+
+        LeaveRequest::create($leaveAttributes);
 
         $breakdown = $dtr->getCalculationBreakdown();
 
@@ -311,17 +334,19 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_missing_past_attendance_log_is_counted_as_absent(): void
     {
+        $profile = $this->createEmployeeProfile();
         $this->travelTo(\Carbon\Carbon::parse('2026-08-19 00:00:00'));
 
         $dtr = DTR::create([
-            'employee_profile_id' => 1,
+            'employee_profile_id' => $profile->id,
             'period_start' => '2026-08-17',
             'period_end' => '2026-08-18',
             'status' => 'draft',
         ]);
 
         AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-17',
             'am_in' => '2026-08-17 06:32:00',
             'pm_out' => '2026-08-17 17:33:00',
@@ -336,29 +361,8 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_exhausted_sick_leave_can_still_be_filed_as_leave_without_pay(): void
     {
-        $profile = EmployeeProfile::create([
-            'user_id' => 1,
-            'branch_id' => 1,
-            'employee_number' => 'EMP-1001',
-            'first_name' => 'Test',
-            'last_name' => 'Employee',
-            'position' => 'Staff',
-            'date_hired' => '2024-01-15',
-            'status' => 'Regular',
-            'basic_salary' => 25000,
-        ]);
-
-        $user = User::create([
-            'name' => 'Test Employee',
-            'email' => 'employee@example.com',
-            'password' => bcrypt('password'),
-            'role' => 'employee',
-            'profile_id' => $profile->id,
-            'profile_type' => EmployeeProfile::class,
-            'is_active' => true,
-        ]);
-
-        $profile->update(['user_id' => $user->id]);
+        $profile = $this->createEmployeeProfile();
+        $user = $profile->user;
 
         LeaveBalance::create([
             'employee_profile_id' => $profile->id,
@@ -396,15 +400,18 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_dtr_tracks_early_out_minutes_for_payroll_deduction(): void
     {
+        $profile = $this->createEmployeeProfile();
+
         $dtr = DTR::create([
-            'employee_profile_id' => 1,
+            'employee_profile_id' => $profile->id,
             'period_start' => '2026-08-17',
             'period_end' => '2026-08-17',
             'status' => 'draft',
         ]);
 
         AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-17',
             'am_in' => '2026-08-17 08:00:00',
             'am_out' => '2026-08-17 12:00:00',
@@ -419,8 +426,11 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_attendance_log_resolves_dtr_statuses(): void
     {
+        $profile = $this->createEmployeeProfile();
+
         $onTime = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-18',
             'am_in' => '2026-08-18 08:00:00',
             'pm_in' => '2026-08-18 13:00:00',
@@ -428,7 +438,8 @@ class DTRSubmitWorkflowTest extends TestCase
             'status' => 'present',
         ]);
         $oneMinuteLate = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-18',
             'am_in' => '2026-08-18 08:01:00',
             'pm_in' => '2026-08-18 13:00:00',
@@ -437,7 +448,8 @@ class DTRSubmitWorkflowTest extends TestCase
             'late_minutes' => 1,
         ]);
         $afterGracePeriod = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-18',
             'am_in' => '2026-08-18 08:01:01',
             'pm_in' => '2026-08-18 13:00:00',
@@ -445,7 +457,8 @@ class DTRSubmitWorkflowTest extends TestCase
             'status' => 'present',
         ]);
         $late = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-19',
             'am_in' => '2026-08-19 08:02:00',
             'pm_in' => '2026-08-19 13:00:00',
@@ -454,7 +467,8 @@ class DTRSubmitWorkflowTest extends TestCase
             'late_minutes' => 1,
         ]);
         $earlyOut = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-20',
             'am_in' => '2026-08-20 08:00:00',
             'pm_in' => '2026-08-20 13:00:00',
@@ -462,27 +476,31 @@ class DTRSubmitWorkflowTest extends TestCase
             'status' => 'present',
         ]);
         $halfDay = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-21',
             'am_in' => '2026-08-21 08:00:00',
             'status' => 'present',
         ]);
         $shortShift = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-23',
             'am_in' => '2026-08-23 08:00:00',
             'pm_out' => '2026-08-23 09:30:00',
             'status' => 'present',
         ]);
         $fullShift = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-24',
             'am_in' => '2026-08-24 08:00:00',
             'pm_out' => '2026-08-24 17:00:00',
             'status' => 'present',
         ]);
         $afternoonHalfDay = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-25',
             'pm_in' => '2026-08-25 13:00:00',
             'pm_out' => '2026-08-25 17:00:00',
@@ -504,12 +522,58 @@ class DTRSubmitWorkflowTest extends TestCase
 
     public function test_empty_attendance_log_stays_pending(): void
     {
+        $profile = $this->createEmployeeProfile();
+
         $empty = AttendanceLog::create([
-            'employee_profile_id' => 1,
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
             'attendance_date' => '2026-08-22',
             'status' => 'present',
         ]);
 
         $this->assertSame('Pending', $empty->getDtrStatus());
+    }
+
+    private function createEmployeeProfile(): EmployeeProfile
+    {
+        $user = User::create([
+            'name' => 'Test Employee',
+            'email' => Str::uuid().'@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'is_active' => true,
+        ]);
+
+        $branchId = null;
+
+        if (Schema::hasTable('branches')) {
+            $branch = Branch::create([
+                'branch_code' => 'TEST-'.Str::random(12),
+                'branch_name' => 'Test Branch',
+            ]);
+            $branchId = $branch->id;
+        }
+
+        $profileAttributes = [
+            'user_id' => $user->id,
+            'branch_id' => $branchId,
+            'employee_number' => 'TEST-'.Str::random(12),
+            'first_name' => 'Test',
+            'last_name' => 'Employee',
+            'position' => 'Staff',
+            'date_hired' => '2024-01-15',
+            'basic_salary' => 25000,
+        ];
+
+        $profileAttributes['status'] = 'Regular';
+
+        $profile = EmployeeProfile::create($profileAttributes);
+
+        $user->update([
+            'profile_id' => $profile->id,
+            'profile_type' => EmployeeProfile::class,
+        ]);
+
+        return $profile;
     }
 }

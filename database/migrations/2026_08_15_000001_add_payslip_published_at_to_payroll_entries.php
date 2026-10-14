@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('payroll_entries', function (Blueprint $table) {
             if (!Schema::hasColumn('payroll_entries', 'payslip_published_at')) {
-                $table->timestamp('payslip_published_at')->nullable()->after('payslip_sent_to');
+                $table->timestamp('payslip_published_at')->nullable();
             }
         });
     }
