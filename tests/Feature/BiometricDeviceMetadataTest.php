@@ -898,7 +898,7 @@ class BiometricDeviceMetadataTest extends TestCase
 
         $duplicateCheckIdentity = $this->signedDevicePayload([
             'employee_id' => null,
-            'employee_number' => null,
+            'employee_number' => $irigaEmployee->employee_number,
             'device_serial' => $device->serial_number,
             'wifi_mac' => 'AA:BB:CC:DD:EE:FF',
             'device_id' => (string) $device->id,
@@ -916,7 +916,10 @@ class BiometricDeviceMetadataTest extends TestCase
             ->unique()
             ->values()
             ->all();
-        $this->assertSame([$irigaEmployee->employee_number], $duplicateCheckNumbers);
+        $this->assertEqualsCanonicalizing([
+            $irigaEmployee->employee_number,
+            $buhiEmployee->employee_number,
+        ], $duplicateCheckNumbers);
 
         $duplicateEnrollment = $this->signedDevicePayload([
             'employee_number' => $irigaEmployee->employee_number,

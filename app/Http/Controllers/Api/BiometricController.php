@@ -1409,13 +1409,14 @@ class BiometricController extends Controller
             ], 403);
         }
 
+        $crossBranchDuplicateCheck = $request->input('fingerprint_scope') === 'duplicate-check';
         $templates = collect();
         foreach ([EmployeeProfile::class, FinanceProfile::class, AdminProfile::class, BranchHeadProfile::class] as $profileType) {
             $profiles = $profileType::query()
                 ->whereNotNull('fingerprint_template')
                 ->where('fingerprint_template', '!=', '')
-                ->where('branch_id', $device->branch_id)
-                ->when($request->filled('employee_number'), fn ($query) => $query->where('employee_number', trim($request->employee_number)))
+                ->when(!$crossBranchDuplicateCheck, fn ($query) => $query->where('branch_id', $device->branch_id))
+                ->when(!$crossBranchDuplicateCheck && $request->filled('employee_number'), fn ($query) => $query->where('employee_number', trim($request->employee_number)))
                 ->with('branch:id,branch_name')
                 ->get(['employee_number', 'first_name', 'last_name', 'branch_id', 'position', 'fingerprint_template']);
 
