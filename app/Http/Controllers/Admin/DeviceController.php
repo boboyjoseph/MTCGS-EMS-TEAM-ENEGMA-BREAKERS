@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 
 class DeviceController extends Controller
 {
-    private const READER_BOUND_SCANNER_SERIALS = ['J62OE23640', 'J320E01822'];
+    private const READER_BOUND_SCANNER_SERIALS = ['J620E23640', 'J320E01822'];
 
     private function readerIdRules(?string $serialNumber): array
     {

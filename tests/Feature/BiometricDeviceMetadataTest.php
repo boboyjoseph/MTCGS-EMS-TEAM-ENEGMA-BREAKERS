@@ -99,7 +99,7 @@ class BiometricDeviceMetadataTest extends TestCase
         $device = Device::create([
             'mac_address' => 'AA-BB-CC-DD-EE-51',
             'laptop_mac_address' => 'VERIFY-ONLY-DEVICE',
-            'serial_number' => 'J62OE23640',
+            'serial_number' => 'J620E23640',
             'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
             'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Verify Only Scanner',
@@ -167,7 +167,7 @@ class BiometricDeviceMetadataTest extends TestCase
         $device = Device::create([
             'mac_address' => 'AA-BB-CC-DD-EE-61',
             'laptop_mac_address' => 'OFFLINE-SYNC-DEVICE',
-            'serial_number' => 'J62OE23640',
+            'serial_number' => 'J620E23640',
             'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
             'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Offline Sync Scanner',
@@ -488,7 +488,7 @@ class BiometricDeviceMetadataTest extends TestCase
 
         $deviceWithoutIdentifier = Device::create([
             'mac_address' => 'AA-BB-CC-DD-EE-22',
-            'serial_number' => 'J62OE23640',
+            'serial_number' => 'J620E23640',
             'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
             'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Unprovisioned Iriga Scanner',
@@ -526,7 +526,7 @@ class BiometricDeviceMetadataTest extends TestCase
         $device = Device::create([
             'mac_address' => 'AA-BB-CC-DD-EE-31',
             'laptop_mac_address' => 'IRIGA-LOCAL-PC-01',
-            'serial_number' => 'J62OE23640',
+            'serial_number' => 'J620E23640',
             'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
             'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Local Iriga Enrollment Scanner',

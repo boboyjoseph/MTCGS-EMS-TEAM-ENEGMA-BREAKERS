@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class BiometricDeviceAuthenticator
 {
-    private const BRANCH_SCANNER_SERIALS = ['J62OE23640', 'J320E01822'];
+    private const BRANCH_SCANNER_SERIALS = ['J620E23640', 'J320E01822'];
 
     private const SIGNED_FIELDS = [
         'employee_id',

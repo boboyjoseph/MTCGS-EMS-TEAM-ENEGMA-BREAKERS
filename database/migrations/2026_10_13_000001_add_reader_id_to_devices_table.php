@@ -14,7 +14,7 @@ return new class extends Migration
         });
 
         DB::table('devices')
-            ->whereRaw('UPPER(TRIM(serial_number)) = ?', ['J62OE23640'])
+            ->whereRaw('UPPER(TRIM(serial_number)) = ?', ['J620E23640'])
             ->update(['reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941']);
 
         DB::table('devices')
