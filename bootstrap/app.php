@@ -27,6 +27,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 419);
             }
 
-            return redirect()->back()->with('error', 'Your session expired. Please try again.');
+            return redirect()->route('login');
         });
     })->create();

@@ -1184,5 +1184,77 @@
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     @stack('scripts')
+    <script>
+        (() => {
+            const idleTimeoutMs = @json(config('session.lifetime') * 60 * 1000);
+            const lastActivityKey = 'mtcgs:last-activity';
+            const loginUrl = @json(route('login'));
+            const logoutUrl = @json(route('logout'));
+            let idleTimer;
+            let logoutStarted = false;
+            let lastActivityWrite = Date.now();
+
+            function redirectToLogin() {
+                window.location.replace(loginUrl);
+            }
+
+            function logoutAfterInactivity() {
+                if (logoutStarted) return;
+                logoutStarted = true;
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const fallbackTimer = window.setTimeout(redirectToLogin, 3000);
+                fetch(logoutUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {})
+                    }
+                }).catch((error) => {
+                    console.error('Could not complete automatic logout:', error);
+                }).finally(() => {
+                    window.clearTimeout(fallbackTimer);
+                    redirectToLogin();
+                });
+            }
+
+            function scheduleIdleLogout() {
+                window.clearTimeout(idleTimer);
+                const lastActivity = Number(localStorage.getItem(lastActivityKey)) || Date.now();
+                const remaining = idleTimeoutMs - (Date.now() - lastActivity);
+                if (remaining <= 0) {
+                    logoutAfterInactivity();
+                    return;
+                }
+                idleTimer = window.setTimeout(logoutAfterInactivity, remaining);
+            }
+
+            function recordActivity() {
+                const now = Date.now();
+                if (now - lastActivityWrite < 5000) return;
+                lastActivityWrite = now;
+                localStorage.setItem(lastActivityKey, String(now));
+                scheduleIdleLogout();
+            }
+
+            lastActivityWrite = Date.now();
+            localStorage.setItem(lastActivityKey, String(lastActivityWrite));
+            scheduleIdleLogout();
+            ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((eventName) => {
+                document.addEventListener(eventName, recordActivity, { passive: true });
+            });
+            window.addEventListener('storage', (event) => {
+                if (event.key === lastActivityKey) {
+                    lastActivityWrite = Number(event.newValue) || lastActivityWrite;
+                    scheduleIdleLogout();
+                }
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) scheduleIdleLogout();
+            });
+        })();
+    </script>
 </body>
 </html>
