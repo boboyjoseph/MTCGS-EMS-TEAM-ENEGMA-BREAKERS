@@ -1,16 +1,4 @@
 <appSettings>
-  <add key="ApiBaseUrl" value="http://127.0.0.1:8000/api" />
-  <add key="BiometricDeviceSecret" value="VNaZyYs4gkYBLXdpOVxLtHo3mwxsBD6e78ybSsR2n5zYWq2vJVXgCJiebFAcmRxn" />
-  <add key="DeviceLocation" value="Iriga" />
-  <add key="ScannerSerialNumber" value="J62OE23640" />
-  <add key="ExpectedDpfpReaderId" value="70315bbe-3635-8b41-b4af-04a0bcd6e941" />
-  <add key="DeviceMacAddress" value="4C:44:5B:C1:2B:59" />
-  <add key="DeviceIdentifier" value="5E4AE557-F75C-4644-B452-D074927C1A01" />
-</appSettings>
-
-VNaZyYs4gkYBLXdpOVxLtHo3mwxsBD6e78ybSsR2n5zYWq2vJVXgCJiebFAcmRxn
-
-<appSettings>
 	<add key="ApiBaseUrl" value="https://danica-pc.tail3af3c8.ts.net/api" />
 	<!-- Branch-specific device credentials are stored in the current Windows user's DPAPI store; never put them in this file. -->
 	<add key="DeviceLocation" value="Iriga" />
@@ -54,22 +42,6 @@ N/A
   -DeviceSerialNumber "J62OE23640" `
   -DeviceMacAddress "ILAGAY-ANG-IRIGA-PC-MAC" `
   -DeviceIdentifier "ILAGAY-ANG-IRIGA-DEVICE-ID"
-
----------------------------------------------------------------
-
-<appSettings>
-  <add key="ApiBaseUrl" value="http://192.168.1.10:8000/api" />
-  <add key="BiometricDeviceSecret" value="DEh56IX8fukAqNaULfBiAx23nk5OSsPaMtVhACmJwxgBBDMkNR1hC93NtL5hZD1H" />
-  <add key="DeviceLocation" value="Buhi" />
-  <add key="ScannerSerialNumber" value="J320E01822" />
-  <add key="ExpectedDpfpReaderId" value="8c540906-f99a-4e4f-baec-99462e3c24bc" />
-  <add key="DeviceMacAddress" value="1C:19:87:87:A0:19" />
-  <add key="DeviceIdentifier" value="42E49B95-2585-44EC-BDC7-F28F31C1583" />
-</appSettings>
-
------------------------------------------------------------
-
-DEh56IX8fukAqNaULfBiAx23nk5OSsPaMtVhACmJwxgBBDMkNR1hC93NtL5hZD1H
 
 ------------------------------------------------------------
 
