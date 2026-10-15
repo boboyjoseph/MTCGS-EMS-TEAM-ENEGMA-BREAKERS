@@ -490,19 +490,16 @@
                                                 <small class="text-muted"><?php echo e($day['day_name']); ?></small>
                                             </td>
                                             <td class="text-center <?php echo e($isLateTimeIn && !$isLeave && !$isLWOP ? 'dtr-late' : ''); ?>">
-                                                <?php if(!$isLeave && !$isLWOP && !$isSuspension && $canRequestCorrection): ?>
-                                                    <?php if(in_array($attendanceStatus, ['Late', 'Late / Early Out', 'Half Day'], true) || $legacyApprovedWithoutCorrection): ?>
-                                                        <label class="small d-block mb-1">Time-in</label>
-                                                        <input form="<?php echo e($correctionFormId); ?>" type="time" name="corrected_time_in" class="form-control form-control-sm mb-1" value="<?php echo e($day['log']->am_in?->format('H:i')); ?>" aria-label="Corrected time-in">
-                                                    <?php endif; ?>
+                                                <?php if($canRequestCorrection): ?>
+                                                    <input type="time" name="corrected_time_in" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-in" value="<?php echo e($day['log']->corrected_time_in?->format('H:i') ?? $day['log']->am_in?->format('H:i')); ?>">
                                                 <?php else: ?>
                                                     <?php echo e(!$isLeave && !$isLWOP && !$isSuspension ? ($day['am_in'] ?? '') : '--'); ?>
 
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center <?php echo e($isEarlyOut && !$isLeave && !$isLWOP ? 'dtr-late' : ''); ?>">
-                                                <?php if(!$isLeave && !$isLWOP && !$isSuspension && $canRequestCorrection && in_array($attendanceStatus, ['Early Out', 'Late / Early Out', 'Half Day'], true)): ?>
-                                                    <input form="<?php echo e($correctionFormId); ?>" type="time" name="corrected_time_out" class="form-control form-control-sm mb-1" value="<?php echo e($day['log']->pm_out?->format('H:i')); ?>" aria-label="Corrected time-out">
+                                                <?php if($canRequestCorrection): ?>
+                                                    <input type="time" name="corrected_time_out" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-out" value="<?php echo e($day['log']->corrected_time_out?->format('H:i') ?? $day['log']->pm_out?->format('H:i')); ?>">
                                                 <?php else: ?>
                                                     <?php echo e(!$isLeave && !$isLWOP && !$isSuspension ? ($day['pm_out'] ?? '') : '--'); ?>
 

@@ -12,6 +12,16 @@ class AdminCreateEmployeeAccessTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_hr_admin_type_is_treated_as_super_admin(): void
+    {
+        $user = new User([
+            'role' => 'admin',
+            'admin_type' => 'hr',
+        ]);
+
+        $this->assertTrue($user->isSuperAdmin());
+    }
+
     public function test_admin_with_null_admin_type_can_access_create_employee_page(): void
     {
         $branch = Branch::create([

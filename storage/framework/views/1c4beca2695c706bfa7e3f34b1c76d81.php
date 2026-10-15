@@ -139,6 +139,34 @@
         $canSelfRegisterAdminFingerprint = $user && ($user->isSuperAdmin() || $user->role === 'branch_head' || $user->role === 'admin');
         $isBranchHeadSelfAttendance = $user && $user->role === 'branch_head';
     ?>
+
+    <?php if($adminProfile): ?>
+    <div class="row mb-4">
+        <div class="col-md-6 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-user-shield text-primary me-2"></i> My Admin Fingerprint</h5>
+                </div>
+                <div class="card-body text-center">
+                    <?php if($adminProfile->hasRegisteredFingerprint()): ?>
+                        <div class="alert alert-success mb-0">
+                            <i class="fas fa-check-circle"></i> Your fingerprint is registered.
+                        </div>
+                    <?php elseif(empty($adminProfile->employee_number) || empty($adminProfile->first_name) || empty($adminProfile->last_name)): ?>
+                        <div class="alert alert-warning mb-0">
+                            An employee number, first name, and last name are required in your admin profile before fingerprint enrollment.
+                        </div>
+                    <?php else: ?>
+                        <div id="adminFingerprintStatus" class="alert alert-info d-none" role="status"></div>
+                        <button id="registerAdminFingerprintButton" onclick="registerAdminFingerprint()" class="btn btn-primary">
+                            <i class="fas fa-fingerprint"></i> Register My Fingerprint
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     
     <?php if(false && $employeeProfile && $canSelfRegisterAdminFingerprint): ?>
     <div class="row mb-4">
@@ -246,52 +274,115 @@ function getOrCreateFingerprint(key, seed) {
 
 // Admin's own fingerprint registration
 async function registerAdminFingerprint() {
-    const user = {
-        name: '<?php echo e(Auth::user()->name); ?>',
-        email: '<?php echo e(Auth::user()->email); ?>',
-        role: 'admin'
-    };
+    const button = document.getElementById('registerAdminFingerprintButton');
+    const status = document.getElementById('adminFingerprintStatus');
+    const profile = <?php echo json_encode($adminProfile ? [
+        'first_name' => $adminProfile->first_name, 'last_name' => $adminProfile->last_name, 'employee_number' => $adminProfile->employee_number) ?>;
+
+    if (!profile || !profile.employee_number || !profile.first_name || !profile.last_name) {
+        if (status) {
+            status.className = 'alert alert-danger';
+            status.textContent = 'Your admin profile must have an employee number, first name, and last name before fingerprint enrollment.';
+        }
+        return;
+    }
     
-    // Launch C# Fingerprint Enrollment App
+    const query = new URLSearchParams({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        employee_number: profile.employee_number,
+        email: profile.email || '',
+        role: 'admin',
+        branch: profile.branch || '',
+        position: profile.position || ''
+    });
     const uri = 'mtcgs-enroll:/register' +
-        '?name=' + encodeURIComponent(user.name) +
-        '&email=' + encodeURIComponent(user.email) +
-        '&role=' + encodeURIComponent(user.role) +
-        '&type=admin';
+        '?' + query.toString();
     
     try {
-        window.location.href = uri;
-        alert('Launching Fingerprint Enrollment App...\nPlease scan your fingerprint when the application opens.');
-        
-        // Poll for fingerprint data from the C# app
+        const pollResponse = await fetch(apiUrl('biometric/admin-status'), {
+            credentials: 'same-origin',
+            headers: jsonHeaders
+        });
+        const currentStatus = await pollResponse.json();
+        if (!pollResponse.ok || !currentStatus.success) {
+            throw new Error(currentStatus.message || 'Could not check the admin fingerprint status.');
+        }
+        if (currentStatus.is_registered) {
+            if (status) {
+                status.className = 'alert alert-success';
+                status.textContent = 'Your fingerprint is already registered.';
+            }
+            return;
+        }
+
+        if (button) {
+            button.disabled = true;
+        }
+        if (status) {
+            status.className = 'alert alert-info';
+            status.textContent = 'Waiting for the Enrollment app and assigned fingerprint scanner...';
+        }
+
         let attempts = 0;
         const pollInterval = setInterval(async () => {
             attempts++;
-            
-            // Check if fingerprint was registered (max 2 minutes)
             if (attempts > 120) {
                 clearInterval(pollInterval);
+                if (button) {
+                    button.disabled = false;
+                }
+                if (status) {
+                    status.className = 'alert alert-warning';
+                    status.textContent = 'No completed enrollment was received. Check the Enrollment app and scanner, then try again.';
+                }
                 return;
             }
-            
-            const response = await fetch(apiUrl('biometric/admin-status'), {
-                headers: jsonHeaders
-            });
-            
-            const result = await response.json();
-            
-            if (result.data && result.data.is_fingerprint_registered) {
+
+            try {
+                const response = await fetch(apiUrl('biometric/admin-status'), {
+                    credentials: 'same-origin',
+                    headers: jsonHeaders
+                });
+                const result = await response.json();
+                if (response.ok && result.success && result.is_registered) {
+                    clearInterval(pollInterval);
+                    if (status) {
+                        status.className = 'alert alert-success';
+                        status.textContent = 'Fingerprint registered successfully.';
+                    }
+                    location.reload();
+                } else if (!response.ok || !result.success) {
+                    clearInterval(pollInterval);
+                    if (button) {
+                        button.disabled = false;
+                    }
+                    if (status) {
+                        status.className = 'alert alert-danger';
+                        status.textContent = result.message || 'Could not verify the admin fingerprint status.';
+                    }
+                }
+            } catch (error) {
                 clearInterval(pollInterval);
-                alert('✓ Fingerprint registered successfully!');
-                location.reload();
+                if (button) {
+                    button.disabled = false;
+                }
+                if (status) {
+                    status.className = 'alert alert-danger';
+                    status.textContent = error.message || 'Could not check the admin fingerprint status.';
+                }
             }
         }, 1000);
-        
-    } catch (error) {
-        const fallbackPath = '<?php echo e(env("MTCGS_ENROLL_EXE") ?: ""); ?>';
-        const fallbackText = fallbackPath ? '\n\nFallback local executable: ' + fallbackPath : '';
 
-        alert('Could not launch C# app. Please ensure the mtcgs-enroll URI handler is registered.\n\nRun this in PowerShell as Administrator:\nreg import "c:\\xampp\\htdocs\\mtcgs-main_08-13-26\\mtcgs-ems\\biometric\\mtcgs-enroll.reg"' + fallbackText);
+        window.location.href = uri;
+    } catch (error) {
+        if (button) {
+            button.disabled = false;
+        }
+        if (status) {
+            status.className = 'alert alert-danger';
+            status.textContent = error.message || 'Could not launch the Enrollment app. Make sure it is installed and the mtcgs-enroll link is registered.';
+        }
     }
 }
 

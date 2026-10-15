@@ -61,7 +61,10 @@
                                 $dateKey = $date->format('Y-m-d');
                                 $attendance = $attendanceByDate[$dateKey] ?? null;
                                 $isCurrentMonth = $date->month === $currentMonth->month;
-                                $statusClass = $attendance ? ($attendance->status === 'present' ? 'present' : 'late') : 'empty';
+                                $attendanceStatus = strtolower(trim((string) ($attendance->status ?? '')));
+                                $isLate = $attendance && ((int) $attendance->late_minutes > 0 || $attendanceStatus === 'late');
+                                $isPresent = in_array($attendanceStatus, ['present', 'complete'], true);
+                                $statusClass = !$attendance ? 'empty' : ($isLate ? 'late' : ($isPresent ? 'present' : 'other'));
                             ?>
 
                             <div class="calendar-cell calendar-day <?php echo e($isCurrentMonth ? '' : 'calendar-outside'); ?> <?php echo e($statusClass); ?>">
@@ -74,7 +77,7 @@
 
                                 <?php if($attendance): ?>
                                     <div class="text-truncate mb-2">
-                                        <span class="badge bg-<?php echo e($attendance->late_minutes > 0 ? 'warning text-dark' : 'success'); ?>"><?php echo e(ucfirst($attendance->status)); ?></span>
+                                        <span class="badge bg-<?php echo e($isLate ? 'warning text-dark' : ($isPresent ? 'success' : 'secondary')); ?>"><?php echo e(ucfirst($attendance->status)); ?></span>
                                     </div>
                                     <div class="calendar-time">
                                         <div><small class="text-muted">AM In</small><br><?php echo e($attendance->am_in ? date('h:i A', strtotime($attendance->am_in)) : '--'); ?></div>
@@ -106,11 +109,11 @@
                             <p class="text-muted mb-0">Days Recorded</p>
                         </div>
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <h3 class="mb-0"><?php echo e($attendanceLogs->where('status','present')->count()); ?></h3>
+                            <h3 class="mb-0"><?php echo e($attendanceLogs->filter(fn ($log) => in_array(strtolower(trim((string) $log->status)), ['present', 'complete'], true))->count()); ?></h3>
                             <p class="text-muted mb-0">Present</p>
                         </div>
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <h3 class="mb-0"><?php echo e($attendanceLogs->where('late_minutes','>',0)->count()); ?></h3>
+                            <h3 class="mb-0"><?php echo e($attendanceLogs->filter(fn ($log) => (int) $log->late_minutes > 0 || strtolower(trim((string) $log->status)) === 'late')->count()); ?></h3>
                             <p class="text-muted mb-0">Late Days</p>
                         </div>
                         <div class="col-md-3">
@@ -158,6 +161,9 @@
 }
 .calendar-day.late {
     background: #fff4e6;
+}
+.calendar-day.other {
+    background: #f8f9fa;
 }
 .calendar-day.empty {
     background: #f8f9fa;

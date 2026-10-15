@@ -27,17 +27,27 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <strong>Biometric API credential:</strong>
-                    <span class="badge <?php echo e($device->api_secret ? 'bg-success' : 'bg-warning text-dark'); ?>">
-                        <?php echo e($device->api_secret ? 'Provisioned' : 'Not provisioned'); ?>
+                    <span class="badge <?php echo e($credentialStatus === 'provisioned' ? 'bg-success' : 'bg-warning text-dark'); ?>">
+                        <?php echo e(match ($credentialStatus) {
+                            'provisioned' => 'Provisioned',
+                            'unreadable' => 'Cannot be decrypted',
+                            default => 'Not provisioned',
+                        }); ?>
 
                     </span>
-                    <div class="small text-muted">The secret is not displayed again. Rotating it immediately disables the old installer credential.</div>
+                    <div class="small text-muted">
+                        <?php if($credentialStatus === 'unreadable'): ?>
+                            The stored credential cannot be decrypted with the current application key. Generate a new credential and update this device's installer.
+                        <?php else: ?>
+                            The secret is not displayed again. Rotating it immediately disables the old installer credential.
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <button type="button" class="btn btn-outline-danger btn-sm"
                     data-rotate-credential
                     data-url="<?php echo e(route('admin.devices.credential.rotate', $device)); ?>"
                     data-csrf="<?php echo e(csrf_token()); ?>">
-                    <?php echo e($device->api_secret ? 'Rotate Credential' : 'Generate Credential'); ?>
+                    <?php echo e($credentialStatus === 'not_provisioned' ? 'Generate Credential' : 'Rotate Credential'); ?>
 
                 </button>
             </div>

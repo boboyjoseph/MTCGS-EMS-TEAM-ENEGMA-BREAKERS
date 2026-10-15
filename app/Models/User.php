@@ -128,7 +128,8 @@ class User extends Authenticatable
 
     public function isSuperAdmin()
     {
-        return $this->role === 'admin' && ($this->admin_type === 'super_admin' || empty($this->admin_type));
+        return $this->role === 'admin'
+            && (in_array($this->admin_type, ['super_admin', 'hr'], true) || empty($this->admin_type));
     }
     
     public function isBranchAdmin()

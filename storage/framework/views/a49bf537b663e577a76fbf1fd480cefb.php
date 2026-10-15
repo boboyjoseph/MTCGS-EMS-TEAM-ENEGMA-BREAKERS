@@ -954,6 +954,8 @@
         (function () {
             const liveUpdatesUrl = <?php echo json_encode(route('live-updates'), 15, 512) ?>;
             let latestAttendanceId = 0;
+            let workflowUpdatesSnapshot = null;
+            let hasLiveUpdatesSnapshot = false;
             let liveRequestInFlight = false;
             let attendanceRefreshQueued = false;
             let livePollTimer = null;
@@ -988,15 +990,26 @@
                         badge.classList.toggle('d-none', count === 0);
                     }
                     const arrivals = Array.isArray(data.arrivals) ? data.arrivals : [];
-                    if (latestAttendanceId > 0) {
+                    const currentWorkflowUpdatesSnapshot = JSON.stringify(data.workflow_updates || {
+                        attendance: data.latest_attendance_updated_at || null,
+                        ownAttendance: data.own_attendance || null
+                    });
+                    const workflowWasUpdated = hasLiveUpdatesSnapshot
+                        && currentWorkflowUpdatesSnapshot !== workflowUpdatesSnapshot;
+                    const refreshOnAttendanceUrl = /(^|\/)(dashboard|dtr|attendance)(\/|$)|\/finance\/(employee|payroll)(\/|$)|\/admin\/dtr/i.test(window.location.pathname);
+                    if (hasLiveUpdatesSnapshot) {
                         arrivals.slice().reverse().forEach(showLiveArrival);
-                        const refreshOnAttendanceUrl = /(^|\/)(dashboard|dtr|attendance)(\/|$)|\/finance\/employee\//i.test(window.location.pathname);
-                        if (arrivals.length > 0 && refreshOnAttendanceUrl && !attendanceRefreshQueued) {
+                        if ((arrivals.length > 0 || workflowWasUpdated)
+                            && refreshOnAttendanceUrl
+                            && !attendanceRefreshQueued
+                            && !hasUnsavedAttendanceCorrection()) {
                             attendanceRefreshQueued = true;
                             window.setTimeout(() => window.location.reload(), 1200);
                         }
                     }
                     latestAttendanceId = Math.max(latestAttendanceId, Number(data.latest_attendance_id || 0));
+                    workflowUpdatesSnapshot = currentWorkflowUpdatesSnapshot;
+                    hasLiveUpdatesSnapshot = true;
                     document.dispatchEvent(new CustomEvent('mtcgs:live-updates', { detail: data }));
                 } catch (error) {
                     console.debug('Live updates unavailable:', error);
@@ -1012,6 +1025,12 @@
                     if (!document.hidden) pollLiveUpdates();
                     else scheduleLivePoll();
                 }, 10000);
+            }
+
+            function hasUnsavedAttendanceCorrection() {
+                return Array.from(document.querySelectorAll(
+                    'form[id^="attendance-correction-"] input, form[id^="attendance-correction-"] textarea, form[id^="attendance-correction-"] select, [form^="attendance-correction-"]'
+                )).some((input) => input.value !== input.defaultValue);
             }
 
             if (liveUpdatesUrl) {
