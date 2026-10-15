@@ -1,1 +1,123 @@
-& "$env:LOCALAPPDATA\Programs\MTCGS Biometric Apps\Set-DeviceSecret.ps1" -ScannerSerialNumber "J62OE23640"
+<appSettings>
+  <add key="ApiBaseUrl" value="http://127.0.0.1:8000/api" />
+  <add key="BiometricDeviceSecret" value="VNaZyYs4gkYBLXdpOVxLtHo3mwxsBD6e78ybSsR2n5zYWq2vJVXgCJiebFAcmRxn" />
+  <add key="DeviceLocation" value="Iriga" />
+  <add key="ScannerSerialNumber" value="J62OE23640" />
+  <add key="ExpectedDpfpReaderId" value="70315bbe-3635-8b41-b4af-04a0bcd6e941" />
+  <add key="DeviceMacAddress" value="4C:44:5B:C1:2B:59" />
+  <add key="DeviceIdentifier" value="5E4AE557-F75C-4644-B452-D074927C1A01" />
+</appSettings>
+
+VNaZyYs4gkYBLXdpOVxLtHo3mwxsBD6e78ybSsR2n5zYWq2vJVXgCJiebFAcmRxn
+
+<appSettings>
+	<add key="ApiBaseUrl" value="https://danica-pc.tail3af3c8.ts.net/api" />
+	<!-- Branch-specific device credentials are stored in the current Windows user's DPAPI store; never put them in this file. -->
+	<add key="DeviceLocation" value="Iriga" />
+	<add key="ScannerSerialNumber" value="J62OE23640" />
+	<add key="ExpectedDpfpReaderId" value="70315bbe-3635-8b41-b4af-04a0bcd6e941" />
+	<add key="DeviceMacAddress" value="4C:44:5B:C1:2B:59" />
+	<add key="DeviceIdentifier" value="5E4AE557-F75C-4644-B452-D074927C1A01" />
+</appSettings>
+
+Device Name
+digitalPersona1_Iriga
+Device MAC Address
+4C:44:5B:C1:2B:59
+Scanner Serial Number
+J62OE23640
+Device ID
+5E4AE557-F75C-4644-B452-D074927C1A01
+Device Type
+Biometric scanner
+Branch
+Mother Theresa Colegio de Iriga
+Status
+Active
+Location
+School
+School Address
+San Nicolas, Iriga City, Camarines Sur
+School Coordinates
+13.4331530, 123.4110490
+Allowed Radius
+100 meters
+School Location Check
+Enabled
+Last Used
+Oct 09, 2026 05:08 PM
+Notes
+N/A
+
+& "C:\Users\asus\source\repos\MTCGS_Enroll\MTCGS_Enroll\installer\Build-Local-Installer.ps1" `
+  -ApiBaseUrl "https://mtcgs-ems.com/api" `
+  -DeviceSerialNumber "J62OE23640" `
+  -DeviceMacAddress "ILAGAY-ANG-IRIGA-PC-MAC" `
+  -DeviceIdentifier "ILAGAY-ANG-IRIGA-DEVICE-ID"
+
+---------------------------------------------------------------
+
+<appSettings>
+  <add key="ApiBaseUrl" value="http://192.168.1.10:8000/api" />
+  <add key="BiometricDeviceSecret" value="DEh56IX8fukAqNaULfBiAx23nk5OSsPaMtVhACmJwxgBBDMkNR1hC93NtL5hZD1H" />
+  <add key="DeviceLocation" value="Buhi" />
+  <add key="ScannerSerialNumber" value="J320E01822" />
+  <add key="ExpectedDpfpReaderId" value="8c540906-f99a-4e4f-baec-99462e3c24bc" />
+  <add key="DeviceMacAddress" value="1C:19:87:87:A0:19" />
+  <add key="DeviceIdentifier" value="42E49B95-2585-44EC-BDC7-F28F31C1583" />
+</appSettings>
+
+-----------------------------------------------------------
+
+DEh56IX8fukAqNaULfBiAx23nk5OSsPaMtVhACmJwxgBBDMkNR1hC93NtL5hZD1H
+
+------------------------------------------------------------
+
+<appSettings>
+	<add key="ApiBaseUrl" value="https://danica-pc.tail3af3c8.ts.net/api" />
+	<!-- Branch-specific device credentials are stored in the current Windows user's DPAPI store; never put them in this file. -->
+	<add key="DeviceLocation" value="Buhi" />
+	<add key="ScannerSerialNumber" value="J320E01822" />
+	<add key="ExpectedDpfpReaderId" value="8c540906-f99a-4e4f-baec-99462e3c24bc" />
+	<add key="DeviceMacAddress" value="2C:D3:1A:74:DF:95" />
+	<add key="DeviceIdentifier" value="42E49B95-2585-44EC-BDC7-F28F31C1583" />
+</appSettings>
+
+Device Name
+digitalPersona2_Buhi
+Device MAC Address = Wi-Fi MacAddress 
+1C:19:87:87:A0:19 = Wi-Fi 2C-D3-1A-74-DF-95
+Scanner Serial Number
+J320E01822
+Device ID
+42E49B95-2585-44EC-BDC7-F28F31C1583
+Device Type
+Biometric scanner
+Branch
+Mother Theresa Colegio de Buhi
+Status
+Active
+Location
+School
+School Address
+San Buenaventura, Buhi, Camarines Sur
+School Coordinates
+13.4331530, 123.4110490
+Allowed Radius
+100 meters
+School Location Check
+Enabled
+Last Used
+Never
+Notes
+N/A
+PS C:\xampp\htdocs\ENIGMA_BREAKER\mtcgs-main_09-06-26\mtcgs-ems> Get-NetAdapter -Physical |
+>>   Where-Object { $_.Status -eq 'Up' } |
+>>   Select-Object Name, MacAddress
+
+Name  MacAddress Wi-Fi      
+----  ----------       
+Wi-Fi 2C-D3-1A-74-DF-95
+
+PS C:\xampp\htdocs\ENIGMA_BREAKER\mtcgs-main_09-06-26\mtcgs-ems> [guid]::NewGuid().ToString().ToUpperInvariant()
+624D48F8-7BDA-468B-BC7A-FE8232149F00
