@@ -740,6 +740,34 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->assertEqualsCanonicalizing(['Left Thumb', 'Right Thumb'], $registeredFingers);
 
         $employee->update([
+            'fingerprint_template' => json_encode([
+                'version' => 2,
+                'templates' => [
+                    ['finger_name' => 'Right Thumb', 'fingerprint_data' => $registrations[1]['fingerprint_data']],
+                ],
+            ], JSON_UNESCAPED_SLASHES),
+            'is_fingerprint_registered' => true,
+        ]);
+        $afterRemovalPayload = $this->signedDevicePayload([
+            'employee_number' => $employee->employee_number,
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:FF',
+            'device_id' => (string) $device->id,
+            'mac_address' => 'AA:BB:CC:DD:EE:FF',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'finger-slot-status-after-removal',
+        ], 'GET', '/api/biometric/templates');
+        $afterRemovalResponse = (new BiometricController())->getFingerprintTemplates(
+            Request::create('/api/biometric/templates', 'GET', $afterRemovalPayload)
+        );
+        $remainingFingers = collect(json_decode($afterRemovalResponse->content(), true)['templates'])
+            ->flatMap(fn ($template) => $template['registered_fingers'] ?? [])
+            ->unique()
+            ->values()
+            ->all();
+        $this->assertSame(['Right Thumb'], $remainingFingers);
+
+        $employee->update([
             'fingerprint_template' => null,
             'is_fingerprint_registered' => false,
         ]);
