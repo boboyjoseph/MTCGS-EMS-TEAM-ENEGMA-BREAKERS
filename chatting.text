@@ -1,0 +1,1 @@
+& "$env:LOCALAPPDATA\Programs\MTCGS Biometric Apps\Set-DeviceSecret.ps1" -ScannerSerialNumber "J62OE23640"
