@@ -93,3 +93,6 @@ Wi-Fi 2C-D3-1A-74-DF-95
 
 PS C:\xampp\htdocs\ENIGMA_BREAKER\mtcgs-main_09-06-26\mtcgs-ems> [guid]::NewGuid().ToString().ToUpperInvariant()
 624D48F8-7BDA-468B-BC7A-FE8232149F00
+
+
+Z08BYK
