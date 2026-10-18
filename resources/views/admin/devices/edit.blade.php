@@ -38,7 +38,7 @@
                     <div class="col-md-6">
                         <label for="reader_id" class="form-label">Expected Physical Reader ID</label>
                         <input type="text" name="reader_id" id="reader_id" class="form-control" value="{{ old('reader_id', $device->reader_id) }}" placeholder="DPFP reader ID">
-                        <small class="text-muted">Required for the registered Buhi and Iriga branch scanners.</small>
+                        <small class="text-muted">Required for reader-bound scanners. Attendance requests must match the reader ID registered to this device.</small>
                     </div>
 
                     <div class="col-md-6">

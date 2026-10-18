@@ -59,6 +59,36 @@ class AttendanceLog extends Model
         });
     }
 
+    public function scopeForEmployeeProfile(
+        $query,
+        int $employeeProfileId,
+        ?int $userId = null,
+        ?int $branchId = null
+    )
+    {
+        return $query->where(function ($query) use ($employeeProfileId, $userId, $branchId) {
+            $query->where('employee_profile_id', $employeeProfileId);
+
+            if ($userId !== null || $branchId !== null) {
+                $query->orWhere(function ($query) use ($employeeProfileId, $userId, $branchId) {
+                    $query->whereNull('employee_profile_id')
+                        ->where(function ($query) use ($employeeProfileId, $userId, $branchId) {
+                            if ($userId !== null) {
+                                $query->where('employee_id', $userId);
+                            }
+
+                            if ($branchId !== null) {
+                                $query->orWhere(function ($query) use ($employeeProfileId, $branchId) {
+                                    $query->where('employee_id', $employeeProfileId)
+                                        ->where('branch_id', $branchId);
+                                });
+                            }
+                        });
+                });
+            }
+        });
+    }
+
     public function scopeLate($query)
     {
         return $query->where('late_minutes', '>', 0)->excludeAfternoonOnly();

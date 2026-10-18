@@ -154,6 +154,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-schedule', [App\Http\Controllers\EmployeeScheduleController::class, 'index'])->name('employee.schedule');
     Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
     Route::get('/cash-advances', [App\Http\Controllers\CashAdvanceController::class, 'index'])->name('cash-advances.index');
+    Route::get('/cash-advances/history', [App\Http\Controllers\CashAdvanceController::class, 'history'])->name('cash-advances.history');
     Route::post('/cash-advances', [App\Http\Controllers\CashAdvanceController::class, 'store'])->name('cash-advances.store');
     Route::post('/cash-advances/{application}/fo-review', [App\Http\Controllers\CashAdvanceController::class, 'reviewByFo'])->name('cash-advances.fo-review');
     Route::post('/cash-advances/{application}/bh-review', [App\Http\Controllers\CashAdvanceController::class, 'reviewByBh'])->name('cash-advances.bh-review');

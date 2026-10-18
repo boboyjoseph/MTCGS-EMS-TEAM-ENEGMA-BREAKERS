@@ -36,7 +36,7 @@
                     <div class="col-md-6">
                         <label for="reader_id" class="form-label">Expected Physical Reader ID</label>
                         <input type="text" name="reader_id" id="reader_id" class="form-control" value="{{ old('reader_id') }}" placeholder="DPFP reader ID">
-                        <small class="text-muted">Required for the registered Buhi and Iriga branch scanners.</small>
+                        <small class="text-muted">Required for reader-bound scanners. Attendance requests must match the reader ID registered to this device.</small>
                     </div>
 
                     <div class="col-md-6">
@@ -56,8 +56,8 @@
 
                     <div class="col-md-4">
                         <label for="branch_id" class="form-label">Branch</label>
-                        <select name="branch_id" id="branch_id" class="form-select">
-                            <option value="">No branch assigned</option>
+                        <select name="branch_id" id="branch_id" class="form-select" required>
+                            <option value="">Select a branch</option>
                             @foreach($branches as $branch)
                                 <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
                             @endforeach
@@ -80,17 +80,17 @@
 
                     <div class="col-12">
                         <label for="address" class="form-label">School Address</label>
-                        <input type="text" name="address" id="address" class="form-control" value="{{ old('address', 'San Nicolas, Iriga City, Camarines Sur') }}" placeholder="School address">
+                        <input type="text" name="address" id="address" class="form-control" value="{{ old('address') }}" placeholder="Branch address">
                     </div>
 
                     <div class="col-md-4">
                         <label for="latitude" class="form-label">School Latitude</label>
-                        <input type="number" step="0.0000001" name="latitude" id="latitude" class="form-control" value="{{ old('latitude', '13.433153') }}" placeholder="13.433153">
+                        <input type="number" step="0.0000001" name="latitude" id="latitude" class="form-control" value="{{ old('latitude') }}" placeholder="Branch latitude">
                     </div>
 
                     <div class="col-md-4">
                         <label for="longitude" class="form-label">School Longitude</label>
-                        <input type="number" step="0.0000001" name="longitude" id="longitude" class="form-control" value="{{ old('longitude', '123.411049') }}" placeholder="123.411049">
+                        <input type="number" step="0.0000001" name="longitude" id="longitude" class="form-control" value="{{ old('longitude') }}" placeholder="Branch longitude">
                     </div>
 
                     <div class="col-md-4">
@@ -122,24 +122,11 @@
 
 @push('scripts')
 <script>
-document.querySelector('[data-device-form]')?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const submitButton = form.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    try {
-        const response = await fetch(form.action, { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: new FormData(form) });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(Object.values(payload.errors || {}).flat()[0] || payload.message || 'Unable to register device.');
-        alert(payload.message);
-        window.location.href = '{{ route('admin.devices.index') }}';
-    } catch (error) { alert(error.message); } finally { submitButton.disabled = false; }
-});
 document.querySelector('#branch_id')?.addEventListener('change', async (event) => {
     if (!event.target.value) return;
     const response = await fetch('{{ url('/admin/devices/branches') }}/' + event.target.value, { headers: { Accept: 'application/json' } });
     const payload = await response.json();
-    if (payload.success && payload.branch.address) document.querySelector('#address').value = payload.branch.address;
+    if (payload.success) document.querySelector('#address').value = payload.branch.address || '';
 });
 </script>
 @endpush

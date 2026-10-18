@@ -118,7 +118,11 @@ class DTRController extends Controller
             ->first();
 
         // Get attendance logs for this period
-        $attendanceLogs = AttendanceLog::where('employee_profile_id', $dtr->employee_profile_id)
+        $attendanceLogs = AttendanceLog::forEmployeeProfile(
+            $dtr->employee_profile_id,
+            $employeeProfile->user_id,
+            $employeeProfile->branch_id
+        )
             ->whereBetween('attendance_date', [$dtr->period_start, $dtr->period_end])
             ->orderBy('attendance_date')
             ->get();
@@ -148,7 +152,11 @@ class DTRController extends Controller
         }
 
         $dtr->calculateTotals();
-        $attendanceLogs = AttendanceLog::where('employee_profile_id', $dtr->employee_profile_id)
+        $attendanceLogs = AttendanceLog::forEmployeeProfile(
+            $dtr->employee_profile_id,
+            $dtr->employeeProfile?->user_id,
+            $dtr->employeeProfile?->branch_id
+        )
             ->whereBetween('attendance_date', [$dtr->period_start, $dtr->period_end])
             ->orderBy('attendance_date')
             ->get();
@@ -263,7 +271,11 @@ class DTRController extends Controller
         }
 
         $dtr->calculateTotals();
-        $attendanceLogs = AttendanceLog::where('employee_profile_id', $dtr->employee_profile_id)
+        $attendanceLogs = AttendanceLog::forEmployeeProfile(
+            $dtr->employee_profile_id,
+            $dtr->employeeProfile?->user_id,
+            $dtr->employeeProfile?->branch_id
+        )
             ->whereBetween('attendance_date', [$dtr->period_start, $dtr->period_end])
             ->orderBy('attendance_date')
             ->get();

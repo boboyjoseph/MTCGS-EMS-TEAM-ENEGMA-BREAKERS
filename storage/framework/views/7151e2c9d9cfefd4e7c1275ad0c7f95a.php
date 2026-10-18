@@ -40,8 +40,15 @@
         </div>
     <?php endif; ?>
 
+    <?php echo $__env->make('cash-advances.partials.payroll-preview', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
     <div class="card">
-        <div class="card-header"><h5 class="mb-0">Cash Advance Applications</h5></div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Cash Advance Applications</h5>
+            <a href="<?php echo e(route('cash-advances.history', request()->query('scope') === 'my' ? ['scope' => 'my'] : [])); ?>" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-history me-1"></i> History
+            </a>
+        </div>
         <div class="table-responsive">
             <?php
                 $runningCashAdvanceBalance = 1000;
