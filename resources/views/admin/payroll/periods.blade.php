@@ -47,6 +47,8 @@
             </div>
         </div>
     </div>
+
+    @include('cash-advances.partials.payroll-preview')
     
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-0 py-3">

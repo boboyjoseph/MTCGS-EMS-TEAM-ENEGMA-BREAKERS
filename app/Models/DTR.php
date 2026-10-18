@@ -67,7 +67,11 @@ class DTR extends Model
      */
     public function attendanceLogs()
     {
-        return AttendanceLog::where('employee_profile_id', $this->employee_profile_id)
+        return AttendanceLog::forEmployeeProfile(
+            $this->employee_profile_id,
+            $this->employeeProfile?->user_id,
+            $this->employeeProfile?->branch_id
+        )
             ->whereDate('attendance_date', '>=', $this->period_start->toDateString())
             ->whereDate('attendance_date', '<=', $this->period_end->toDateString())
             ->orderBy('attendance_date')

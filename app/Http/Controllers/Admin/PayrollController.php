@@ -46,7 +46,26 @@ class PayrollController extends Controller
     {
         $this->checkAdmin();
         $periods = PayrollPeriod::orderBy('created_at', 'desc')->paginate(15);
-        return view('admin.payroll.periods', compact('periods'));
+        $cutoffStart = Carbon::parse('2026-09-01')->startOfDay();
+        $cutoffEnd = Carbon::parse('2026-09-15')->endOfDay();
+        $cutoffCashAdvancesQuery = CashAdvanceApplication::with('employeeProfile')
+            ->eligibleForPayrollCutoff(null, $cutoffStart, $cutoffEnd);
+
+        if (Auth::user()->role === 'finance_officer' || Auth::user()->isBranchAdmin()) {
+            $cutoffCashAdvancesQuery->whereHas('employeeProfile', fn ($query) =>
+                $query->where('branch_id', Auth::user()->getEffectiveBranchId())
+            );
+        }
+
+        $cutoffCashAdvances = $cutoffCashAdvancesQuery
+            ->orderBy('fh_reviewed_at')
+            ->orderBy('created_at')
+            ->get();
+        $cutoffApprovedTotal = $cutoffCashAdvances->sum(fn ($application) =>
+            (float) ($application->approved_amount ?: $application->requested_amount)
+        );
+
+        return view('admin.payroll.periods', compact('periods', 'cutoffCashAdvances', 'cutoffApprovedTotal'));
     }
     
     // Create new payroll period

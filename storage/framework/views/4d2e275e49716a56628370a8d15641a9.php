@@ -493,7 +493,7 @@
                                                 <?php if($canRequestCorrection): ?>
                                                     <input type="time" name="corrected_time_in" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-in" value="<?php echo e($day['log']->corrected_time_in?->format('H:i') ?? $day['log']->am_in?->format('H:i')); ?>">
                                                 <?php else: ?>
-                                                    <?php echo e(!$isLeave && !$isLWOP && !$isSuspension ? ($day['am_in'] ?? '') : '--'); ?>
+                                                    <?php echo e(!$isLeave && !$isLWOP ? ($day['am_in'] ?? '') : '--'); ?>
 
                                                 <?php endif; ?>
                                             </td>
@@ -501,7 +501,7 @@
                                                 <?php if($canRequestCorrection): ?>
                                                     <input type="time" name="corrected_time_out" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-out" value="<?php echo e($day['log']->corrected_time_out?->format('H:i') ?? $day['log']->pm_out?->format('H:i')); ?>">
                                                 <?php else: ?>
-                                                    <?php echo e(!$isLeave && !$isLWOP && !$isSuspension ? ($day['pm_out'] ?? '') : '--'); ?>
+                                                    <?php echo e(!$isLeave && !$isLWOP ? ($day['pm_out'] ?? '') : '--'); ?>
 
                                                 <?php endif; ?>
                                             </td>

@@ -9,6 +9,7 @@ use App\Models\AttendanceLog;
 use App\Models\Branch;
 use App\Models\CalendarEvent;
 use App\Models\CashCharge;
+use App\Models\CashAdvanceApplication;
 use App\Models\DTR;
 use App\Models\Device;
 use App\Models\EmployeeProfile;
@@ -18,6 +19,7 @@ use App\Models\PayrollEntry;
 use App\Models\PayrollPeriod;
 use App\Models\User;
 use App\Services\WorkingDayService;
+use App\Services\PayrollComputationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -28,6 +30,96 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
     use RefreshDatabase;
 
     private const DEVICE_SECRET = 'test-dtr-device-secret-for-signed-requests';
+
+    public function test_payroll_deducts_full_active_cash_advance_balance_once(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-CA-FULL-BALANCE',
+            'branch_name' => 'Cash Advance Full Balance Branch',
+            'address' => 'Cash Advance Test Address',
+        ]);
+        $employeeUser = User::factory()->create(['branch_id' => $branch->id]);
+        $employeeProfile = EmployeeProfile::create([
+            'user_id' => $employeeUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-CA-FULL-BALANCE',
+            'first_name' => 'Cash Advance',
+            'last_name' => 'Employee',
+            'position' => 'Staff',
+            'basic_salary' => 22000,
+            'date_hired' => '2020-01-01',
+        ]);
+        $dtr = DTR::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'period_start' => '2026-09-01',
+            'period_end' => '2026-09-15',
+            'status' => 'approved',
+        ]);
+        $payrollPeriod = PayrollPeriod::create([
+            'branch_id' => $branch->id,
+            'period_code' => 'PRD-CA-FULL-BALANCE',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-15',
+            'payment_date' => '2026-09-30',
+            'status' => 'draft',
+        ]);
+
+        $olderActiveLoan = CashAdvanceApplication::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'requested_amount' => 400,
+            'approved_amount' => 400,
+            'installment_amount' => 200,
+            'installments' => 2,
+            'deducted_installments' => 0,
+            'purpose' => 'Older active loan',
+            'eligibility_category' => 'regular',
+            'status' => 'approved',
+            'created_at' => '2026-08-20 09:00:00',
+            'fh_reviewed_at' => '2026-08-20 10:00:00',
+        ]);
+        $cutoffLoan = CashAdvanceApplication::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'requested_amount' => 300,
+            'approved_amount' => 300,
+            'installment_amount' => 150,
+            'installments' => 2,
+            'deducted_installments' => 0,
+            'purpose' => 'Cutoff loan',
+            'eligibility_category' => 'regular',
+            'status' => 'approved',
+            'created_at' => '2026-09-14 09:00:00',
+            'fh_reviewed_at' => '2026-09-14 10:00:00',
+        ]);
+        $afterCutoffLoan = CashAdvanceApplication::create([
+            'employee_profile_id' => $employeeProfile->id,
+            'requested_amount' => 500,
+            'approved_amount' => 500,
+            'installment_amount' => 250,
+            'installments' => 2,
+            'deducted_installments' => 0,
+            'purpose' => 'After cutoff loan',
+            'eligibility_category' => 'regular',
+            'status' => 'approved',
+            'created_at' => '2026-09-16 09:00:00',
+            'fh_reviewed_at' => '2026-09-16 10:00:00',
+        ]);
+
+        $payrollService = app(PayrollComputationService::class);
+        $entry = $payrollService->generatePayrollFromDTR($dtr, $payrollPeriod);
+
+        $this->assertSame(700.0, (float) $entry->cash_advance_deduction);
+        $this->assertSame('completed', $olderActiveLoan->fresh()->status);
+        $this->assertSame('completed', $cutoffLoan->fresh()->status);
+        $this->assertSame(2, $olderActiveLoan->fresh()->deducted_installments);
+        $this->assertSame(2, $cutoffLoan->fresh()->deducted_installments);
+        $this->assertSame('approved', $afterCutoffLoan->fresh()->status);
+        $this->assertSame(0, $afterCutoffLoan->fresh()->deducted_installments);
+
+        $rerunEntry = $payrollService->generatePayrollFromDTR($dtr, $payrollPeriod);
+
+        $this->assertSame(700.0, (float) $rerunEntry->cash_advance_deduction);
+        $this->assertSame(700.0, (float) $rerunEntry->fresh()->cash_advance_deduction);
+    }
 
     public function test_holiday_bonus_is_shown_on_web_and_pdf_payslips(): void
     {
@@ -750,6 +842,89 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
                 ->assertSeeText('Approved by HR - Awaiting FH Computation');
     }
 
+    public function test_suspension_attendance_displays_for_employees_in_every_branch(): void
+    {
+        $branchDtrs = [];
+        foreach ([
+            ['name' => 'Buhi', 'code' => 'BUHI', 'time_in' => '08:10', 'time_out' => '12:10', 'employee_id_type' => 'user'],
+            ['name' => 'Iriga', 'code' => 'IRIGA', 'time_in' => '08:20', 'time_out' => '12:20', 'employee_id_type' => 'profile'],
+            ['name' => 'Other', 'code' => 'OTHER', 'time_in' => '08:30', 'time_out' => '12:30', 'employee_id_type' => 'user'],
+        ] as $branchData) {
+            $branch = Branch::create([
+                'branch_code' => 'BR-DTR-' . $branchData['code'],
+                'branch_name' => $branchData['name'] . ' DTR Branch',
+                'address' => $branchData['name'] . ' DTR Address',
+            ]);
+            $user = User::create([
+                'name' => $branchData['name'] . ' DTR Employee',
+                'email' => strtolower($branchData['name']) . '.dtr.employee@example.com',
+                'password' => bcrypt('password'),
+                'role' => 'employee',
+                'branch_id' => $branch->id,
+                'is_active' => true,
+                'is_verified' => true,
+                'id_verification_status' => 'approved',
+            ]);
+            $employeeProfile = EmployeeProfile::create([
+                'user_id' => $user->id,
+                'branch_id' => $branch->id,
+                'employee_number' => 'EMP-DTR-' . $branchData['code'],
+                'first_name' => $branchData['name'],
+                'last_name' => 'Employee',
+                'position' => 'Staff',
+                'basic_salary' => 20000,
+                'date_hired' => now(),
+            ]);
+
+            CalendarEvent::create([
+                'title' => $branchData['name'] . ' Class Suspension',
+                'event_date' => '2026-08-18',
+                'event_type' => 'suspension',
+                'created_by' => User::factory()->create()->id,
+                'branch_id' => $branch->id,
+            ]);
+            AttendanceLog::create([
+                'employee_id' => $branchData['employee_id_type'] === 'profile' ? $employeeProfile->id : $user->id,
+                'branch_id' => $branch->id,
+                'attendance_date' => '2026-08-18',
+                'am_in' => '2026-08-18 ' . $branchData['time_in'] . ':00',
+                'pm_out' => '2026-08-18 ' . $branchData['time_out'] . ':00',
+                'status' => 'present',
+                'verification_method' => 'fingerprint',
+            ]);
+            $dtr = DTR::create([
+                'employee_profile_id' => $employeeProfile->id,
+                'period_start' => '2026-08-18',
+                'period_end' => '2026-08-18',
+                'status' => 'draft',
+            ]);
+
+            $branchDtrs[] = [
+                'user' => $user,
+                'dtr' => $dtr,
+                'time_in' => \Carbon\Carbon::parse($branchData['time_in'])->format('h:i A'),
+                'time_out' => \Carbon\Carbon::parse($branchData['time_out'])->format('h:i A'),
+            ];
+        }
+
+        foreach ($branchDtrs as $index => $branchDtr) {
+            $response = $this->actingAs($branchDtr['user'])
+                ->get(route('employee.dtr.show', $branchDtr['dtr']));
+
+            $response->assertOk()
+                ->assertSeeText('Suspension')
+                ->assertSeeText($branchDtr['time_in'])
+                ->assertSeeText($branchDtr['time_out']);
+
+            foreach ($branchDtrs as $otherIndex => $otherBranchDtr) {
+                if ($otherIndex !== $index) {
+                    $response->assertDontSeeText($otherBranchDtr['time_in'])
+                        ->assertDontSeeText($otherBranchDtr['time_out']);
+                }
+            }
+        }
+    }
+
     public function test_calendar_suspensions_are_non_working_days_for_dtr(): void
     {
         $branch = Branch::create([
@@ -809,7 +984,6 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         ]);
 
         AttendanceLog::create([
-            'employee_profile_id' => $employeeProfile->id,
             'employee_id' => $user->id,
             'branch_id' => $branch->id,
             'attendance_date' => '2026-08-18',
@@ -857,6 +1031,8 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
             ->assertOk()
             ->assertDontSeeText('PM time-in')
             ->assertSeeText('Suspension')
+            ->assertSeeText('08:10 AM')
+            ->assertSeeText('12:22 PM')
             ->assertDontSeeText('Suspended/Present')
             ->assertSeeText('Total Holidays')
             ->assertSeeText('Total Suspensions')
@@ -894,10 +1070,11 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
 
-        $recordedSuspensionLog = AttendanceLog::where('employee_profile_id', $employeeProfile->id)
+        $recordedSuspensionLog = AttendanceLog::where('employee_id', $user->id)
             ->whereDate('attendance_date', '2026-08-18')
             ->first();
         $this->assertNotNull($recordedSuspensionLog);
+        $this->assertNull($recordedSuspensionLog->employee_profile_id);
         $this->assertSame('08:10:00', $recordedSuspensionLog->am_in->format('H:i:s'));
         $this->assertSame('12:22:00', $recordedSuspensionLog->pm_out->format('H:i:s'));
 

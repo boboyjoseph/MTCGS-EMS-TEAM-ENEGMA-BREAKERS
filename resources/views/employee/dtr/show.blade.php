@@ -494,14 +494,14 @@
                                                 @if ($canRequestCorrection)
                                                     <input type="time" name="corrected_time_in" form="{{ $correctionFormId }}" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-in" value="{{ $day['log']->corrected_time_in?->format('H:i') ?? $day['log']->am_in?->format('H:i') }}">
                                                 @else
-                                                    {{ !$isLeave && !$isLWOP && !$isSuspension ? ($day['am_in'] ?? '') : '--' }}
+                                                    {{ !$isLeave && !$isLWOP ? ($day['am_in'] ?? '') : '--' }}
                                                 @endif
                                             </td>
                                             <td class="text-center {{ $isEarlyOut && !$isLeave && !$isLWOP ? 'dtr-late' : '' }}">
                                                 @if ($canRequestCorrection)
                                                     <input type="time" name="corrected_time_out" form="{{ $correctionFormId }}" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-out" value="{{ $day['log']->corrected_time_out?->format('H:i') ?? $day['log']->pm_out?->format('H:i') }}">
                                                 @else
-                                                    {{ !$isLeave && !$isLWOP && !$isSuspension ? ($day['pm_out'] ?? '') : '--' }}
+                                                    {{ !$isLeave && !$isLWOP ? ($day['pm_out'] ?? '') : '--' }}
                                                 @endif
                                             </td>
                                             <td class="text-center" style="
