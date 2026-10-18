@@ -15,6 +15,12 @@
         border-color: #cbd5e1 #cbd5e1 #ffffff;
     }
 
+    .dtr-management-page .dtr-stat-label {
+        color: #e2e8f0 !important;
+        font-weight: 600;
+        opacity: 1;
+    }
+
     body.dark-mode .dtr-management-page .nav-tabs .nav-link {
         color: #e2e8f0 !important;
         background-color: #1e293b;
@@ -98,7 +104,7 @@
                             <i class="fas fa-layer-group"></i>
                         </div>
                         <div>
-                            <p class="text-uppercase text-muted mb-1 small">Total DTRs</p>
+                            <p class="dtr-stat-label text-uppercase mb-1 small">Total DTRs</p>
                             <h3 class="mb-0 text-white"><?php echo e($totalDTRs); ?></h3>
                         </div>
                     </div>
@@ -113,7 +119,7 @@
                             <i class="fas fa-hourglass-half"></i>
                         </div>
                         <div>
-                            <p class="text-uppercase text-muted mb-1 small">Pending</p>
+                            <p class="dtr-stat-label text-uppercase mb-1 small">Pending</p>
                             <h3 class="mb-0 text-warning"><?php echo e($pendingCount); ?></h3>
                         </div>
                     </div>
@@ -128,7 +134,7 @@
                             <i class="fas fa-check-circle"></i>
                         </div>
                         <div>
-                            <p class="text-uppercase text-muted mb-1 small">Approved</p>
+                            <p class="dtr-stat-label text-uppercase mb-1 small">Approved</p>
                             <h3 class="mb-0 text-success"><?php echo e($approvedDTRsCount); ?></h3>
                         </div>
                     </div>
@@ -143,7 +149,7 @@
                             <i class="fas fa-times-circle"></i>
                         </div>
                         <div>
-                            <p class="text-uppercase text-muted mb-1 small">Rejected</p>
+                            <p class="dtr-stat-label text-uppercase mb-1 small">Rejected</p>
                             <h3 class="mb-0 text-danger"><?php echo e($rejectedDTRs); ?></h3>
                         </div>
                     </div>
@@ -515,6 +521,5 @@
     </div>
 </div>
 <?php $__env->stopSection(); ?>
-
 
 <?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\xampp\htdocs\ENIGMA_BREAKER\mtcgs-main_09-06-26\mtcgs-ems\resources\views/admin/dtr/index.blade.php ENDPATH**/ ?>

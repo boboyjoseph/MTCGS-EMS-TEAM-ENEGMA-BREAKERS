@@ -86,6 +86,7 @@ class DTRManagementController
         $totalDTRsQuery = DTR::query();
         $approvedDTRsCountQuery = DTR::whereIn('status', $approvedStatuses);
         $pendingCountQuery = DTR::query();
+        $rejectedDTRsQuery = DTR::where('status', 'rejected');
 
         if ($user->isBranchAdmin()) {
             $branchId = $user->getEffectiveBranchId();
@@ -93,10 +94,12 @@ class DTRManagementController
                 $totalDTRsQuery->whereHas('employeeProfile', fn ($query) => $query->where('branch_id', $branchId));
                 $approvedDTRsCountQuery->whereHas('employeeProfile', fn ($query) => $query->where('branch_id', $branchId));
                 $pendingCountQuery->whereHas('employeeProfile', fn ($query) => $query->where('branch_id', $branchId))->where('status', 'submitted');
+                $rejectedDTRsQuery->whereHas('employeeProfile', fn ($query) => $query->where('branch_id', $branchId));
             } else {
                 $totalDTRsQuery->whereRaw('0 = 1');
                 $approvedDTRsCountQuery->whereRaw('0 = 1');
                 $pendingCountQuery->whereRaw('0 = 1');
+                $rejectedDTRsQuery->whereRaw('0 = 1');
             }
         } elseif ($user->isFinanceOfficer()) {
             $financeProfile = $user->getFinanceProfile();
@@ -106,24 +109,33 @@ class DTRManagementController
                 $totalDTRsQuery->whereHas('employeeProfile', fn ($query) => $query->where('branch_id', $branchId));
                 $approvedDTRsCountQuery->whereHas('employeeProfile', fn ($query) => $query->where('branch_id', $branchId));
                 $pendingCountQuery->whereRaw('0 = 1');
+                $rejectedDTRsQuery->whereRaw('0 = 1');
             } elseif ($ownEmployeeId) {
                 $totalDTRsQuery->where('employee_profile_id', $ownEmployeeId);
                 $approvedDTRsCountQuery->where('employee_profile_id', $ownEmployeeId);
                 $pendingCountQuery->where('employee_profile_id', $ownEmployeeId)->where('status', 'approved');
+                $rejectedDTRsQuery->whereRaw('0 = 1');
             } else {
                 $totalDTRsQuery->whereRaw('0 = 1');
                 $approvedDTRsCountQuery->whereRaw('0 = 1');
                 $pendingCountQuery->whereRaw('0 = 1');
+                $rejectedDTRsQuery->whereRaw('0 = 1');
             }
         }
 
         // Get DTR stats
+        $visibleStatuses = $user->isBranchAdmin()
+            ? array_merge($approvedStatuses, ['submitted', 'rejected'])
+            : ($user->isSuperAdmin()
+                ? array_merge($approvedStatuses, ['pending_system_admin', 'rejected'])
+                : $approvedStatuses);
+        $totalDTRsQuery->whereIn('status', array_unique($visibleStatuses));
         $totalDTRs = $totalDTRsQuery->count();
         $approvedDTRsCount = $approvedDTRsCountQuery->count();
         $pendingCount = $user->isBranchAdmin()
             ? $pendingCountQuery->count()
             : ($user->isFinanceOfficer() ? $pendingCountQuery->count() : DTR::where('status', 'pending_system_admin')->count());
-        $rejectedDTRs = $user->isFinanceOfficer() ? 0 : DTR::where('status', 'rejected')->count();
+        $rejectedDTRs = $user->isFinanceOfficer() ? 0 : $rejectedDTRsQuery->count();
 
         $canApprove = $user->isAdmin() && ($user->isSuperAdmin() || $user->isBranchAdmin());
 
