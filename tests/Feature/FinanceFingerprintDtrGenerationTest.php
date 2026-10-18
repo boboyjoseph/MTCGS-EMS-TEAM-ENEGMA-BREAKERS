@@ -820,6 +820,8 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         $this->actingAs($financeHead)
             ->get(route('admin.dtr.index'))
             ->assertOk()
+            ->assertSee('dtr-stat-label')
+            ->assertSee('#e2e8f0')
             ->assertSeeText('Approved by HR')
             ->assertSeeText('Awaiting FH Computation')
             ->assertSee('Compute DTR')
@@ -840,6 +842,71 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
                 ->get(route('employee.dtr.show', $dtr))
                 ->assertOk()
                 ->assertSeeText('Approved by HR - Awaiting FH Computation');
+    }
+
+    public function test_super_admin_dtr_summary_matches_records_in_pending_and_approved_tabs(): void
+    {
+        $superAdmin = User::create([
+            'name' => 'DTR Summary Super Admin',
+            'email' => 'dtr.summary.super.admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+
+        foreach ([
+            ['code' => 'DTR-SUMMARY-A', 'name' => 'DTR Summary Branch A'],
+            ['code' => 'DTR-SUMMARY-B', 'name' => 'DTR Summary Branch B'],
+        ] as $index => $branchData) {
+            $branch = Branch::create([
+                'branch_code' => $branchData['code'],
+                'branch_name' => $branchData['name'],
+                'address' => $branchData['name'] . ' Address',
+            ]);
+            $employeeUser = User::create([
+                'name' => 'DTR Summary Employee ' . $index,
+                'email' => 'dtr.summary.employee.' . $index . '@example.com',
+                'password' => bcrypt('password'),
+                'role' => 'employee',
+                'branch_id' => $branch->id,
+                'is_active' => true,
+                'is_verified' => true,
+                'id_verification_status' => 'approved',
+            ]);
+            $employeeProfile = EmployeeProfile::create([
+                'user_id' => $employeeUser->id,
+                'branch_id' => $branch->id,
+                'employee_number' => 'EMP-DTR-SUMMARY-' . $index,
+                'first_name' => 'Summary',
+                'last_name' => 'Employee ' . $index,
+                'position' => 'Staff',
+                'basic_salary' => 20000,
+                'date_hired' => now(),
+            ]);
+
+            foreach ($index === 0
+                ? ['pending_system_admin', 'pending_finance_head', 'approved', 'rejected', 'draft']
+                : []
+                as $statusIndex => $status) {
+                DTR::create([
+                    'employee_profile_id' => $employeeProfile->id,
+                    'period_start' => '2026-08-' . str_pad((string) ($statusIndex + 1), 2, '0', STR_PAD_LEFT),
+                    'period_end' => '2026-08-' . str_pad((string) ($statusIndex + 1), 2, '0', STR_PAD_LEFT),
+                    'status' => $status,
+                ]);
+            }
+        }
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.dtr.index'))
+            ->assertOk()
+            ->assertViewHas('pendingCount', 1)
+            ->assertViewHas('approvedDTRsCount', 2)
+            ->assertViewHas('rejectedDTRs', 1)
+            ->assertViewHas('totalDTRs', 4);
     }
 
     public function test_suspension_attendance_displays_for_employees_in_every_branch(): void
