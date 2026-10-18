@@ -11,15 +11,28 @@ use Illuminate\Support\Facades\Auth;
 
 class CashAdvanceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        $scope = request()->query('scope');
+        $scope = $request->query('scope');
+        $canViewHistory = $scope !== 'my' && ($user->role === 'finance_officer'
+            || $user->isBranchAdmin()
+            || $user->isSuperAdmin()
+            || $user->isFinanceHead());
+        $historyView = $request->query('view') === 'history';
+        abort_unless(! $historyView || $canViewHistory, 403);
+
+        $period = $request->validate([
+            'period_start' => 'nullable|required_with:period_end|date',
+            'period_end' => 'nullable|required_with:period_start|date|after_or_equal:period_start',
+        ]);
         $isApplicantView = $user->role === 'employee'
             || ($scope === 'my' && ($user->role === 'finance_officer'
                 || ($user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin')));
         abort_unless(!$isApplicantView || $user->canApplyForCashAdvance(), 403, 'Cash advance is only available to eligible employees.');
 
+        $reviewedAtColumn = null;
+        $reviewerRelation = null;
         $query = CashAdvanceApplication::with('employeeProfile')->latest();
 
         if ($user->role === 'employee'
@@ -34,19 +47,33 @@ class CashAdvanceController extends Controller
             $query->where('employee_profile_id', $profile->id);
         } elseif ($user->role === 'finance_officer') {
             $query->whereHas('employeeProfile', fn ($q) => $q->where('branch_id', $user->getEffectiveBranchId()))
-                ->where('status', 'pending_fo');
+                ->when($historyView, fn ($q) => $q->whereNotNull('fo_reviewed_at'), fn ($q) => $q->where('status', 'pending_fo'));
+            $reviewedAtColumn = 'fo_reviewed_at';
+            $reviewerRelation = 'foReviewer';
         } elseif ($user->isBranchAdmin()) {
             $query->whereHas('employeeProfile', fn ($q) => $q->where('branch_id', $user->getEffectiveBranchId()))
-                ->whereIn('status', ['pending_fo', 'pending_bh']);
+                ->when($historyView, fn ($q) => $q->whereNotNull('bh_reviewed_at'), fn ($q) => $q->whereIn('status', ['pending_fo', 'pending_bh']));
+            $reviewedAtColumn = 'bh_reviewed_at';
+            $reviewerRelation = 'bhReviewer';
         } elseif ($user->isSuperAdmin()) {
-            $query->where('status', 'pending_hr');
+            $query->when($historyView, fn ($q) => $q->whereNotNull('hr_reviewed_at'), fn ($q) => $q->where('status', 'pending_hr'));
+            $reviewedAtColumn = 'hr_reviewed_at';
+            $reviewerRelation = 'hrReviewer';
         } elseif ($user->isFinanceHead()) {
-            $query->where('status', 'pending_fh');
+            $query->when($historyView, fn ($q) => $q->whereNotNull('fh_reviewed_at'), fn ($q) => $q->where('status', 'pending_fh'));
+            $reviewedAtColumn = 'fh_reviewed_at';
+            $reviewerRelation = 'fhReviewer';
         } else {
             abort(403);
         }
 
-        $applications = $query->paginate(15);
+        if ($historyView && $reviewedAtColumn) {
+            $query->with($reviewerRelation)
+                ->when($period['period_start'] ?? null, fn ($q, $date) => $q->whereDate($reviewedAtColumn, '>=', $date))
+                ->when($period['period_end'] ?? null, fn ($q, $date) => $q->whereDate($reviewedAtColumn, '<=', $date));
+        }
+
+        $applications = $query->paginate(15)->withQueryString();
         $cashAdvanceAvailableByEmployee = [];
         $applicationEmployeeIds = $applications->getCollection()->pluck('employee_profile_id')->filter()->unique();
         $activeCashAdvancesByEmployee = CashAdvanceApplication::whereIn('employee_profile_id', $applicationEmployeeIds)
@@ -94,7 +121,7 @@ class CashAdvanceController extends Controller
 
         $availableCashAdvanceBalance = max(0, 1000 - $remainingCashAdvanceBalance);
 
-        return view('cash-advances.index', compact('applications', 'profile', 'totalCashAdvances', 'remainingCashAdvanceBalance', 'availableCashAdvanceBalance', 'cashAdvanceAvailableByEmployee'));
+        return view('cash-advances.index', compact('applications', 'profile', 'totalCashAdvances', 'remainingCashAdvanceBalance', 'availableCashAdvanceBalance', 'cashAdvanceAvailableByEmployee', 'historyView', 'canViewHistory', 'reviewerRelation', 'reviewedAtColumn'));
     }
 
     public function store(Request $request)

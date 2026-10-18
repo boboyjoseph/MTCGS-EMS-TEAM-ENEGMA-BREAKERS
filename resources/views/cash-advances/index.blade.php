@@ -41,7 +41,37 @@
     @endif
 
     <div class="card">
-        <div class="card-header"><h5 class="mb-0">Cash Advance Applications</h5></div>
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="mb-0">{{ $historyView ? 'Cash Advance History' : 'Cash Advance Applications' }}</h5>
+                @if($canViewHistory)
+                    <div class="btn-group" role="group" aria-label="Cash advance views">
+                        <a href="{{ route('cash-advances.index') }}" class="btn btn-sm {{ $historyView ? 'btn-outline-primary' : 'btn-primary' }}">Pending Applications</a>
+                        <a href="{{ route('cash-advances.index', ['view' => 'history']) }}" class="btn btn-sm {{ $historyView ? 'btn-primary' : 'btn-outline-primary' }}">History</a>
+                    </div>
+                @endif
+            </div>
+        </div>
+        @if($historyView)
+            <div class="card-body border-bottom">
+                <form method="GET" action="{{ route('cash-advances.index') }}" class="row g-3 align-items-end">
+                    <input type="hidden" name="view" value="history">
+                    <div class="col-sm-4 col-md-3">
+                        <label for="period_start" class="form-label">Period From</label>
+                        <input id="period_start" type="date" name="period_start" value="{{ request('period_start') }}" class="form-control">
+                    </div>
+                    <div class="col-sm-4 col-md-3">
+                        <label for="period_end" class="form-label">Period To</label>
+                        <input id="period_end" type="date" name="period_end" value="{{ request('period_end') }}" class="form-control">
+                    </div>
+                    <div class="col-sm-4 col-md-3 d-flex gap-2">
+                        <button class="btn btn-primary">Filter</button>
+                        <a href="{{ route('cash-advances.index', ['view' => 'history']) }}" class="btn btn-outline-secondary">Clear</a>
+                    </div>
+                    <div class="col-12"><small class="text-muted">Filter by the date this role reviewed the application.</small></div>
+                </form>
+            </div>
+        @endif
         <div class="table-responsive">
             @php
                 $runningCashAdvanceBalance = 1000;
@@ -59,7 +89,13 @@
                 }
             @endphp
             <table class="table table-hover mb-0">
-                <thead><tr><th>Employee</th><th>Applied Date</th><th>Amount</th><th>Remaining After This Advance</th><th>Purpose</th><th>Status</th><th>Action</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Employee</th><th>Applied Date</th><th>Amount</th>
+                        @unless($historyView)<th>Remaining After This Advance</th>@endunless
+                        <th>Purpose</th><th>Status</th><th>{{ $historyView ? 'Reviewed By' : 'Action' }}</th>
+                    </tr>
+                </thead>
                 <tbody>
                 @forelse($applications as $application)
                     <tr>
@@ -76,7 +112,9 @@
                             $cashAdvanceAmount = (float) ($application->approved_amount ?: $application->requested_amount);
                             $cashAdvanceRemaining = $cashAdvanceRowBalances[$application->id] ?? 0;
                         @endphp
-                        <td>₱{{ number_format($cashAdvanceRemaining, 2) }}</td>
+                        @unless($historyView)
+                            <td>₱{{ number_format($cashAdvanceRemaining, 2) }}</td>
+                        @endunless
                         <td>{{ $application->purpose }}</td>
                         <td><span class="badge bg-{{ in_array($application->status, ['approved'], true) ? 'success' : (str_contains($application->status, 'pending') ? 'warning text-dark' : 'secondary') }}">{{ str_replace('_', ' ', ucfirst($application->status)) }}</span></td>
                         <td>
@@ -89,7 +127,14 @@
                                     default => null,
                                 };
                             @endphp
-                            @if($reviewRoute)
+                            @if($historyView)
+                                @php
+                                    $reviewer = $application->{$reviewerRelation};
+                                    $reviewedAt = $application->{$reviewedAtColumn};
+                                @endphp
+                                <span>{{ $reviewer?->name ?? 'Reviewer unavailable' }}</span>
+                                <br><small class="text-muted">{{ $reviewedAt?->format('M d, Y h:i A') ?? '--' }}</small>
+                            @elseif($reviewRoute)
                                 <form method="POST" action="{{ $reviewRoute }}" class="d-flex gap-1 flex-wrap">
                                     @csrf
                                     <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason / note">
@@ -102,7 +147,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center text-muted py-4">No cash advance applications for this account or review stage.</td></tr>
+                    <tr><td colspan="{{ $historyView ? 6 : 7 }}" class="text-center text-muted py-4">{{ $historyView ? 'No cash advance history found for this period.' : 'No cash advance applications for this account or review stage.' }}</td></tr>
                 @endforelse
                 </tbody>
             </table>

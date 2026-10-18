@@ -675,6 +675,11 @@
                     <a class="nav-link {{ request()->routeIs('cash-advances.*') ? 'active' : '' }}" href="{{ route('cash-advances.index') }}">
                         <i class="fas fa-hand-holding-usd"></i> Cash Advance
                     </a>
+                    @if(Auth::user()->isSuperAdmin() || Auth::user()->isBranchAdmin())
+                        <a class="nav-link {{ request()->routeIs('cash-advances.index') && request('view') === 'history' ? 'active' : '' }}" href="{{ route('cash-advances.index', ['view' => 'history']) }}">
+                            <i class="fas fa-clock-rotate-left"></i> Cash Advance History
+                        </a>
+                    @endif
                     @if(Auth::user()->role === 'admin' && (Auth::user()->admin_type ?? '') === 'branch_admin')
                         <a class="nav-link {{ request()->routeIs('cash-advances.*') && request('scope') === 'my' ? 'active' : '' }}" href="{{ route('cash-advances.index', ['scope' => 'my']) }}">
                             <i class="fas fa-user-check"></i> My Cash Advance
@@ -760,6 +765,9 @@
                     </a>
                     <a class="nav-link {{ request()->routeIs('cash-advances.*') ? 'active' : '' }}" href="{{ route('cash-advances.index') }}">
                         <i class="fas fa-hand-holding-usd"></i> Cash Advance
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('cash-advances.index') && request('view') === 'history' ? 'active' : '' }}" href="{{ route('cash-advances.index', ['view' => 'history']) }}">
+                        <i class="fas fa-clock-rotate-left"></i> Cash Advance History
                     </a>
                     @if(Auth::user()->role === 'finance_officer' && Auth::user()->canApplyForCashAdvance())
                         <a class="nav-link {{ request()->routeIs('cash-advances.*') && request('scope') === 'my' ? 'active' : '' }}" href="{{ route('cash-advances.index', ['scope' => 'my']) }}">
