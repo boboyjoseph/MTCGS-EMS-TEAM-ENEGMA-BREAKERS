@@ -69,7 +69,6 @@ class CashAdvanceController extends Controller
             abort(403);
         }
 
-<<<<<<< HEAD
         if ($historyView && $reviewedAtColumn) {
             $query->with($reviewerRelation)
                 ->when($period['period_start'] ?? null, fn ($q, $date) => $q->whereDate($reviewedAtColumn, '>=', $date))
@@ -77,8 +76,6 @@ class CashAdvanceController extends Controller
         }
 
         $applications = $query->paginate(15)->withQueryString();
-=======
-        $applications = $query->paginate(15);
         $profile = ($user->role === 'employee'
             || ($user->role === 'finance_officer' && $scope === 'my')
             || ($user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin' && $scope === 'my'))
@@ -107,8 +104,6 @@ class CashAdvanceController extends Controller
         $cutoffApprovedTotal = $cutoffCashAdvances->sum(fn ($application) =>
             (float) ($application->approved_amount ?: $application->requested_amount)
         );
-
->>>>>>> 5e798c46bdb6692e97a14de754455f37ba63987b
         $cashAdvanceAvailableByEmployee = [];
         $applicationEmployeeIds = $applications->getCollection()->pluck('employee_profile_id')->filter()->unique();
         $activeCashAdvancesByEmployee = CashAdvanceApplication::whereIn('employee_profile_id', $applicationEmployeeIds)
@@ -147,9 +142,6 @@ class CashAdvanceController extends Controller
 
         $availableCashAdvanceBalance = max(0, 1000 - $remainingCashAdvanceBalance);
 
-<<<<<<< HEAD
-        return view('cash-advances.index', compact('applications', 'profile', 'totalCashAdvances', 'remainingCashAdvanceBalance', 'availableCashAdvanceBalance', 'cashAdvanceAvailableByEmployee', 'historyView', 'canViewHistory', 'reviewerRelation', 'reviewedAtColumn'));
-=======
         return view('cash-advances.index', compact(
             'applications',
             'profile',
@@ -157,21 +149,37 @@ class CashAdvanceController extends Controller
             'remainingCashAdvanceBalance',
             'availableCashAdvanceBalance',
             'cashAdvanceAvailableByEmployee',
+            'historyView',
+            'canViewHistory',
+            'reviewerRelation',
+            'reviewedAtColumn',
             'cutoffCashAdvances',
             'cutoffApprovedTotal'
         ));
     }
 
-    public function history()
+    public function history(Request $request)
     {
         $user = Auth::user();
-        $scope = request()->query('scope');
+        $scope = $request->query('scope');
+        $period = $request->validate([
+            'period_start' => 'nullable|required_with:period_end|date',
+            'period_end' => 'nullable|required_with:period_start|date|after_or_equal:period_start',
+        ]);
         $query = PayrollEntry::with(['employeeProfile', 'payrollPeriod'])
             ->where('cash_advance_deduction', '>', 0)
             ->whereHas('payrollPeriod', fn ($periodQuery) => $periodQuery
                 ->whereIn('status', ['completed', 'approved'])
                 ->whereDate('end_date', '<', today())
             );
+
+        if (($period['period_start'] ?? null) || ($period['period_end'] ?? null)) {
+            $query->whereHas('payrollPeriod', function ($periodQuery) use ($period) {
+                $periodQuery
+                    ->when($period['period_end'] ?? null, fn ($q, $date) => $q->whereDate('start_date', '<=', $date))
+                    ->when($period['period_start'] ?? null, fn ($q, $date) => $q->whereDate('end_date', '>=', $date));
+            });
+        }
 
         if ($user->role === 'employee'
             || ($user->role === 'finance_officer' && $scope === 'my')
@@ -193,10 +201,10 @@ class CashAdvanceController extends Controller
 
         $entries = $query->orderByDesc('payroll_period_id')
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('cash-advances.history', compact('entries'));
->>>>>>> 5e798c46bdb6692e97a14de754455f37ba63987b
     }
 
     public function store(Request $request)

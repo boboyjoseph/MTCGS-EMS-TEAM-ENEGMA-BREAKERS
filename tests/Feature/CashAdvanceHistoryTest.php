@@ -138,7 +138,8 @@ class CashAdvanceHistoryTest extends TestCase
             $this->actingAs($reviewer['user'])
                 ->get(route('cash-advances.index'))
                 ->assertOk()
-                ->assertSeeText('Cash Advance History');
+                ->assertSeeText('Approval History')
+                ->assertSeeText('Payroll History');
 
             $response = $this->actingAs($reviewer['user'])->get(route('cash-advances.index', [
                 'view' => 'history',

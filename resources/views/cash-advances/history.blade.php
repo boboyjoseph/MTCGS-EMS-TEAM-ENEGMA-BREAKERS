@@ -9,12 +9,33 @@
             <h1 class="h3 mb-1">Cash Advance History</h1>
             <p class="text-muted mb-0">Cash advance deductions from completed and approved payrolls.</p>
         </div>
-        <a href="{{ route('cash-advances.index', request()->query('scope') === 'my' ? ['scope' => 'my'] : []) }}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-1"></i> Back to Cash Advance
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('cash-advances.index', request()->query('scope') === 'my' ? ['scope' => 'my'] : []) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Cash Advance
+            </a>
+        </div>
     </div>
 
     <div class="card">
+        <div class="card-body border-bottom">
+            <form method="GET" action="{{ route('cash-advances.history') }}" class="row g-3 align-items-end">
+                @if(request('scope') === 'my')
+                    <input type="hidden" name="scope" value="my">
+                @endif
+                <div class="col-sm-4 col-md-3">
+                    <label for="period_start" class="form-label">Period From</label>
+                    <input id="period_start" type="date" name="period_start" value="{{ request('period_start') }}" class="form-control">
+                </div>
+                <div class="col-sm-4 col-md-3">
+                    <label for="period_end" class="form-label">Period To</label>
+                    <input id="period_end" type="date" name="period_end" value="{{ request('period_end') }}" class="form-control">
+                </div>
+                <div class="col-sm-4 col-md-3 d-flex gap-2">
+                    <button class="btn btn-primary">Filter</button>
+                    <a href="{{ route('cash-advances.history', request('scope') === 'my' ? ['scope' => 'my'] : []) }}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>

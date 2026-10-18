@@ -43,14 +43,14 @@
     @include('cash-advances.partials.payroll-preview')
 
     <div class="card">
-<<<<<<< HEAD
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">{{ $historyView ? 'Cash Advance History' : 'Cash Advance Applications' }}</h5>
                 @if($canViewHistory)
                     <div class="btn-group" role="group" aria-label="Cash advance views">
                         <a href="{{ route('cash-advances.index') }}" class="btn btn-sm {{ $historyView ? 'btn-outline-primary' : 'btn-primary' }}">Pending Applications</a>
-                        <a href="{{ route('cash-advances.index', ['view' => 'history']) }}" class="btn btn-sm {{ $historyView ? 'btn-primary' : 'btn-outline-primary' }}">History</a>
+                        <a href="{{ route('cash-advances.index', ['view' => 'history']) }}" class="btn btn-sm {{ $historyView ? 'btn-primary' : 'btn-outline-primary' }}">Approval History</a>
+                        <a href="{{ route('cash-advances.history') }}" class="btn btn-sm btn-outline-primary">Payroll History</a>
                     </div>
                 @endif
             </div>
@@ -75,14 +75,6 @@
                 </form>
             </div>
         @endif
-=======
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Cash Advance Applications</h5>
-            <a href="{{ route('cash-advances.history', request()->query('scope') === 'my' ? ['scope' => 'my'] : []) }}" class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-history me-1"></i> History
-            </a>
-        </div>
->>>>>>> 5e798c46bdb6692e97a14de754455f37ba63987b
         <div class="table-responsive">
             @php
                 $runningCashAdvanceBalance = 1000;
