@@ -53,7 +53,7 @@
                     </div>
                     <div class="text-muted text-uppercase small fw-semibold mb-1">Today's Status</div>
                     <div class="fw-bold" style="font-size: 1.4rem;">
-                        @if($todayAttendance) {{ ucfirst($todayAttendance->status ?? 'N/A') }}
+                        @if($todayAttendance) {{ $todayAttendance->getDtrStatus() }}
                         @else Not logged
                         @endif
                     </div>
@@ -190,8 +190,8 @@
                         <td>{{ optional($att->am_in)->format('h:i A') ?? '--' }}</td>
                         <td>{{ optional($att->pm_out)->format('h:i A') ?? '--' }}</td>
                         <td>
-                            <span class="badge bg-{{ $att['status'] == 'present' ? 'success' : ($att['status'] == 'late' ? 'warning text-dark' : 'secondary') }}">
-                                {{ ucfirst($att['status']) }}
+                            <span class="badge bg-{{ $att->getDtrStatus() === 'Half Day' || str_contains($att->getDtrStatus(), 'Late') ? 'warning text-dark' : ($att->getDtrStatus() === 'Present' ? 'success' : 'secondary') }}">
+                                {{ $att->getDtrStatus() }}
                             </span>
                         </td>
                         <td>
@@ -202,8 +202,8 @@
                             @endif
                         </td>
                         <td>
-                            @if($att['late_minutes'] > 0)
-                                <span class="text-danger fw-semibold">{{ $att['late_minutes'] }} min</span>
+                            @if(\App\Models\DTR::normalizeLateMinutesForLog($att) > 0)
+                                <span class="text-danger fw-semibold">{{ \App\Models\DTR::normalizeLateMinutesForLog($att) }} min</span>
                             @else
                                 <span class="text-muted">-</span>
                             @endif

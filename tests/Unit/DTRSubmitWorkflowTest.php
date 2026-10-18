@@ -506,6 +506,23 @@ class DTRSubmitWorkflowTest extends TestCase
             'pm_out' => '2026-08-25 17:00:00',
             'status' => 'present',
         ]);
+        $legacyAfternoonHalfDay = AttendanceLog::create([
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
+            'attendance_date' => '2026-08-26',
+            'am_in' => '2026-08-26 13:00:24',
+            'pm_out' => '2026-08-26 17:21:05',
+            'status' => 'late',
+            'late_minutes' => 301,
+        ]);
+        $openAfternoonHalfDay = AttendanceLog::create([
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
+            'attendance_date' => '2026-08-27',
+            'am_in' => '2026-08-27 13:00:00',
+            'status' => 'late',
+            'late_minutes' => 300,
+        ]);
 
         $this->assertSame('Present', $onTime->getDtrStatus());
         $this->assertSame('Late', $oneMinuteLate->getDtrStatus());
@@ -518,6 +535,25 @@ class DTRSubmitWorkflowTest extends TestCase
         $this->assertSame('Half Day', $shortShift->getDtrStatus());
         $this->assertSame('Present', $fullShift->getDtrStatus());
         $this->assertSame('Half Day', $afternoonHalfDay->getDtrStatus());
+        $this->assertSame('Half Day', $legacyAfternoonHalfDay->getDtrStatus());
+        $this->assertSame(0, DTR::normalizeLateMinutesForLog($legacyAfternoonHalfDay));
+        $this->assertSame('Half Day', $openAfternoonHalfDay->getDtrStatus());
+        $this->assertSame(0, DTR::normalizeLateMinutesForLog($openAfternoonHalfDay));
+        $this->assertFalse(AttendanceLog::excludeAfternoonOnly()->whereKey($openAfternoonHalfDay->id)->exists());
+        $this->assertTrue(AttendanceLog::excludeAfternoonOnly()->whereKey($oneMinuteLate->id)->exists());
+
+        $afternoonDtr = DTR::create([
+            'employee_profile_id' => $profile->id,
+            'period_start' => '2026-08-26',
+            'period_end' => '2026-08-26',
+            'status' => 'draft',
+        ]);
+        $afternoonBreakdown = $afternoonDtr->getCalculationBreakdown();
+
+        $this->assertSame(1, $afternoonBreakdown['days_present']);
+        $this->assertSame(1, $afternoonBreakdown['half_day_days']);
+        $this->assertEqualsWithDelta(4.3447, $afternoonBreakdown['total_hours'], 0.001);
+        $this->assertSame(0, $afternoonDtr->getTotalLateMinutes());
     }
 
     public function test_empty_attendance_log_stays_pending(): void

@@ -36,7 +36,7 @@ class DashboardController extends Controller
             $presentToday = AttendanceLog::whereDate('attendance_date', today())->whereNotNull('am_in')->whereHas('employeeProfile.user', function($q) {
                 $q->where('is_active', true);
             })->count();
-            $lateToday = AttendanceLog::whereDate('attendance_date', today())->where('late_minutes', '>', 0)->whereHas('employeeProfile.user', function($q) {
+            $lateToday = AttendanceLog::whereDate('attendance_date', today())->late()->whereHas('employeeProfile.user', function($q) {
                 $q->where('is_active', true);
             })->count();
             $pendingLeaves = LeaveRequest::whereIn('status', ['pending', 'pending_system_admin'])->count();
@@ -55,7 +55,7 @@ class DashboardController extends Controller
                 $presentCount = AttendanceLog::whereDate('attendance_date', $date)->whereNotNull('am_in')->whereHas('employeeProfile.user', function($q) {
                     $q->where('is_active', true);
                 })->count();
-                $lateCount = AttendanceLog::whereDate('attendance_date', $date)->where('late_minutes', '>', 0)->whereHas('employeeProfile.user', function($q) {
+                $lateCount = AttendanceLog::whereDate('attendance_date', $date)->late()->whereHas('employeeProfile.user', function($q) {
                     $q->where('is_active', true);
                 })->count();
                 $totalActiveEmployees = EmployeeProfile::whereHas('user', function($q) {
@@ -94,8 +94,8 @@ class DashboardController extends Controller
                         'employee_number' => $profile ? $profile->employee_number : 'N/A',
                         'time_in' => ($log->am_in ?: $log->pm_in)?->format('h:i A') ?? '--',
                         'time_out' => ($log->pm_out ?: $log->am_out)?->format('h:i A') ?? '--',
-                        'status' => $log->status ?? 'N/A',
-                        'late_minutes' => (int)($log->late_minutes ?? 0),
+                        'status' => $log->getDtrStatus(),
+                        'late_minutes' => \App\Models\DTR::normalizeLateMinutesForLog($log),
                         'overtime_hours' => (float)($log->overtime_hours ?? 0),
                         'verification_method' => $log->verification_method ?? 'manual',
                     ];
@@ -135,7 +135,7 @@ class DashboardController extends Controller
                 $q->where('branch_id', $branchId);
             })->whereHas('employeeProfile.user', function($q) {
                 $q->where('is_active', true);
-            })->whereDate('attendance_date', today())->where('late_minutes', '>', 0)->count();
+            })->whereDate('attendance_date', today())->late()->count();
             
             // Pending leaves
             $pendingLeaves = LeaveRequest::whereHas('employeeProfile', function($q) use ($branchId) {
@@ -163,7 +163,7 @@ class DashboardController extends Controller
                     $q->where('branch_id', $branchId);
                 })->whereHas('employeeProfile.user', function($q) {
                     $q->where('is_active', true);
-                })->whereDate('attendance_date', $date)->where('late_minutes', '>', 0)->count();
+                })->whereDate('attendance_date', $date)->late()->count();
                 $branchEmployeeCount = EmployeeProfile::where('branch_id', $branchId)
                     ->whereHas('user', function($q) {
                         $q->where('is_active', true);
@@ -202,8 +202,8 @@ class DashboardController extends Controller
                         'employee_number' => $profile ? $profile->employee_number : 'N/A',
                         'time_in' => ($log->am_in ?: $log->pm_in)?->format('h:i A') ?? '--',
                         'time_out' => ($log->pm_out ?: $log->am_out)?->format('h:i A') ?? '--',
-                        'status' => $log->status ?? 'N/A',
-                        'late_minutes' => (int)($log->late_minutes ?? 0),
+                        'status' => $log->getDtrStatus(),
+                        'late_minutes' => \App\Models\DTR::normalizeLateMinutesForLog($log),
                         'overtime_hours' => (float)($log->overtime_hours ?? 0),
                         'verification_method' => $log->verification_method ?? 'manual',
                     ];
@@ -249,7 +249,7 @@ class DashboardController extends Controller
                 $q->where('branch_id', $branchId);
             })->whereHas('employeeProfile.user', function($q) {
                 $q->where('is_active', true);
-            })->whereDate('attendance_date', today())->where('late_minutes', '>', 0)->count();
+            })->whereDate('attendance_date', today())->late()->count();
             
             // Pending leaves
             $pendingLeaves = LeaveRequest::whereHas('employeeProfile', function($q) use ($branchId) {
@@ -326,7 +326,7 @@ class DashboardController extends Controller
                 $q->where('branch_id', $branchId);
             })->whereHas('employeeProfile.user', function($q) {
                 $q->where('is_active', true);
-            })->whereDate('attendance_date', today())->where('late_minutes', '>', 0)->count();
+            })->whereDate('attendance_date', today())->late()->count();
             $pendingLeaves = LeaveRequest::whereHas('employeeProfile', function($q) use ($branchId) {
                 $q->where('branch_id', $branchId);
             })->whereIn('status', ['pending', 'pending_system_admin'])->count();
@@ -351,7 +351,7 @@ class DashboardController extends Controller
                     $q->where('branch_id', $branchId);
                 })->whereHas('employeeProfile.user', function($q) {
                     $q->where('is_active', true);
-                })->whereDate('attendance_date', $date)->where('late_minutes', '>', 0)->count();
+                })->whereDate('attendance_date', $date)->late()->count();
                 $branchEmployeeCount = EmployeeProfile::where('branch_id', $branchId)
                     ->whereHas('user', function($q) {
                         $q->where('is_active', true);
@@ -387,8 +387,8 @@ class DashboardController extends Controller
                         'employee_number' => $profile ? $profile->employee_number : 'N/A',
                         'time_in' => ($log->am_in ?: $log->pm_in)?->format('h:i A') ?? '--',
                         'time_out' => ($log->pm_out ?: $log->am_out)?->format('h:i A') ?? '--',
-                        'status' => $log->status ?? 'N/A',
-                        'late_minutes' => (int)($log->late_minutes ?? 0),
+                        'status' => $log->getDtrStatus(),
+                        'late_minutes' => \App\Models\DTR::normalizeLateMinutesForLog($log),
                         'overtime_hours' => (float)($log->overtime_hours ?? 0),
                         'verification_method' => $log->verification_method ?? 'manual',
                     ];
@@ -441,7 +441,7 @@ class DashboardController extends Controller
             'days_late' => AttendanceLog::where('employee_profile_id', $profile->id)
                 ->whereMonth('attendance_date', now()->month)
                 ->whereYear('attendance_date', now()->year)
-                ->where('late_minutes', '>', 0)
+                ->late()
                 ->count(),
         ];
         

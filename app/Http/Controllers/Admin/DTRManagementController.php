@@ -261,7 +261,7 @@ class DTRManagementController
                 'employee' => $employee?->first_name . ' ' . $employee?->last_name,
                 'days_present' => $breakdown['days_present'],
                 'days_absent' => $breakdown['days_absent'],
-                'late_minutes' => (int) $dtr->late_minutes,
+                'late_minutes' => $dtr->getTotalLateMinutes(),
                 'early_out_minutes' => $earlyOutMinutes,
             ];
 
@@ -284,7 +284,7 @@ class DTRManagementController
                     $sheet->setCellValue($startColumn . $row, $log->am_in ? $log->am_in->format('h:i A') : '--');
                     $sheet->setCellValue($endColumn . $row, $log->pm_out ? $log->pm_out->format('h:i A') : '--');
 
-                    $isLate = (int) ($log->late_minutes ?? 0) > 0;
+                    $isLate = str_contains($log->getDtrStatus(), 'Late');
                     $isEarlyOut = $log->pm_out && $log->pm_out->lt($headerDate->copy()->setTime(17, 0, 0));
 
                     if ($isLate) {

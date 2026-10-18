@@ -46,7 +46,7 @@ class AnalyticsController extends Controller
             $presentCount = $day->whereNotNull('am_in')->count();
             $labels[] = $date->format('M d');
             $present[] = $presentCount;
-            $late[] = $day->where('late_minutes', '>', 0)->count();
+            $late[] = $day->filter(fn ($log) => $log->late_minutes > 0 && !$log->isAfternoonOnlyAttendance())->count();
             $absent[] = max(0, $activeEmployees - $presentCount);
         }
 
@@ -61,7 +61,7 @@ class AnalyticsController extends Controller
             'attendance' => [
                 'labels' => $labels, 'present' => $present, 'late' => $late, 'absent' => $absent,
                 'total_present' => $attendance->whereNotNull('am_in')->count(),
-                'total_late' => $attendance->where('late_minutes', '>', 0)->count(),
+                'total_late' => $attendance->filter(fn ($log) => $log->late_minutes > 0 && !$log->isAfternoonOnlyAttendance())->count(),
                 'total_overtime' => round($attendance->sum('overtime_hours'), 2),
             ],
             'payroll' => [

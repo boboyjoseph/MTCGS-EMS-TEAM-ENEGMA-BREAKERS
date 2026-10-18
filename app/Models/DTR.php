@@ -88,6 +88,10 @@ class DTR extends Model
             return 0;
         }
 
+        if ($log->isAfternoonOnlyAttendance()) {
+            return 0;
+        }
+
         $amIn = $log->am_in instanceof Carbon ? $log->am_in : ($log->am_in ? Carbon::parse($log->am_in) : null);
         $pmIn = $log->pm_in instanceof Carbon ? $log->pm_in : ($log->pm_in ? Carbon::parse($log->pm_in) : null);
 
@@ -191,7 +195,10 @@ class DTR extends Model
                         $minutes += $log->pm_in->diffInMinutes($log->pm_out);
                     }
                     if (!$minutes && $log->am_in && $log->pm_out) {
-                        $minutes = max(0, $log->am_in->diffInMinutes($log->pm_out) - 60);
+                        $minutes = $log->am_in->diffInMinutes($log->pm_out);
+                        if ($log->am_in->format('H:i:s') < '13:00:00' && $log->pm_out->format('H:i:s') > '12:00:00') {
+                            $minutes = max(0, $minutes - 60);
+                        }
                     }
                     $totalHours += $minutes / 60;
 

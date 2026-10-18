@@ -41,6 +41,29 @@ class AttendanceLog extends Model
         return $this->belongsTo(Device::class, 'device_id');
     }
 
+    public function isAfternoonOnlyAttendance(): bool
+    {
+        return $this->am_in
+            && !$this->am_out
+            && !$this->pm_in
+            && $this->am_in->format('H:i:s') >= '13:00:00';
+    }
+
+    public function scopeExcludeAfternoonOnly($query)
+    {
+        return $query->where(function ($query) {
+            $query->whereNull('am_in')
+                ->orWhereTime('am_in', '<', '13:00:00')
+                ->orWhereNotNull('am_out')
+                ->orWhereNotNull('pm_in');
+        });
+    }
+
+    public function scopeLate($query)
+    {
+        return $query->where('late_minutes', '>', 0)->excludeAfternoonOnly();
+    }
+
     public function getDtrStatus(): string
     {
         $rawStatus = strtolower(trim((string) $this->status));
@@ -76,7 +99,8 @@ class AttendanceLog extends Model
         }
 
         $isSingleClockRange = !$this->am_out && !$this->pm_in && $this->am_in && $this->pm_out;
-        if (!$hasFullAttendance && (!$isSingleClockRange || $workedMinutes <= 240)) {
+        $isAfternoonOnly = $this->isAfternoonOnlyAttendance();
+        if ($isAfternoonOnly || (!$hasFullAttendance && (!$isSingleClockRange || $workedMinutes <= 240))) {
             return 'Half Day';
         }
 

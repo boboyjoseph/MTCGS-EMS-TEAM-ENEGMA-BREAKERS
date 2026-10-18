@@ -61,9 +61,9 @@
                                 $dateKey = $date->format('Y-m-d');
                                 $attendance = $attendanceByDate[$dateKey] ?? null;
                                 $isCurrentMonth = $date->month === $currentMonth->month;
-                                $attendanceStatus = strtolower(trim((string) ($attendance->status ?? '')));
-                                $isLate = $attendance && ((int) $attendance->late_minutes > 0 || $attendanceStatus === 'late');
-                                $isPresent = in_array($attendanceStatus, ['present', 'complete'], true);
+                                $attendanceStatus = $attendance?->getDtrStatus();
+                                $isLate = $attendance && str_contains($attendanceStatus, 'Late');
+                                $isPresent = in_array($attendanceStatus, ['Present', 'Early Out', 'Half Day'], true);
                                 $statusClass = !$attendance ? 'empty' : ($isLate ? 'late' : ($isPresent ? 'present' : 'other'));
                             @endphp
 
@@ -77,14 +77,14 @@
 
                                 @if($attendance)
                                     <div class="text-truncate mb-2">
-                                        <span class="badge bg-{{ $isLate ? 'warning text-dark' : ($isPresent ? 'success' : 'secondary') }}">{{ ucfirst($attendance->status) }}</span>
+                                        <span class="badge bg-{{ $attendanceStatus === 'Half Day' || $isLate ? 'warning text-dark' : ($isPresent ? 'success' : 'secondary') }}">{{ $attendanceStatus }}</span>
                                     </div>
                                     <div class="calendar-time">
                                         <div><small class="text-muted">AM In</small><br>{{ $attendance->am_in ? date('h:i A', strtotime($attendance->am_in)) : '--' }}</div>
                                         <div><small class="text-muted">PM Out</small><br>{{ $attendance->pm_out ? date('h:i A', strtotime($attendance->pm_out)) : '--' }}</div>
                                     </div>
                                     <div class="text-muted small mt-2">
-                                        Late: {{ $attendance->late_minutes > 0 ? $attendance->late_minutes . ' min' : '0 min' }}
+                                        Late: {{ \App\Models\DTR::normalizeLateMinutesForLog($attendance) }} min
                                     </div>
                                 @else
                                     <div class="calendar-empty text-muted">
@@ -108,11 +108,11 @@
                             <p class="text-muted mb-0">Days Recorded</p>
                         </div>
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <h3 class="mb-0">{{ $attendanceLogs->filter(fn ($log) => in_array(strtolower(trim((string) $log->status)), ['present', 'complete'], true))->count() }}</h3>
+                            <h3 class="mb-0">{{ $attendanceLogs->filter(fn ($log) => in_array($log->getDtrStatus(), ['Present', 'Late', 'Late / Early Out', 'Early Out', 'Half Day'], true))->count() }}</h3>
                             <p class="text-muted mb-0">Present</p>
                         </div>
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <h3 class="mb-0">{{ $attendanceLogs->filter(fn ($log) => (int) $log->late_minutes > 0 || strtolower(trim((string) $log->status)) === 'late')->count() }}</h3>
+                            <h3 class="mb-0">{{ $attendanceLogs->filter(fn ($log) => str_contains($log->getDtrStatus(), 'Late'))->count() }}</h3>
                             <p class="text-muted mb-0">Late Days</p>
                         </div>
                         <div class="col-md-3">

@@ -39,8 +39,8 @@ class DashboardDataController extends Controller
                 'time_out' => $timeOut?->toDateTimeString(),
                 'time_in_formatted' => $timeIn?->format('h:i A'),
                 'time_out_formatted' => $timeOut?->format('h:i A'),
-                'late_minutes' => $todayAttendance->late_minutes,
-                'status' => $todayAttendance->status,
+                'late_minutes' => DTR::normalizeLateMinutesForLog($todayAttendance),
+                'status' => $todayAttendance->getDtrStatus(),
             ];
         }
         
@@ -51,7 +51,7 @@ class DashboardDataController extends Controller
                 ->count(),
             'days_late' => AttendanceLog::where('employee_profile_id', $profile->id)
                 ->whereMonth('attendance_date', now()->month)
-                ->where('late_minutes', '>', 0)
+                ->late()
                 ->count(),
             'pending_leaves' => LeaveRequest::where('employee_profile_id', $profile->id)
                 ->whereIn('status', ['pending', 'pending_system_admin'])
@@ -75,8 +75,8 @@ class DashboardDataController extends Controller
                     'attendance_date' => date('M d, Y', strtotime($att->attendance_date)),
                     'time_in' => $timeIn?->format('h:i A') ?? '--',
                     'time_out' => $timeOut?->format('h:i A') ?? '--',
-                    'status' => $att->status,
-                    'late_minutes' => $att->late_minutes,
+                    'status' => $att->getDtrStatus(),
+                    'late_minutes' => DTR::normalizeLateMinutesForLog($att),
                     'verification_method' => $att->verification_method,
                 ];
             });
@@ -110,7 +110,7 @@ class DashboardDataController extends Controller
         // Basic stats
         $totalEmployees = (clone $employeesQuery)->count();
         $presentToday = (clone $attendanceQuery)->whereDate('attendance_date', today())->whereNotNull('time_in')->count();
-        $lateToday = (clone $attendanceQuery)->whereDate('attendance_date', today())->where('late_minutes', '>', 0)->count();
+        $lateToday = (clone $attendanceQuery)->whereDate('attendance_date', today())->late()->count();
         $absentToday = $totalEmployees - $presentToday;
         $attendanceRate = $totalEmployees > 0 ? round(($presentToday / $totalEmployees) * 100, 1) : 0;
         
@@ -126,7 +126,7 @@ class DashboardDataController extends Controller
             
             $dayQuery = clone $attendanceQuery;
             $dayPresent = $dayQuery->whereDate('attendance_date', $date)->whereNotNull('time_in')->count();
-            $dayLate = (clone $attendanceQuery)->whereDate('attendance_date', $date)->where('late_minutes', '>', 0)->count();
+            $dayLate = (clone $attendanceQuery)->whereDate('attendance_date', $date)->late()->count();
             $dayAbsent = $totalEmployees - $dayPresent;
             
             $trendPresent[] = $dayPresent;
@@ -151,8 +151,8 @@ class DashboardDataController extends Controller
                     'employee_number' => $att->employeeProfile->employee_number ?? '',
                     'time_in' => $att->time_in ? date('h:i A', strtotime($att->time_in)) : '--',
                     'time_out' => $att->time_out ? date('h:i A', strtotime($att->time_out)) : '--',
-                    'status' => $att->status,
-                    'late_minutes' => $att->late_minutes,
+                    'status' => $att->getDtrStatus(),
+                    'late_minutes' => DTR::normalizeLateMinutesForLog($att),
                 ];
             });
         

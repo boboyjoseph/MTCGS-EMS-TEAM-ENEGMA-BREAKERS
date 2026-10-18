@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Employee;
 use App\Models\AttendanceLog;
+use App\Models\DTR;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollEntry;
 use App\Models\SssContribution;
@@ -25,7 +26,7 @@ class PayrollService
             ->get();
         
         $daysPresent = $attendanceLogs->whereNotNull('time_in')->count();
-        $lateMinutes = (int) $attendanceLogs->sum('late_minutes');
+        $lateMinutes = (int) $attendanceLogs->sum(fn ($log) => DTR::normalizeLateMinutesForLog($log));
         $workingDays = app(\App\Services\WorkingDayService::class)->countWorkingDays(
             $period->start_date,
             $period->end_date,

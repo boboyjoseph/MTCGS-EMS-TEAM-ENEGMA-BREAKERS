@@ -218,10 +218,9 @@
                             @else <span class="text-muted">--</span> @endif
                         </td>
                         <td class="text-center">
-                            @if($att['status'] == 'present') <span class="badge bg-success">Present</span>
-                            @elseif($att['status'] == 'late') <span class="badge bg-warning text-dark">Late</span>
-                            @else <span class="badge bg-danger">Absent</span>
-                            @endif
+                            <span class="badge bg-{{ $att['status'] === 'Half Day' ? 'warning text-dark' : (str_contains($att['status'], 'Late') ? 'warning text-dark' : ($att['status'] === 'Present' ? 'success' : 'secondary')) }}">
+                                {{ $att['status'] }}
+                            </span>
                         </td>
                         <td class="text-center table-hide-mobile">
                             @if($att['verification_method'] === 'fingerprint')
