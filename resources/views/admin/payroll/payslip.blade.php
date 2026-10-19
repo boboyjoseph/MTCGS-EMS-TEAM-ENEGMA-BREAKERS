@@ -664,7 +664,7 @@
                                     @endif
                                     <div class="total-row" style="color: #28a745; border-top-color: #28a745; border-bottom-color: #28a745;">
                                         <span>Gross Pay</span>
-                                        <span>₱{{ number_format($entry->gross_pay, 2) }}</span>
+                                        <span>₱{{ number_format($entry->basic_pay, 2) }}</span>
                                     </div>
                                 </div>
 

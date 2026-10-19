@@ -51,7 +51,7 @@
                     </div>
                     <div class="text-muted text-uppercase small fw-semibold mb-1">Today's Status</div>
                     <div class="fw-bold" style="font-size: 1.4rem;">
-                        <?php if($todayAttendance): ?> <?php echo e(ucfirst($todayAttendance->status ?? 'N/A')); ?>
+                        <?php if($todayAttendance): ?> <?php echo e($todayAttendance->getDtrStatus()); ?>
 
                         <?php else: ?> Not logged
                         <?php endif; ?>
@@ -190,8 +190,8 @@
                         <td><?php echo e(optional($att->am_in)->format('h:i A') ?? '--'); ?></td>
                         <td><?php echo e(optional($att->pm_out)->format('h:i A') ?? '--'); ?></td>
                         <td>
-                            <span class="badge bg-<?php echo e($att['status'] == 'present' ? 'success' : ($att['status'] == 'late' ? 'warning text-dark' : 'secondary')); ?>">
-                                <?php echo e(ucfirst($att['status'])); ?>
+                            <span class="badge bg-<?php echo e($att->getDtrStatus() === 'Half Day' || str_contains($att->getDtrStatus(), 'Late') ? 'warning text-dark' : ($att->getDtrStatus() === 'Present' ? 'success' : 'secondary')); ?>">
+                                <?php echo e($att->getDtrStatus()); ?>
 
                             </span>
                         </td>
@@ -203,8 +203,8 @@
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if($att['late_minutes'] > 0): ?>
-                                <span class="text-danger fw-semibold"><?php echo e($att['late_minutes']); ?> min</span>
+                            <?php if(\App\Models\DTR::normalizeLateMinutesForLog($att) > 0): ?>
+                                <span class="text-danger fw-semibold"><?php echo e(\App\Models\DTR::normalizeLateMinutesForLog($att)); ?> min</span>
                             <?php else: ?>
                                 <span class="text-muted">-</span>
                             <?php endif; ?>

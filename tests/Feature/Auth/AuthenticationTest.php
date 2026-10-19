@@ -35,6 +35,41 @@ class AuthenticationTest extends TestCase
         ]);
     }
 
+    public function test_hr_super_admin_can_authenticate_with_case_insensitive_email(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'hr.admin@example.com',
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'password' => \Illuminate\Support\Facades\Hash::make('HrPassword123!'),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => ' HR.ADMIN@EXAMPLE.COM ',
+            'password' => 'HrPassword123!',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_finance_head_can_authenticate_with_case_insensitive_email(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'finance.head@example.com',
+            'role' => 'finance_head',
+            'password' => \Illuminate\Support\Facades\Hash::make('FinanceHead123!'),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => 'FINANCE.HEAD@EXAMPLE.COM',
+            'password' => 'FinanceHead123!',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();

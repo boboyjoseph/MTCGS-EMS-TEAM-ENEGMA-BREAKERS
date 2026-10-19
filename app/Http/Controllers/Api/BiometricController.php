@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Device;
 use App\Models\AuditLog;
 use App\Services\BiometricDeviceAuthenticator;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -473,7 +474,7 @@ class BiometricController extends Controller
         $attendance->employee_profile_id = $employeeProfile->id;
         $attendance->employee_id = $employeeProfile->user_id ?? $employeeProfile->id;
         $attendance->branch_id = $finance->branch_id;
-        $attendance->attendance_date = $now->toDateString();
+        $attendance->attendance_date = $now->copy()->startOfDay();
         $currentHour = (int)date('H', strtotime($now));
         $message = '';
         $action = '';
@@ -994,7 +995,7 @@ class BiometricController extends Controller
         $attendance->employee_profile_id = $employee->id;
         $attendance->employee_id = $employee->id;
         $attendance->branch_id = $employee->branch_id;
-        $attendance->attendance_date = $now->toDateString();
+        $attendance->attendance_date = $now->copy()->startOfDay();
         $currentHour = (int)date('H', strtotime($now));
         $message = '';
         $action = '';
@@ -1361,7 +1362,7 @@ class BiometricController extends Controller
 
     public function getBridgeStatus(Request $request)
     {
-        $path = env('MTCGS_ENROLL_EXE') ?: env('MTCGS_ENROLL_EXE', '');
+        $path = config('services.mtcgs_enroll.exe', '');
 
         return response()->json([
             'success' => true,
@@ -1652,7 +1653,7 @@ class BiometricController extends Controller
         $attendance->employee_profile_id = $employee->id;
         $attendance->employee_id = $employee->id;
         $attendance->branch_id = $employee->branch_id;
-        $attendance->attendance_date = $attendanceDate;
+        $attendance->attendance_date = Carbon::parse($attendanceDate);
         
         if ($requestedAction === 'TIME-IN') {
             $attendance->am_in = $now;
@@ -1834,9 +1835,9 @@ class BiometricController extends Controller
         $employeesList = $attendances->map(function($attendance) {
             $lastTime = $attendance->pm_out ?? $attendance->pm_in ?? $attendance->am_out ?? $attendance->am_in;
             return [
-                'employee_number' => $attendance->employee->employee_number,
-                'employee_name' => $attendance->employee->first_name . ' ' . $attendance->employee->last_name,
-                'position' => $attendance->employee->position,
+                'employee_number' => $attendance->employee?->employee_number,
+                'employee_name' => trim(($attendance->employee?->first_name ?? '') . ' ' . ($attendance->employee?->last_name ?? '')),
+                'position' => $attendance->employee?->position,
                 'last_action_time' => $lastTime ? $lastTime->format('h:i A') : '--',
                 'status' => $attendance->status ?? 'present',
             ];
@@ -1861,12 +1862,10 @@ class BiometricController extends Controller
             'email' => 'nullable|string',
             'branch' => 'nullable|string|max:255',
             'finger_name' => 'nullable|string|max:30',
-            'device_serial' => 'nullable|string|max:100',
             'mac_address' => 'nullable|string|max:100',
             'device_id' => 'nullable|string|max:100',
             'location' => 'nullable|string|max:255',
             'device_serial' => 'required|string|max:100',
-            'device_id' => 'nullable|string|max:100',
             'timestamp' => 'required|string',
             'nonce' => 'required|string|max:100',
             'signature' => 'required|string|size:64',
@@ -2113,17 +2112,16 @@ class BiometricController extends Controller
 
     private function enrollmentBranchesMatch(string $employeeBranch, string $deviceBranch): bool
     {
-        $normalize = static fn (string $branch): string => preg_replace(
-            '/branch$/',
-            '',
-            preg_replace('/[^a-z0-9]/', '', strtolower(trim($branch)))
-        );
+        $tokens = static function (string $branch): array {
+            $parts = preg_split('/[^a-z0-9]+/i', strtolower(trim($branch))) ?: [];
 
-        $employee = $normalize($employeeBranch);
-        $device = $normalize($deviceBranch);
+            return array_values(array_filter(
+                $parts,
+                static fn (string $part): bool => strlen($part) > 2 && $part !== 'branch'
+            ));
+        };
 
-        return $employee !== '' && $device !== ''
-            && (str_contains($employee, $device) || str_contains($device, $employee));
+        return array_intersect($tokens($employeeBranch), $tokens($deviceBranch)) !== [];
     }
 
     public function getFingerprintTemp(Request $request)

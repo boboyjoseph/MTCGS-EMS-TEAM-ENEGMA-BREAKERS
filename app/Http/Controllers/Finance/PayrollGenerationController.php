@@ -235,15 +235,25 @@ class PayrollGenerationController extends Controller
         $payrollEntry->withholding_tax = $validated['withholding_tax'] ?? $payrollEntry->withholding_tax;
         $payrollEntry->cash_advance_deduction = $validated['cash_advance_deduction'] ?? ($payrollEntry->cash_advance_deduction ?? 0);
 
-        // Recalculate gross and net using the DTR-based payroll values only
-        $payrollEntry->gross_pay = $payrollEntry->basic_pay + $payrollEntry->overtime_pay;
+        $breakdown = is_string($payrollEntry->payroll_breakdown)
+            ? json_decode($payrollEntry->payroll_breakdown, true) ?? []
+            : (array) ($payrollEntry->payroll_breakdown ?? []);
+        $suspensionPay = $this->payrollService->calculateSuspensionPay(
+            (float) ($breakdown['suspended_hours_to_pay'] ?? 0)
+        );
+        $additionalEarnings = (float) ($payrollEntry->overtime_pay ?? 0)
+            + (float) ($breakdown['holiday_bonus'] ?? 0)
+            + $suspensionPay
+            + (float) ($payrollEntry->allowances ?? 0)
+            + (float) ($payrollEntry->bonuses ?? 0);
+        $payrollEntry->gross_pay = $payrollEntry->basic_pay;
 
         $payrollEntry->total_deductions = $payrollEntry->sss_contribution + $payrollEntry->philhealth_contribution
                                           + $payrollEntry->pagibig_contribution + $payrollEntry->withholding_tax
                                           + ($payrollEntry->cash_advance_deduction ?? 0)
                                           + $payrollEntry->late_deduction + $payrollEntry->absent_deduction;
 
-        $payrollEntry->net_pay = $payrollEntry->gross_pay - $payrollEntry->total_deductions;
+        $payrollEntry->net_pay = $payrollEntry->gross_pay + $additionalEarnings - $payrollEntry->total_deductions;
 
         $payrollEntry->save();
 

@@ -3,7 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property \Illuminate\Support\Carbon|null $corrected_pm_in
+ * @property \Illuminate\Support\Carbon|null $corrected_time_out
+ */
 class AttendanceLog extends Model
 {
     protected $table = 'attendance_logs';
@@ -31,14 +36,22 @@ class AttendanceLog extends Model
         'gps_timestamp' => 'datetime',
     ];
     
-    public function employeeProfile()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employeeProfile(): BelongsTo
     {
         return $this->belongsTo(EmployeeProfile::class, 'employee_profile_id');
     }
 
-    public function device()
+    /** @return BelongsTo<Device, $this> */
+    public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class, 'device_id');
+    }
+
+    /** @return BelongsTo<Employee, $this> */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
     }
 
     public function isAfternoonOnlyAttendance(): bool
@@ -152,11 +165,6 @@ class AttendanceLog extends Model
         }
 
         return 'Present';
-    }
-    
-    public function overtimeRequests()
-    {
-        return $this->hasMany(OvertimeRequest::class);
     }
     
     // Calculate total hours worked

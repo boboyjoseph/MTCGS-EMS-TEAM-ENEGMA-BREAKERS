@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CashAdvanceApplication extends Model
 {
@@ -26,27 +27,32 @@ class CashAdvanceApplication extends Model
         'completed_at' => 'datetime',
     ];
 
-    public function employeeProfile()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employeeProfile(): BelongsTo
     {
         return $this->belongsTo(EmployeeProfile::class);
     }
 
-    public function foReviewer()
+    /** @return BelongsTo<User, $this> */
+    public function foReviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'fo_reviewed_by');
     }
 
-    public function bhReviewer()
+    /** @return BelongsTo<User, $this> */
+    public function bhReviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'bh_reviewed_by');
     }
 
-    public function hrReviewer()
+    /** @return BelongsTo<User, $this> */
+    public function hrReviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'hr_reviewed_by');
     }
 
-    public function fhReviewer()
+    /** @return BelongsTo<User, $this> */
+    public function fhReviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'fh_reviewed_by');
     }

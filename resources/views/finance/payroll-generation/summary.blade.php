@@ -147,7 +147,7 @@
                                             <strong>{{ $entry->employeeProfile->first_name }} {{ $entry->employeeProfile->last_name }}</strong><br>
                                             <small class="text-muted">{{ $entry->employeeProfile->employee_number }}</small>
                                         </td>
-                                        <td class="text-center">₱ {{ number_format($entry->gross_pay, 2) }}</td>
+                                        <td class="text-center">₱ {{ number_format($entry->basic_pay, 2) }}</td>
                                         <td class="text-center">₱ {{ number_format($entry->total_deductions, 2) }}</td>
                                         <td class="text-center"><strong>₱ {{ number_format($entry->net_pay, 2) }}</strong></td>
                                         <td class="text-center">

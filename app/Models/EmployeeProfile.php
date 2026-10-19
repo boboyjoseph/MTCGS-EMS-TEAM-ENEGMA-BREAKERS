@@ -3,7 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int|null $branch_id
+ * @property-read LeaveBalance|null $leaveBalance
+ */
 class EmployeeProfile extends Model
 {
     protected $table = 'employee_profiles';
@@ -30,22 +38,26 @@ class EmployeeProfile extends Model
         'is_fingerprint_registered' => 'boolean',
     ];
     
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
     
-    public function branch()
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
 
-    public function shift()
+    /** @return BelongsTo<Shift, $this> */
+    public function shift(): BelongsTo
     {
         return $this->belongsTo(Shift::class);
     }
 
-    public function shifts()
+    /** @return BelongsToMany<Shift, $this> */
+    public function shifts(): BelongsToMany
     {
         return $this->belongsToMany(Shift::class, 'employee_shift_assignments');
     }
@@ -62,28 +74,35 @@ class EmployeeProfile extends Model
         return (bool) $this->is_fingerprint_registered || ($template !== '' && strtolower($template) !== 'null');
     }
     
-    public function attendanceLogs()
+    /** @return HasMany<AttendanceLog, $this> */
+    public function attendanceLogs(): HasMany
     {
         return $this->hasMany(AttendanceLog::class, 'employee_profile_id');
     }
     
-    public function leaveRequests()
+    /** @return HasMany<LeaveRequest, $this> */
+    public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class, 'employee_profile_id');
     }
     
-    public function payrollEntries()
+    /** @return HasMany<PayrollEntry, $this> */
+    public function payrollEntries(): HasMany
     {
         return $this->hasMany(PayrollEntry::class, 'employee_profile_id');
     }
     
-    public function dtrs()
+    /** @return HasMany<DTR, $this> */
+    public function dtrs(): HasMany
     {
         return $this->hasMany(DTR::class, 'employee_profile_id');
     }
 
-    public function overtimeRequests()
+    /** @return HasOne<LeaveBalance, $this> */
+    public function leaveBalance(): HasOne
     {
-        return $this->hasMany(OvertimeRequest::class);
+        return $this->hasOne(LeaveBalance::class, 'employee_profile_id')
+            ->where('year', now()->year);
     }
+
 }

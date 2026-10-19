@@ -47,7 +47,7 @@ class DashboardDataController extends Controller
         $stats = [
             'days_present' => AttendanceLog::where('employee_profile_id', $profile->id)
                 ->whereMonth('attendance_date', now()->month)
-                ->whereNotNull('time_in')
+                ->whereNotNull('am_in')
                 ->count(),
             'days_late' => AttendanceLog::where('employee_profile_id', $profile->id)
                 ->whereMonth('attendance_date', now()->month)
@@ -109,7 +109,7 @@ class DashboardDataController extends Controller
 
         // Basic stats
         $totalEmployees = (clone $employeesQuery)->count();
-        $presentToday = (clone $attendanceQuery)->whereDate('attendance_date', today())->whereNotNull('time_in')->count();
+        $presentToday = (clone $attendanceQuery)->whereDate('attendance_date', today())->whereNotNull('am_in')->count();
         $lateToday = (clone $attendanceQuery)->whereDate('attendance_date', today())->late()->count();
         $absentToday = $totalEmployees - $presentToday;
         $attendanceRate = $totalEmployees > 0 ? round(($presentToday / $totalEmployees) * 100, 1) : 0;
@@ -125,7 +125,7 @@ class DashboardDataController extends Controller
             $trendLabels[] = $date->format('D, M d');
             
             $dayQuery = clone $attendanceQuery;
-            $dayPresent = $dayQuery->whereDate('attendance_date', $date)->whereNotNull('time_in')->count();
+            $dayPresent = $dayQuery->whereDate('attendance_date', $date)->whereNotNull('am_in')->count();
             $dayLate = (clone $attendanceQuery)->whereDate('attendance_date', $date)->late()->count();
             $dayAbsent = $totalEmployees - $dayPresent;
             
@@ -145,12 +145,15 @@ class DashboardDataController extends Controller
             ->limit(15)
             ->get()
             ->map(function($att) {
+                $timeIn = $att->am_in;
+                $timeOut = $att->pm_out ?: $att->am_out;
+
                 return [
                     'date' => date('M d, Y', strtotime($att->attendance_date)),
                     'employee' => ($att->employeeProfile->first_name ?? '') . ' ' . ($att->employeeProfile->last_name ?? ''),
                     'employee_number' => $att->employeeProfile->employee_number ?? '',
-                    'time_in' => $att->time_in ? date('h:i A', strtotime($att->time_in)) : '--',
-                    'time_out' => $att->time_out ? date('h:i A', strtotime($att->time_out)) : '--',
+                    'time_in' => $timeIn?->format('h:i A') ?? '--',
+                    'time_out' => $timeOut?->format('h:i A') ?? '--',
                     'status' => $att->getDtrStatus(),
                     'late_minutes' => DTR::normalizeLateMinutesForLog($att),
                 ];

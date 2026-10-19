@@ -4,11 +4,17 @@ namespace App\Models;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use App\Models\LeaveRequest;
 
+/**
+ * @property 'draft'|'submitted'|'pending_system_admin'|'pending_finance_head'|'approved'|'rejected' $status
+ */
 class DTR extends Model
 {
     use SoftDeletes;
@@ -41,7 +47,8 @@ class DTR extends Model
     /**
      * Get the employee profile associated with this DTR
      */
-    public function employeeProfile()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employeeProfile(): BelongsTo
     {
         return $this->belongsTo(EmployeeProfile::class, 'employee_profile_id');
     }
@@ -49,7 +56,8 @@ class DTR extends Model
     /**
      * Get payroll entry for this DTR
      */
-    public function payrollEntry()
+    /** @return HasOne<PayrollEntry, $this> */
+    public function payrollEntry(): HasOne
     {
         return $this->hasOne(PayrollEntry::class, 'dtr_id');
     }
@@ -57,7 +65,8 @@ class DTR extends Model
     /**
      * Get the user who approved this DTR
      */
-    public function approver()
+    /** @return BelongsTo<User, $this> */
+    public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
@@ -81,7 +90,8 @@ class DTR extends Model
     /**
      * Get attendance logs relationship
      */
-    public function logs()
+    /** @return BelongsToMany<AttendanceLog, $this> */
+    public function logs(): BelongsToMany
     {
         return $this->belongsToMany(AttendanceLog::class, 'dtr_attendance_logs', 'dtr_id', 'attendance_log_id');
     }

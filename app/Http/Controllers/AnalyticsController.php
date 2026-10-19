@@ -65,7 +65,7 @@ class AnalyticsController extends Controller
                 'total_overtime' => round($attendance->sum('overtime_hours'), 2),
             ],
             'payroll' => [
-                'gross' => round((float) $payroll->sum('gross_pay'), 2),
+                'gross' => round((float) $payroll->sum('basic_pay'), 2),
                 'deductions' => round((float) $payroll->sum('total_deductions'), 2),
                 'net' => round((float) $payroll->sum('net_pay'), 2),
             ],

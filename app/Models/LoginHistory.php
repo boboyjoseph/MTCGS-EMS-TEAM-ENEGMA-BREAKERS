@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LoginHistory extends Model
 {
@@ -10,7 +11,8 @@ class LoginHistory extends Model
         'user_id', 'event', 'status', 'email', 'ip_address', 'user_agent', 'failure_reason',
     ];
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }

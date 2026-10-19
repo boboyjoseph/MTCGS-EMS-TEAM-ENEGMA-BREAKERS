@@ -423,7 +423,7 @@ class LeaveController extends Controller
             ->get();
 
         foreach ($employees as $employee) {
-            $employee->leaveBalance = LeaveBalance::firstOrCreate(
+            $employee->setRelation('leaveBalance', LeaveBalance::firstOrCreate(
                 [
                     'employee_profile_id' => $employee->id,
                     'year' => now()->year,
@@ -438,7 +438,7 @@ class LeaveController extends Controller
                     'paternity_leave_used' => 0,
                     'service_incentive_leave_used' => 0,
                 ])
-            );
+            ));
         }
 
         $groupedEmployees = $employees
@@ -590,7 +590,7 @@ class LeaveController extends Controller
             ->get();
 
         foreach ($employees as $employee) {
-            $employee->leaveBalance = LeaveBalance::firstOrCreate(
+            $employee->setRelation('leaveBalance', LeaveBalance::firstOrCreate(
                 [
                     'employee_profile_id' => $employee->id,
                     'year' => now()->year,
@@ -605,7 +605,7 @@ class LeaveController extends Controller
                     'paternity_leave_used' => 0,
                     'service_incentive_leave_used' => 0,
                 ])
-            );
+            ));
         }
 
         $allMyCharges = CashCharge::with(['employeeProfile.user', 'employeeProfile.branch', 'requester', 'approver'])

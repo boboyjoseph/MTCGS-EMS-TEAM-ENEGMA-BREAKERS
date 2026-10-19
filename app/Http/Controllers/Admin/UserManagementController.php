@@ -363,7 +363,7 @@ class UserManagementController extends Controller
             }
         }
         
-        $message = $role === 'admin' && isset($emailChanged) && $emailChanged && $user?->admin_type === 'branch_admin'
+        $message = $role === 'admin' && $emailChanged && $user?->admin_type === 'branch_admin'
             ? 'Branch Head updated. New login credentials were sent to the new Gmail address.'
             : 'User updated successfully';
 

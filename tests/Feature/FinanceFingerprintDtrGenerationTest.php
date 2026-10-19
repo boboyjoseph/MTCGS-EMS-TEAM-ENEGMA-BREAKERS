@@ -1298,7 +1298,7 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         $html = $view->render();
         $this->assertStringContainsString('Total Half Day', $html);
         $this->assertMatchesRegularExpression('/id="gross_pay_total"[^>]*value="10000\.00"/', $html);
-        $this->assertMatchesRegularExpression('/id="overtime_pay_display"[^>]*value="754\.00"/', $html);
+        $this->assertMatchesRegularExpression('/id="overtime_pay_display"[^>]*value="0\.00"/', $html);
         $this->assertMatchesRegularExpression('/id="computed_net_pay"[^>]*value="₱10,754\.00"/', $html);
         $this->assertEqualsWithDelta(10754.0, (float) $entry->fresh()->net_pay, 0.01);
 
@@ -1318,13 +1318,36 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         $expectedTotalDeductions = (float) $fresh->absent_deduction + ($dailyRate * 3);
         $this->assertEqualsWithDelta($expectedTotalDeductions, (float) $fresh->total_deductions, 0.01);
 
-        $expectedComputedNetPay = (float) $fresh->gross_pay
-            - (float) $fresh->total_deductions
+        $expectedGrossPay = (float) $fresh->basic_pay;
+        $expectedTotalEarnings = $expectedGrossPay
+            + (float) $fresh->overtime_pay
+            + (float) ($fresh->allowances ?? 0)
+            + (float) ($fresh->bonuses ?? 0)
             + (float) ($breakdown['holiday_bonus'] ?? 0)
             + ((float) ($breakdown['suspended_hours_to_pay'] ?? 0) * 60);
+        $expectedComputedNetPay = $expectedTotalEarnings - (float) $fresh->total_deductions;
         $entriesView = app(PayrollController::class)->viewEntries($payrollPeriod->id);
         $listedEntry = $entriesView->getData()['entries']->firstWhere('id', $entry->id);
+        $summary = $entriesView->getData()['summary'];
+        $this->assertEqualsWithDelta($expectedGrossPay, (float) $listedEntry->gross_pay, 0.01);
         $this->assertEqualsWithDelta($expectedComputedNetPay, (float) $listedEntry->net_pay, 0.01);
+        $listedBreakdown = is_string($listedEntry->payroll_breakdown)
+            ? json_decode($listedEntry->payroll_breakdown, true)
+            : (array) $listedEntry->payroll_breakdown;
+        $this->assertEqualsWithDelta(
+            (float) $listedEntry->gross_pay
+                + (float) $listedEntry->overtime_pay
+                + (float) ($listedBreakdown['holiday_bonus'] ?? 0)
+                + (float) ($listedBreakdown['suspension_pay'] ?? 0)
+                + (float) ($listedEntry->allowances ?? 0)
+                + (float) ($listedEntry->bonuses ?? 0)
+                - (float) $listedEntry->total_deductions,
+            (float) $listedEntry->net_pay,
+            0.01
+        );
+        $this->assertEqualsWithDelta((float) $listedEntry->gross_pay, (float) $summary['total_gross'], 0.01);
+        $this->assertEqualsWithDelta((float) $listedEntry->total_deductions, (float) $summary['total_deductions'], 0.01);
+        $this->assertEqualsWithDelta((float) $listedEntry->net_pay, (float) $summary['total_net'], 0.01);
         $this->assertEqualsWithDelta($expectedComputedNetPay, (float) $entry->fresh()->net_pay, 0.01);
     }
 

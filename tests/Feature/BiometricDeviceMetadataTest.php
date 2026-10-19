@@ -486,6 +486,39 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->assertStringContainsString('scanner is assigned to Buhi', json_decode($wrongBranchResponse->content(), true)['message']);
         $this->assertNull(cache()->get('fingerprint_temp_NEW-IRIGA-EMPLOYEE'));
 
+        $partialNameBranch = Branch::create([
+            'branch_code' => 'BR-ENROLL-RIGA',
+            'branch_name' => 'Riga',
+            'address' => 'Riga Test Address',
+        ]);
+        $partialNameDevice = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-23',
+            'laptop_mac_address' => 'RIGA-ENROLLMENT-PC-01',
+            'serial_number' => 'SERIAL-ENROLL-RIGA-001',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'Riga Enrollment Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $partialNameBranch->id,
+            'status' => 'active',
+        ]);
+        $partialNamePayload = $this->signedDevicePayload([
+            'employee_number' => 'NEW-IRIGA-PARTIAL-MATCH',
+            'fingerprint_data' => base64_encode(str_repeat('partial-match-template', 10)),
+            'first_name' => 'New',
+            'last_name' => 'Iriga Employee',
+            'branch' => 'Iriga',
+            'device_serial' => $partialNameDevice->serial_number,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:23',
+            'device_id' => $partialNameDevice->laptop_mac_address,
+            'mac_address' => 'AA:BB:CC:DD:EE:23',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'riga-scanner-rejects-iriga-enrollment',
+        ], 'POST', '/api/fingerprint-register-temp');
+        $partialNameResponse = (new BiometricController())->registerFingerprintTemp(
+            Request::create('/api/fingerprint-register-temp', 'POST', $partialNamePayload)
+        );
+        $this->assertSame(403, $partialNameResponse->getStatusCode(), $partialNameResponse->content());
+
         $deviceWithoutIdentifier = Device::create([
             'mac_address' => 'AA-BB-CC-DD-EE-22',
             'serial_number' => 'J62OE23640',

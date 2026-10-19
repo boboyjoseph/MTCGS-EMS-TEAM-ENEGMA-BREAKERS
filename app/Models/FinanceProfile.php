@@ -3,7 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int|null $branch_id
+ * @property string|null $profile_photo
+ */
 class FinanceProfile extends Model
 {
     protected $table = 'finance_profiles';
@@ -24,14 +30,17 @@ class FinanceProfile extends Model
         'hourly_rate' => 'decimal:2',
         'pending_changes' => 'array',
         'changes_requested_at' => 'datetime',
+        'authority_granted_at' => 'datetime',
     ];
     
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
     
-    public function branch()
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
@@ -49,7 +58,8 @@ class FinanceProfile extends Model
     }
     
     // Finance officer DTR (attendance)
-    public function attendanceLogs()
+    /** @return HasMany<AttendanceLog, $this> */
+    public function attendanceLogs(): HasMany
     {
         // Finance officers will use employee_profile_id, so we need to link
         // For now, finance officers need an employee profile too
@@ -57,7 +67,8 @@ class FinanceProfile extends Model
     }
     
     // Link to employee profile for DTR
-    public function employeeProfile()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employeeProfile(): BelongsTo
     {
         return $this->belongsTo(EmployeeProfile::class, 'employee_profile_id');
     }

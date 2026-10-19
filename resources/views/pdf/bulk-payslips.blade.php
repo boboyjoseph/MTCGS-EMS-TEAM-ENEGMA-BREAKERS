@@ -37,7 +37,7 @@
             <tr><td>Overtime Pay</td><td>₱{{ number_format($entry->overtime_pay, 2) }}</td><td>PhilHealth</td><td>₱{{ number_format($entry->philhealth_contribution, 2) }}</td></tr>
             <tr><td></td><td></td><td>Pag-IBIG</td><td>₱{{ number_format($entry->pagibig_contribution, 2) }}</td></tr>
             <tr><td></td><td></td><td>Withholding Tax</td><td>₱{{ number_format($entry->withholding_tax, 2) }}</td></tr>
-            <tr class="total-row"><td><strong>GROSS PAY</strong></td><td><strong>₱{{ number_format($entry->gross_pay, 2) }}</strong></td>
+            <tr class="total-row"><td><strong>GROSS PAY</strong></td><td><strong>₱{{ number_format($entry->basic_pay, 2) }}</strong></td>
                 <td><strong>TOTAL DEDUCTIONS</strong></td><td><strong>₱{{ number_format($entry->total_deductions, 2) }}</strong></td></tr>
         </table>
 

@@ -185,6 +185,12 @@ class AttendanceController extends Controller
                     $attendance->pm_out = now();
                     $message = 'PM Time-out recorded successfully';
                     break;
+
+                default:
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid attendance type',
+                    ], 422);
             }
 
             // Calculate late minutes if this is AM time-in

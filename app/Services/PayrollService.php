@@ -137,17 +137,18 @@ class PayrollService
         $basicPayData = $this->computeBasicPay($employee, $period);
         $overtimeData = $this->computeOvertime($employee, $period);
         
-        $grossPay = $basicPayData['basic_pay'] + $overtimeData['pay'];
+        $grossPay = $basicPayData['basic_pay'];
+        $totalEarnings = $grossPay + $overtimeData['pay'];
         
         $sss = $this->computeSSS($employee->basic_salary);
         $philhealth = $this->computePhilHealth($employee->basic_salary);
         $pagibig = $this->computePagIBIG($employee->basic_salary);
         
-        $taxableIncome = $grossPay - $sss['employee_share'] - $philhealth['employee_share'] - $pagibig['employee_share'];
+        $taxableIncome = $totalEarnings - $sss['employee_share'] - $philhealth['employee_share'] - $pagibig['employee_share'];
         $tax = $this->computeTax($taxableIncome);
         
         $totalDeductions = $sss['employee_share'] + $philhealth['employee_share'] + $pagibig['employee_share'] + $tax + $basicPayData['late_deduction'];
-        $netPay = $grossPay - $totalDeductions;
+        $netPay = $totalEarnings - $totalDeductions;
         
         return [
             'employee_id' => $employee->id,

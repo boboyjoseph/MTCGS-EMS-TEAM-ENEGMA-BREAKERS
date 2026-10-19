@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PayrollEntry extends Model
 {
@@ -42,22 +44,39 @@ class PayrollEntry extends Model
         return $base;
     }
     
-    public function payrollPeriod()
+    /** @return BelongsTo<PayrollPeriod, $this> */
+    public function payrollPeriod(): BelongsTo
     {
         return $this->belongsTo(PayrollPeriod::class);
     }
+
+    public function scopeFullyApprovedCashAdvanceHistory($query)
+    {
+        return $query->where('cash_advance_deduction', '>', 0)
+            ->whereHas('payrollPeriod', fn ($periodQuery) => $periodQuery
+                ->where('status', 'completed')
+                ->whereNotNull('approved_at')
+                ->whereNotNull('hr_approved_at')
+                ->whereNotNull('branch_approved_at')
+                ->where('admin_approval_stage', 'bh_approved')
+                ->whereNull('correction_stage')
+            );
+    }
     
-    public function dtr()
+    /** @return BelongsTo<DTR, $this> */
+    public function dtr(): BelongsTo
     {
         return $this->belongsTo(DTR::class, 'dtr_id');
     }
 
-    public function employeeProfile()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employeeProfile(): BelongsTo
     {
         return $this->belongsTo(EmployeeProfile::class, 'employee_profile_id');
     }
     
-    public function branch()
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
@@ -65,7 +84,8 @@ class PayrollEntry extends Model
     /**
      * Relationship to additional deductions
      */
-    public function additionalDeductions()
+    /** @return HasMany<EmployeeAdditionalDeduction, $this> */
+    public function additionalDeductions(): HasMany
     {
         return $this->hasMany(EmployeeAdditionalDeduction::class)->where('is_active', true);
     }
@@ -88,7 +108,8 @@ class PayrollEntry extends Model
     }
     
     // Alias for backward compatibility
-    public function employee()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employee(): BelongsTo
     {
         return $this->employeeProfile();
     }

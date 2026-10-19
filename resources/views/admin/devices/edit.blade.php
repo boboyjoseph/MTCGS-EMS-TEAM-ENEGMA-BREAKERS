@@ -57,7 +57,7 @@
 
                     <div class="col-md-4">
                         <label for="branch_id" class="form-label">Branch</label>
-                        <select name="branch_id" id="branch_id" class="form-select">
+                        <select name="branch_id" id="branch_id" class="form-select" required>
                             <option value="">No branch assigned</option>
                             @foreach($branches as $branch)
                                 <option value="{{ $branch->id }}" {{ old('branch_id', $device->branch_id) == $branch->id ? 'selected' : '' }}>{{ $branch->branch_name }}</option>
@@ -81,17 +81,17 @@
 
                     <div class="col-12">
                         <label for="address" class="form-label">School Address</label>
-                        <input type="text" name="address" id="address" class="form-control" value="{{ old('address', $device->address ?: 'San Nicolas, Iriga City, Camarines Sur') }}" placeholder="School address">
+                        <input type="text" name="address" id="address" class="form-control" value="{{ old('address', $device->address ?: $device->branch?->address) }}" placeholder="School address">
                     </div>
 
                     <div class="col-md-4">
                         <label for="latitude" class="form-label">School Latitude</label>
-                        <input type="number" step="0.0000001" name="latitude" id="latitude" class="form-control" value="{{ old('latitude', $device->latitude ?: '13.433153') }}">
+                        <input type="number" step="0.0000001" name="latitude" id="latitude" class="form-control" value="{{ old('latitude', $device->latitude) }}">
                     </div>
 
                     <div class="col-md-4">
                         <label for="longitude" class="form-label">School Longitude</label>
-                        <input type="number" step="0.0000001" name="longitude" id="longitude" class="form-control" value="{{ old('longitude', $device->longitude ?: '123.411049') }}">
+                        <input type="number" step="0.0000001" name="longitude" id="longitude" class="form-control" value="{{ old('longitude', $device->longitude) }}">
                     </div>
 
                     <div class="col-md-4">

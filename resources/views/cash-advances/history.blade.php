@@ -14,44 +14,59 @@
         </a>
     </div>
 
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Payroll Period</th>
-                        <th>Employee</th>
-                        <th>Payroll Status</th>
-                        <th class="text-end">Cash Advance Deducted</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($entries as $entry)
+    @forelse($entries->getCollection()->groupBy('payroll_period_id') as $periodEntries)
+        @php
+            $historyPeriod = $periodEntries->first()->payrollPeriod;
+        @endphp
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <strong>{{ $historyPeriod?->period_code ?? $historyPeriod?->name ?? 'Payroll' }}</strong>
+                <span class="text-muted small">
+                    {{ $historyPeriod?->start_date?->format('M d, Y') }} – {{ $historyPeriod?->end_date?->format('M d, Y') }}
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
                         <tr>
-                            <td>
-                                <div class="fw-semibold">{{ $entry->payrollPeriod?->period_code ?? $entry->payrollPeriod?->name ?? 'Payroll' }}</div>
-                                <small class="text-muted">
-                                    {{ $entry->payrollPeriod?->start_date?->format('M d, Y') }} – {{ $entry->payrollPeriod?->end_date?->format('M d, Y') }}
-                                </small>
-                            </td>
-                            <td>
-                                {{ $entry->employeeProfile?->first_name }} {{ $entry->employeeProfile?->last_name }}
-                                <small class="d-block text-muted">{{ $entry->employeeProfile?->employee_number }}</small>
-                            </td>
-                            <td><span class="badge bg-success">{{ ucfirst($entry->payrollPeriod?->status ?? $entry->status) }}</span></td>
-                            <td class="text-end">₱{{ number_format((float) $entry->cash_advance_deduction, 2) }}</td>
+                            <th>Date</th>
+                            <th>Employee Name</th>
+                            <th>Employee ID</th>
+                            <th>Position</th>
+                            <th>Payroll Status</th>
+                            <th class="text-end">Amount</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">No previous payroll cash advance deductions found.</td>
+                    </thead>
+                    <tbody>
+                        @foreach($periodEntries as $entry)
+                            <tr>
+                                <td>{{ $historyPeriod?->payment_date?->format('M d, Y') ?? $historyPeriod?->end_date?->format('M d, Y') ?? '--' }}</td>
+                                <td>{{ $entry->employeeProfile?->first_name }} {{ $entry->employeeProfile?->last_name }}</td>
+                                <td>{{ $entry->employeeProfile?->employee_number ?? '--' }}</td>
+                                <td>{{ $entry->employeeProfile?->position ?? '--' }}</td>
+                                <td><span class="badge bg-success">{{ ucfirst($historyPeriod?->status ?? $entry->status) }}</span></td>
+                                <td class="text-end">₱{{ number_format((float) $entry->cash_advance_deduction, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-semibold">
+                            <td colspan="5" class="text-end">Period Total</td>
+                            <td class="text-end">₱{{ number_format($periodEntries->sum('cash_advance_deduction'), 2) }}</td>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </tfoot>
+                </table>
+            </div>
         </div>
-        @if($entries->hasPages())
-            <div class="card-footer">{{ $entries->links() }}</div>
-        @endif
-    </div>
+    @empty
+        <div class="card">
+            <div class="card-body text-center text-muted py-4">
+                No cash advance deductions from fully approved payrolls found.
+            </div>
+        </div>
+    @endforelse
+    @if($entries->hasPages())
+        <div class="card-footer">{{ $entries->links() }}</div>
+    @endif
 </div>
 @endsection

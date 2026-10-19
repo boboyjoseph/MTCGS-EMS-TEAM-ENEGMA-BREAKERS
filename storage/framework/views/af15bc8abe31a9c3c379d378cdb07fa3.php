@@ -209,8 +209,10 @@
                                 <div class="bg-light rounded-3 p-3 mb-3">
                                     <div class="text-muted small">AM In</div>
                                     <div class="fw-semibold"><?php echo e(date('h:i A', strtotime($myAttendance->am_in))); ?></div>
-                                    <?php if($myAttendance->late_minutes > 0): ?>
-                                        <small class="text-danger">Late by <?php echo e($myAttendance->late_minutes); ?> mins</small>
+                                    <?php if($myAttendance->getDtrStatus() === 'Half Day'): ?>
+                                        <small class="text-warning">Half Day</small>
+                                    <?php elseif(\App\Models\DTR::normalizeLateMinutesForLog($myAttendance) > 0): ?>
+                                        <small class="text-danger">Late by <?php echo e(\App\Models\DTR::normalizeLateMinutesForLog($myAttendance)); ?> mins</small>
                                     <?php endif; ?>
                                 </div>
                             <?php elseif($myAttendance && $myAttendance->am_out && !$myAttendance->pm_in): ?>
@@ -349,13 +351,13 @@
                         <td class="text-center table-hide-mobile"><?php echo e($att->pm_in ? date('h:i A', strtotime($att->pm_in)) : '--'); ?></td>
                         <td class="text-center table-hide-mobile"><?php echo e($att->pm_out ? date('h:i A', strtotime($att->pm_out)) : '--'); ?></td>
                         <td class="text-center">
-                            <span class="badge bg-<?php echo e($att->status === 'present' ? 'success' : ($att->status === 'late' ? 'warning text-dark' : 'secondary')); ?>">
-                                <?php echo e(ucfirst($att->status)); ?>
+                            <span class="badge bg-<?php echo e($att->getDtrStatus() === 'Half Day' || str_contains($att->getDtrStatus(), 'Late') ? 'warning text-dark' : ($att->getDtrStatus() === 'Present' ? 'success' : 'secondary')); ?>">
+                                <?php echo e($att->getDtrStatus()); ?>
 
                             </span>
                         </td>
                         <td class="text-center table-hide-mobile">
-                            <?php echo e($att->late_minutes > 0 ? $att->late_minutes . ' min' : '-'); ?>
+                            <?php echo e(\App\Models\DTR::normalizeLateMinutesForLog($att) > 0 ? \App\Models\DTR::normalizeLateMinutesForLog($att) . ' min' : '-'); ?>
 
                         </td>
                     </tr>

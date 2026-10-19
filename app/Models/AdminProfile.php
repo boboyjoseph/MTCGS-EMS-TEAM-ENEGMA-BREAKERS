@@ -3,7 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int|null $branch_id
+ * @property string|null $profile_photo
+ */
 class AdminProfile extends Model
 {
     protected $table = 'admin_profiles';
@@ -21,19 +26,23 @@ class AdminProfile extends Model
         'date_hired' => 'date',
         'basic_salary' => 'decimal:2',
         'is_fingerprint_registered' => 'boolean',
+        'authority_granted_at' => 'datetime',
     ];
     
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
     
-    public function branch()
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
 
-    public function employeeProfile()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employeeProfile(): BelongsTo
     {
         return $this->belongsTo(EmployeeProfile::class, 'employee_profile_id');
     }

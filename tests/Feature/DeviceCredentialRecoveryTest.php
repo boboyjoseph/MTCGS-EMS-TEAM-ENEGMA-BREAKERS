@@ -59,6 +59,15 @@ class DeviceCredentialRecoveryTest extends TestCase
         $this->get(route('admin.devices.show', $device))
             ->assertOk()
             ->assertDontSee($device->api_secret);
+
+        $this->actingAs($admin)
+            ->get(route('admin.devices.edit', $device))
+            ->assertOk()
+            ->assertSee('name="branch_id" id="branch_id" class="form-select" required', false)
+            ->assertSee('value="New Branch Address"', false)
+            ->assertDontSee('San Nicolas, Iriga City, Camarines Sur')
+            ->assertDontSee('13.433153')
+            ->assertDontSee('123.411049');
     }
 
     public function test_device_details_can_recover_when_stored_credential_cannot_be_decrypted(): void
