@@ -238,22 +238,39 @@ class PayrollGenerationController extends Controller
         $breakdown = is_string($payrollEntry->payroll_breakdown)
             ? json_decode($payrollEntry->payroll_breakdown, true) ?? []
             : (array) ($payrollEntry->payroll_breakdown ?? []);
+        $holidayBonus = (float) ($breakdown['holiday_bonus'] ?? 0);
         $suspensionPay = $this->payrollService->calculateSuspensionPay(
             (float) ($breakdown['suspended_hours_to_pay'] ?? 0)
         );
-        $additionalEarnings = (float) ($payrollEntry->overtime_pay ?? 0)
-            + (float) ($breakdown['holiday_bonus'] ?? 0)
-            + $suspensionPay
-            + (float) ($payrollEntry->allowances ?? 0)
-            + (float) ($payrollEntry->bonuses ?? 0);
+        $dailyRate = isset($breakdown['daily_rate']) && is_numeric($breakdown['daily_rate'])
+            ? (float) $breakdown['daily_rate']
+            : (float) $payrollEntry->basic_pay / max(1, (int) $payrollEntry->days_present + (int) $payrollEntry->days_absent);
+        $totalDailyRate = (int) ($payrollEntry->days_present ?? 0) * $dailyRate;
+        $paidLeaveRate = isset($breakdown['paid_leave_rate']) && is_numeric($breakdown['paid_leave_rate'])
+            ? (float) $breakdown['paid_leave_rate']
+            : (int) ($breakdown['paid_leave'] ?? 0) * $dailyRate;
+        $overtimePay = $this->payrollService->calculateOvertimePay($holidayBonus, $suspensionPay);
+        $totalEarnings = $this->payrollService->calculateTotalEarnings(
+            $totalDailyRate,
+            $holidayBonus,
+            $suspensionPay,
+            $paidLeaveRate
+        );
+        $payrollEntry->overtime_pay = $overtimePay;
         $payrollEntry->gross_pay = $payrollEntry->basic_pay;
+        $breakdown['total_daily_rate'] = number_format($totalDailyRate, 2, '.', '');
+        $breakdown['paid_leave_rate'] = number_format($paidLeaveRate, 2, '.', '');
+        $breakdown['suspension_pay'] = number_format($suspensionPay, 2, '.', '');
+        $breakdown['overtime_pay'] = number_format($overtimePay, 2, '.', '');
+        $breakdown['total_earnings'] = number_format($totalEarnings, 2, '.', '');
 
         $payrollEntry->total_deductions = $payrollEntry->sss_contribution + $payrollEntry->philhealth_contribution
                                           + $payrollEntry->pagibig_contribution + $payrollEntry->withholding_tax
                                           + ($payrollEntry->cash_advance_deduction ?? 0)
                                           + $payrollEntry->late_deduction + $payrollEntry->absent_deduction;
 
-        $payrollEntry->net_pay = $payrollEntry->gross_pay + $additionalEarnings - $payrollEntry->total_deductions;
+        $payrollEntry->net_pay = (float) $payrollEntry->gross_pay - (float) $payrollEntry->total_deductions;
+        $payrollEntry->payroll_breakdown = json_encode($breakdown);
 
         $payrollEntry->save();
 

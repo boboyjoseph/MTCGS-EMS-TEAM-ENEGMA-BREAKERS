@@ -300,6 +300,195 @@ class LeaveCreditManagementTest extends TestCase
         $response->assertDontSeeText('Active Users');
     }
 
+    public function test_super_admin_cash_charge_employee_list_includes_hr_users_grouped_by_branch_and_role(): void
+    {
+        $firstBranch = Branch::create([
+            'branch_code' => 'BR-CASH-ORG-1',
+            'branch_name' => 'Iriga Branch',
+            'address' => 'Iriga Address',
+        ]);
+        $secondBranch = Branch::create([
+            'branch_code' => 'BR-CASH-ORG-2',
+            'branch_name' => 'Buhi Branch',
+            'address' => 'Buhi Address',
+        ]);
+        $superAdmin = User::create([
+            'name' => 'Cash Charge Super Admin',
+            'email' => 'cash-charge-organize-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employeeUser = User::create([
+            'name' => 'Cash Charge Employee',
+            'email' => 'cash-charge-organize-employee@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $firstBranch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employee = EmployeeProfile::create([
+            'user_id' => $employeeUser->id,
+            'branch_id' => $firstBranch->id,
+            'employee_number' => 'EMP-CASH-ORG-1',
+            'first_name' => 'Ava',
+            'last_name' => 'Employee',
+            'position' => 'Staff',
+            'date_hired' => '2024-01-15',
+        ]);
+        $hrUser = User::create([
+            'name' => 'Cash Charge HR Admin',
+            'email' => 'cash-charge-organize-hr@example.com',
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'branch_id' => $secondBranch->id,
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $hrEmployeeProfile = EmployeeProfile::create([
+            'user_id' => $hrUser->id,
+            'branch_id' => $secondBranch->id,
+            'employee_number' => 'HR-CASH-ORG-1',
+            'first_name' => 'Hana',
+            'last_name' => 'HR',
+            'position' => 'HR Officer',
+            'date_hired' => '2024-01-15',
+        ]);
+        AdminProfile::create([
+            'user_id' => $hrUser->id,
+            'branch_id' => $secondBranch->id,
+            'employee_profile_id' => $hrEmployeeProfile->id,
+            'employee_number' => 'HR-CASH-ORG-1',
+            'first_name' => 'Hana',
+            'last_name' => 'HR',
+            'position' => 'HR Officer',
+        ]);
+
+        $financeEmployeeUser = User::create([
+            'name' => 'Legacy Buhi Finance Profile',
+            'email' => 'legacy-buhi-finance@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $secondBranch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $financeEmployeeProfile = EmployeeProfile::create([
+            'user_id' => $financeEmployeeUser->id,
+            'branch_id' => $firstBranch->id,
+            'employee_number' => 'FIN-BUHI-001',
+            'first_name' => 'Belen',
+            'last_name' => 'Finance',
+            'position' => 'Finance Officer',
+            'date_hired' => '2024-01-15',
+        ]);
+        $financeUser = User::create([
+            'name' => 'Buhi Finance Officer',
+            'email' => 'buhi-finance@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'finance_officer',
+            'branch_id' => $secondBranch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        FinanceProfile::create([
+            'user_id' => $financeUser->id,
+            'branch_id' => $secondBranch->id,
+            'employee_profile_id' => $financeEmployeeProfile->id,
+            'employee_number' => 'FIN-BUHI-001',
+            'first_name' => 'Belen',
+            'last_name' => 'Finance',
+            'position' => 'Finance Officer',
+            'date_hired' => '2024-01-15',
+        ]);
+
+        $adminEmployeeUser = User::create([
+            'name' => 'Legacy Buhi Admin Profile',
+            'email' => 'legacy-buhi-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $secondBranch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $adminEmployeeProfile = EmployeeProfile::create([
+            'user_id' => $adminEmployeeUser->id,
+            'branch_id' => $firstBranch->id,
+            'employee_number' => 'ADM-BUHI-001',
+            'first_name' => 'Ben',
+            'last_name' => 'Branch Admin',
+            'position' => 'Branch Administrator',
+            'date_hired' => '2024-01-15',
+        ]);
+        $branchAdminUser = User::create([
+            'name' => 'Buhi Branch Admin',
+            'email' => 'buhi-branch-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'branch_id' => $secondBranch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        AdminProfile::create([
+            'user_id' => $branchAdminUser->id,
+            'branch_id' => $secondBranch->id,
+            'employee_profile_id' => $adminEmployeeProfile->id,
+            'employee_number' => 'ADM-BUHI-001',
+            'first_name' => 'Ben',
+            'last_name' => 'Branch Admin',
+            'position' => 'Branch Administrator',
+            'admin_level' => 'branch_admin',
+            'date_hired' => '2024-01-15',
+        ]);
+
+        $response = $this->actingAs($superAdmin)->get(route('admin.cash-charges.index'));
+
+        $response->assertOk();
+        $response->assertSee('optgroup label="Iriga Branch - Employee"', false);
+        $response->assertSee('optgroup label="Buhi Branch - HR / Super Admin"', false);
+        $response->assertSee('optgroup label="Buhi Branch - Finance Officer"', false);
+        $response->assertSee('optgroup label="Buhi Branch - Branch Admin"', false);
+        $response->assertSee('value="' . $employee->id . '"', false);
+        $response->assertSee('value="' . $hrEmployeeProfile->id . '"', false);
+        $response->assertSee('value="' . $financeEmployeeProfile->id . '"', false);
+        $response->assertSee('value="' . $adminEmployeeProfile->id . '"', false);
+        $this->assertSame(1, substr_count($response->getContent(), 'FIN-BUHI-001'));
+        $this->assertSame(1, substr_count($response->getContent(), 'ADM-BUHI-001'));
+        $response->assertSee('Buhi Branch - Finance Officer');
+        $response->assertSee('Buhi Branch - Branch Admin');
+        $this->assertDatabaseMissing('leave_balances', [
+            'employee_profile_id' => $financeEmployeeProfile->id,
+            'year' => now()->year,
+        ]);
+        $this->assertDatabaseMissing('leave_balances', [
+            'employee_profile_id' => $adminEmployeeProfile->id,
+            'year' => now()->year,
+        ]);
+
+        $this->actingAs($superAdmin)->post(route('admin.cash-charges.store'), [
+            'employee_id' => $financeEmployeeProfile->id,
+            'amount' => '250',
+            'reason' => 'Buhi finance test charge',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('cash_charges', [
+            'employee_profile_id' => $financeEmployeeProfile->id,
+            'branch_id' => $secondBranch->id,
+            'amount' => '250.00',
+        ]);
+    }
+
     public function test_super_admin_cash_charge_skips_branch_admin_review(): void
     {
         $branch = Branch::create([

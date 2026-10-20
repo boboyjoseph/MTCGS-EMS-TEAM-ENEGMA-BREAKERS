@@ -118,6 +118,24 @@ class UserManagementController extends Controller
 
         return view('finance.employee-profile', compact('profile'));
     }
+
+    public function show(string $role, int $id)
+    {
+        $currentUser = Auth::user();
+        abort_unless(
+            $currentUser->role === 'admin' && $currentUser->admin_type === 'super_admin',
+            403
+        );
+
+        $userData = match ($role) {
+            'employee' => EmployeeProfile::with(['user', 'branch'])->findOrFail($id),
+            'finance' => FinanceProfile::with('user')->findOrFail($id),
+            'admin' => AdminProfile::with('user')->findOrFail($id),
+            default => abort(404),
+        };
+
+        return view('admin.user-view', compact('userData', 'role'));
+    }
     
     public function edit($role, $id)
     {

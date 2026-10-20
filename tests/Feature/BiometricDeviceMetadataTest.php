@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Http\Controllers\Api\BiometricController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Models\AttendanceLog;
+use App\Models\AdminProfile;
 use App\Models\Branch;
 use App\Models\CalendarEvent;
 use App\Models\Device;
 use App\Models\EmployeeProfile;
+use App\Models\FinanceProfile;
+use App\Models\LeaveRequest;
 use App\Models\User;
 use App\Services\BiometricDeviceAuthenticator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -130,6 +133,266 @@ class BiometricDeviceMetadataTest extends TestCase
             'employee_profile_id' => $employee->id,
             'attendance_date' => now()->toDateString(),
         ]);
+    }
+
+    public function test_admin_biometric_page_renders_profile_data_without_blade_parse_error(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-BIOMETRIC-PAGE',
+            'branch_name' => 'Biometric Page Branch',
+            'address' => 'Biometric Page Address',
+        ]);
+        $admin = User::create([
+            'name' => 'Biometric Page Admin',
+            'email' => 'biometric-page-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        AdminProfile::create([
+            'user_id' => $admin->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'ADM-BIOMETRIC-PAGE',
+            'first_name' => 'Biometric',
+            'last_name' => 'Admin',
+            'position' => 'System Administrator',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.biometric'))
+            ->assertOk()
+            ->assertSeeText('Biometric Management');
+    }
+
+    public function test_super_admin_cannot_register_own_fingerprint_and_card_is_hidden(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-SUPERADMIN-BIOMETRIC',
+            'branch_name' => 'Super Admin Biometric Branch',
+            'address' => 'Super Admin Biometric Address',
+        ]);
+        $admin = User::create([
+            'name' => 'System Administrator',
+            'email' => 'superadmin-biometric@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $existingFingerprint = base64_encode(str_repeat('keep-existing-super-admin-template', 8));
+        $adminProfile = AdminProfile::create([
+            'user_id' => $admin->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'SUPERADMIN-BIOMETRIC-001',
+            'first_name' => 'System',
+            'last_name' => 'Administrator',
+            'position' => 'System Administrator',
+            'admin_level' => 'super_admin',
+            'fingerprint_template' => $existingFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.biometric'))
+            ->assertOk()
+            ->assertDontSee('My Admin Fingerprint')
+            ->assertDontSee('Register My Fingerprint');
+
+        $this->postJson('/api/biometric/register-admin', [
+            'fingerprint_data' => base64_encode(str_repeat('new-super-admin-template', 8)),
+        ])->assertForbidden();
+
+        $this->assertDatabaseHas('admin_profiles', [
+            'id' => $adminProfile->id,
+            'fingerprint_template' => $existingFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+    }
+
+    public function test_hr_admin_cannot_register_or_use_fingerprint_attendance(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-HR-BIOMETRIC',
+            'branch_name' => 'HR Biometric Branch',
+            'address' => 'HR Biometric Address',
+        ]);
+        $hr = User::create([
+            'name' => 'HR Administrator',
+            'email' => 'hr-biometric@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $savedFingerprint = base64_encode(str_repeat('hr-fingerprint-stays-untouched', 8));
+        $adminProfile = AdminProfile::create([
+            'user_id' => $hr->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'HR-BIOMETRIC-001',
+            'first_name' => 'HR',
+            'last_name' => 'Administrator',
+            'position' => 'Human Resources',
+            'admin_level' => 'hr',
+            'fingerprint_template' => $savedFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+        $hrEmployee = EmployeeProfile::create([
+            'user_id' => $hr->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'HR-EMP-BIOMETRIC-001',
+            'first_name' => 'HR',
+            'last_name' => 'Administrator',
+            'position' => 'Human Resources',
+            'date_hired' => '2024-01-01',
+            'fingerprint_template' => $savedFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-73',
+            'laptop_mac_address' => 'HR-BIOMETRIC-DEVICE',
+            'serial_number' => 'SERIAL-HR-BIOMETRIC-001',
+            'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'HR Biometric Test Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($hr)
+            ->get(route('admin.biometric'))
+            ->assertOk()
+            ->assertDontSeeText('My Admin Fingerprint')
+            ->assertDontSee('<button id="registerAdminFingerprintButton"', false);
+
+        $this->getJson('/api/biometric/unregistered-employees')
+            ->assertOk()
+            ->assertJsonPath('count', 0);
+
+        $this->postJson('/api/biometric/register', [
+            'employee_id' => $hrEmployee->id,
+            'fingerprint_data' => base64_encode('new-hr-employee-fingerprint'),
+        ])->assertUnprocessable();
+        $this->postJson('/api/biometric/register-admin', [
+            'fingerprint_data' => base64_encode('new-hr-fingerprint'),
+        ])->assertForbidden();
+        $this->getJson('/api/biometric/admin-status')->assertForbidden();
+        $this->postJson('/api/biometric/admin-attendance', [
+            'fingerprint_data' => $savedFingerprint,
+        ])->assertForbidden();
+        $this->postJson('/api/biometric/process', [
+            'fingerprint_data' => $savedFingerprint,
+        ])->assertForbidden();
+
+        $templatePayload = $this->signedDevicePayload([
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => $device->laptop_mac_address,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'hr-biometric-templates',
+        ], 'GET', '/api/biometric/templates');
+        $templateResponse = (new BiometricController())->getFingerprintTemplates(
+            Request::create('/api/biometric/templates', 'GET', $templatePayload)
+        );
+        $this->assertSame(200, $templateResponse->getStatusCode(), $templateResponse->getContent());
+        $this->assertSame([], json_decode($templateResponse->getContent(), true)['templates']);
+
+        $verifyPayload = $this->signedDevicePayload([
+            'fingerprint_data' => $savedFingerprint,
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => $device->laptop_mac_address,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'hr-biometric-verify',
+        ], 'POST', '/api/biometric/verify');
+        $verifyResponse = (new BiometricController())->verifyFingerprint(
+            Request::create('/api/biometric/verify', 'POST', $verifyPayload)
+        );
+        $this->assertSame(404, $verifyResponse->getStatusCode(), $verifyResponse->getContent());
+
+        $this->assertDatabaseHas('admin_profiles', [
+            'id' => $adminProfile->id,
+            'fingerprint_template' => $savedFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+        $this->assertDatabaseHas('employee_profiles', [
+            'id' => $hrEmployee->id,
+            'fingerprint_template' => $savedFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+        $this->assertDatabaseMissing('attendance_logs', [
+            'employee_profile_id' => $hrEmployee->id,
+        ]);
+    }
+
+    public function test_biometric_employee_status_list_keeps_registered_users_visible(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-BIOMETRIC-ALL-USERS',
+            'branch_name' => 'Biometric All Users Branch',
+            'address' => 'Biometric All Users Address',
+        ]);
+        $admin = User::create([
+            'name' => 'Biometric List Admin',
+            'email' => 'biometric-list-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $registeredUser = User::factory()->create(['branch_id' => $branch->id]);
+        $registeredEmployee = EmployeeProfile::create([
+            'user_id' => $registeredUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-BIOMETRIC-REGISTERED',
+            'first_name' => 'Registered',
+            'last_name' => 'Employee',
+            'position' => 'Teacher',
+            'date_hired' => '2024-01-01',
+            'fingerprint_template' => base64_encode(str_repeat('registered-template', 8)),
+            'is_fingerprint_registered' => true,
+        ]);
+        $unregisteredUser = User::factory()->create(['branch_id' => $branch->id]);
+        $unregisteredEmployee = EmployeeProfile::create([
+            'user_id' => $unregisteredUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-BIOMETRIC-UNREGISTERED',
+            'first_name' => 'Unregistered',
+            'last_name' => 'Employee',
+            'position' => 'Staff',
+            'date_hired' => '2024-01-01',
+            'is_fingerprint_registered' => false,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/biometric/unregistered-employees');
+
+        $response->assertOk()
+            ->assertJsonPath('count', 2)
+            ->assertJsonFragment([
+                'id' => $registeredEmployee->id,
+                'is_fingerprint_registered' => true,
+            ])
+            ->assertJsonFragment([
+                'id' => $unregisteredEmployee->id,
+                'is_fingerprint_registered' => false,
+            ]);
     }
 
     public function test_offline_sync_recognizes_saved_template_when_registration_flag_is_stale(): void
@@ -1411,6 +1674,211 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->assertSame(1, AttendanceLog::where('employee_profile_id', $employee->id)
             ->whereDate('attendance_date', '2026-09-28')
             ->count());
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
+    public function test_attendance_endpoints_block_punches_during_approved_leave(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-29 08:00:00');
+
+        $branch = Branch::create([
+            'branch_code' => 'BR-APPROVED-LEAVE-BLOCK',
+            'branch_name' => 'Approved Leave Block Branch',
+            'address' => 'Approved Leave Test Address',
+        ]);
+        $user = User::factory()->create(['branch_id' => $branch->id]);
+        $employee = EmployeeProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-APPROVED-LEAVE-BLOCK',
+            'first_name' => 'Leave',
+            'last_name' => 'Test Employee',
+            'position' => 'Staff',
+            'basic_salary' => 20000,
+            'date_hired' => '2020-01-01',
+            'fingerprint_template' => 'approved-leave-test-template',
+            'is_fingerprint_registered' => true,
+        ]);
+        LeaveRequest::create([
+            'employee_id' => $user->id,
+            'employee_profile_id' => $employee->id,
+            'leave_type' => 'vacation',
+            'start_date' => '2026-09-29',
+            'end_date' => '2026-09-29',
+            'total_days' => 1,
+            'reason' => 'Approved leave attendance blocking test',
+            'status' => 'approved',
+            'is_absent' => false,
+        ]);
+
+        $biometricResponse = (new BiometricController())->processAttendance(Request::create(
+            '/api/biometric/process',
+            'POST',
+            [
+                'fingerprint_data' => 'approved-leave-test-template',
+                'timestamp' => now()->format('m/d/Y h:i:s A'),
+            ]
+        ));
+
+        $this->assertSame(403, $biometricResponse->getStatusCode());
+        $this->assertTrue(json_decode($biometricResponse->content(), true)['attendance_blocked']);
+        $this->assertDatabaseMissing('attendance_logs', [
+            'employee_profile_id' => $employee->id,
+            'attendance_date' => '2026-09-29',
+        ]);
+
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-72',
+            'laptop_mac_address' => 'LEAVE-BLOCK-DEVICE',
+            'serial_number' => 'SERIAL-LEAVE-BLOCK-001',
+            'reader_id' => '70315bbe-3635-8b41-b4af-04a0bcd6e941',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'Approved Leave Test Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+        $timeClockPayload = $this->signedDevicePayload([
+            'employee_number' => $employee->employee_number,
+            'fingerprint_data' => 'approved-leave-test-template',
+            'action' => 'TIME-IN',
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => $device->laptop_mac_address,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'attendance_timestamp' => now()->toIso8601String(),
+            'nonce' => 'approved-leave-time-clock',
+        ], 'POST', '/api/biometric/time-clock');
+        $timeClockResponse = (new BiometricController())->processTimeClock(
+            Request::create('/api/biometric/time-clock', 'POST', $timeClockPayload)
+        );
+
+        $this->assertSame(403, $timeClockResponse->getStatusCode(), $timeClockResponse->getContent());
+        $this->assertTrue(json_decode($timeClockResponse->getContent(), true)['attendance_blocked']);
+        $this->assertDatabaseMissing('attendance_logs', [
+            'employee_profile_id' => $employee->id,
+            'attendance_date' => '2026-09-29',
+        ]);
+
+        $clockPayload = $this->signedDevicePayload([
+            'branch_id' => $branch->id,
+            'employee_number' => $employee->employee_number,
+            'attendance_type' => 'am_in',
+            'fingerprint_data' => 'approved-leave-test-template',
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
+            'device_id' => $device->laptop_mac_address,
+            'mac_address' => $device->mac_address,
+            'wifi_mac' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'approved-leave-attendance-clock',
+        ], 'POST', '/api/attendance/clock');
+        $clockResponse = (new AttendanceController())->clockAttendance(
+            Request::create('/api/attendance/clock', 'POST', $clockPayload)
+        );
+
+        $this->assertSame(403, $clockResponse->getStatusCode(), $clockResponse->getContent());
+        $this->assertTrue(json_decode($clockResponse->getContent(), true)['attendance_blocked']);
+        $this->assertDatabaseMissing('attendance_logs', [
+            'employee_profile_id' => $employee->id,
+            'attendance_date' => '2026-09-29',
+        ]);
+
+        $adminFingerprint = 'approved-leave-admin-template';
+        AdminProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'employee_profile_id' => $employee->id,
+            'employee_number' => 'ADM-APPROVED-LEAVE-BLOCK',
+            'first_name' => 'Admin',
+            'last_name' => 'Leave Test',
+            'fingerprint_template' => $adminFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+        $adminPayload = $this->signedDevicePayload([
+            'employee_number' => 'ADM-APPROVED-LEAVE-BLOCK',
+            'fingerprint_data' => $adminFingerprint,
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => $device->laptop_mac_address,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'approved-leave-admin-attendance',
+        ], 'POST', '/api/biometric/admin-attendance');
+        $adminResponse = (new BiometricController())->processAdminAttendance(
+            Request::create('/api/biometric/admin-attendance', 'POST', $adminPayload)
+        );
+        $this->assertSame(403, $adminResponse->getStatusCode(), $adminResponse->getContent());
+        $this->assertTrue(json_decode($adminResponse->getContent(), true)['attendance_blocked']);
+
+        $financeFingerprint = 'approved-leave-finance-template';
+        FinanceProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'employee_profile_id' => $employee->id,
+            'employee_number' => 'FIN-APPROVED-LEAVE-BLOCK',
+            'first_name' => 'Finance',
+            'last_name' => 'Leave Test',
+            'fingerprint_template' => $financeFingerprint,
+            'is_fingerprint_registered' => true,
+        ]);
+        $financePayload = $this->signedDevicePayload([
+            'employee_number' => 'FIN-APPROVED-LEAVE-BLOCK',
+            'fingerprint_data' => $financeFingerprint,
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => $device->laptop_mac_address,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'approved-leave-finance-attendance',
+        ], 'POST', '/api/biometric/finance-attendance');
+        $financeResponse = (new BiometricController())->processFinanceAttendance(
+            Request::create('/api/biometric/finance-attendance', 'POST', $financePayload)
+        );
+        $this->assertSame(403, $financeResponse->getStatusCode(), $financeResponse->getContent());
+        $this->assertTrue(json_decode($financeResponse->getContent(), true)['attendance_blocked']);
+        $this->assertDatabaseMissing('attendance_logs', [
+            'employee_profile_id' => $employee->id,
+            'attendance_date' => '2026-09-29',
+        ]);
+
+        $otherBranch = Branch::create([
+            'branch_code' => 'BR-LEAVE-BLOCK-SECOND',
+            'branch_name' => 'Second Leave Block Branch',
+            'address' => 'Second Leave Test Address',
+        ]);
+        $otherUser = User::factory()->create(['branch_id' => $otherBranch->id]);
+        $otherEmployee = EmployeeProfile::create([
+            'user_id' => $otherUser->id,
+            'branch_id' => $otherBranch->id,
+            'employee_number' => 'EMP-LEAVE-BLOCK-SECOND',
+            'first_name' => 'Second',
+            'last_name' => 'Branch Employee',
+            'position' => 'Staff',
+            'basic_salary' => 20000,
+            'date_hired' => '2020-01-01',
+            'fingerprint_template' => 'second-branch-leave-template',
+            'is_fingerprint_registered' => true,
+        ]);
+        LeaveRequest::create([
+            'employee_id' => $otherUser->id,
+            'employee_profile_id' => $otherEmployee->id,
+            'leave_type' => 'vacation',
+            'start_date' => '2026-09-29',
+            'end_date' => '2026-09-29',
+            'total_days' => 1,
+            'reason' => 'Pending leave attendance blocking test',
+            'status' => 'pending',
+            'is_absent' => false,
+        ]);
+        $this->assertNotSame($branch->id, $otherBranch->id);
+        $this->assertNotNull(app(\App\Services\ApprovedLeaveAttendanceGuard::class)
+            ->blockedReason($otherEmployee, '2026-09-29'));
 
         \Illuminate\Support\Carbon::setTestNow();
     }

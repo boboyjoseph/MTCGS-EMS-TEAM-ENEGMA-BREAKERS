@@ -6,14 +6,11 @@
     <link rel="icon" type="image/jpeg" href="<?php echo e(asset('images/logo.jpg')); ?>?v=20261020">
     <title><?php echo e($homepageSettings['homepage_hero_title'] ?? 'MTCGS EMS'); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="all">
     <style>
         :root{
-            --font-body: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --font-head: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-body: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-head: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 
             /* Light mode: White + Purple */
             --bg: #ffffff;
@@ -51,13 +48,21 @@
             margin: 0;
             font-family: var(--font-body);
             color: var(--text);
-            background:
-                linear-gradient(rgba(255, 255, 255, 0.78), rgba(250, 248, 255, 0.86)),
-                url('<?php echo e($homepageSettings['homepage_background_url'] ?? asset('images/homepage-bg.jpg')); ?>') center center / cover no-repeat fixed;
+            background: linear-gradient(rgba(255, 255, 255, 0.78), rgba(250, 248, 255, 0.86));
             transition: color .25s ease;
         }
 
         .dark body {
+            background: linear-gradient(rgba(5, 4, 10, 0.82), rgba(8, 7, 15, 0.9));
+        }
+
+        .page-shell {
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.78), rgba(250, 248, 255, 0.86)),
+                url('<?php echo e($homepageSettings['homepage_background_url'] ?? asset('images/homepage-bg.jpg')); ?>') center center / cover no-repeat fixed;
+        }
+
+        .dark .page-shell {
             background:
                 linear-gradient(rgba(5, 4, 10, 0.82), rgba(8, 7, 15, 0.9)),
                 url('<?php echo e($homepageSettings['homepage_background_url'] ?? asset('images/homepage-bg.jpg')); ?>') center center / cover no-repeat fixed;
@@ -411,6 +416,7 @@
     </style>
 </head>
 <body>
+    <div class="page-shell">
     <nav class="navbar navbar-expand-lg sticky-top shadow-sm">
         <div class="container">
             <a class="navbar-brand fw-bold d-flex align-items-center" href="<?php echo e(url('/')); ?>">
@@ -639,6 +645,7 @@
             });
         })();
     </script>
+    </div>
 </body>
 </html>
 <?php /**PATH C:\xampp\htdocs\ENIGMA_BREAKER\mtcgs-main_09-06-26\mtcgs-ems\resources\views\landing.blade.php ENDPATH**/ ?>

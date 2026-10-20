@@ -466,8 +466,6 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::put('/user-management/{role}/{id}', [App\Http\Controllers\Admin\UserManagementController::class, 'update'])->name('user-update');
     Route::post('/user-management/finance/{id}/approve', [App\Http\Controllers\Admin\UserManagementController::class, 'approveFinanceChanges'])->name('user-finance-approve');
     Route::post('/user-management/finance/{id}/reject', [App\Http\Controllers\Admin\UserManagementController::class, 'rejectFinanceChanges'])->name('user-finance-reject');
-    Route::delete('/user-management/{role}/{id}', [App\Http\Controllers\Admin\UserManagementController::class, 'destroy'])->name('user-delete');
-    Route::post('/user-management/{id}/change-role', [App\Http\Controllers\Admin\UserManagementController::class, 'changeRole'])->name('user-change-role');
 });
 
 // Reactivate deactivated account

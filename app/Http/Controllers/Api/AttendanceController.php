@@ -96,6 +96,16 @@ class AttendanceController extends Controller
 
             $today = Carbon::today();
             $attendanceType = $request->attendance_type;
+            $leaveBlockReason = app(\App\Services\ApprovedLeaveAttendanceGuard::class)
+                ->blockedReason($employee, $today);
+            if ($leaveBlockReason) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $leaveBlockReason,
+                    'attendance_blocked' => true,
+                    'date' => $today->toDateString(),
+                ], 403);
+            }
 
             // Get or create today's attendance record
             $attendance = AttendanceLog::where('employee_profile_id', $employee->id)

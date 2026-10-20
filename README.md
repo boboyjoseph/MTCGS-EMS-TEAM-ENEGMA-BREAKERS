@@ -25,10 +25,25 @@ Laravel is accessible, powerful, and provides tools required for large, robust a
 
 The existing `php artisan test` and `npm run test:e2e` workflows remain unchanged.
 
+- `composer setup` installs dependencies and builds assets; it does not generate/rotate `APP_KEY` or run database migrations.
+- For a new local installation only, generate an application key once with `php artisan key:generate`. Never rerun it on an existing environment: changing `APP_KEY` invalidates encrypted data and sessions.
+- Review and back up the target database before running `composer migrate` (`php artisan migrate --force`). Do not use migration rollback/fresh/wipe commands on production data.
 - `composer format:check` checks PHP formatting without rewriting files.
 - `composer analyse` runs Larastan against the application at PHPStan level 3.
 - `composer audit` and `npm audit --package-lock-only` check locked dependencies without upgrading them.
 - `npm run test:e2e` runs the Playwright browser tests, including WCAG A/AA scans. Start the local app first; Playwright defaults to `http://127.0.0.1:8000`.
+
+### Local database backup and restore rehearsal
+
+On Windows/XAMPP, run this from the repository to create a timestamped SQL backup outside Git, restore it into a newly created local clone, compare every base table's row count, and rehearse the current pending migration against that clone:
+
+```powershell
+.\scripts\database-safety-check.ps1
+```
+
+The script is intentionally restricted to the configured local database `127.0.0.1:3306/mtcgs-ems` with `APP_ENV=local`. It refuses non-NTFS backup destinations, creates a per-run folder with an ACL for the current Windows account, never overwrites an existing restore-test database, and retains the restored clone for inspection. It does not run a migration against the source database. If a run fails, check `verification-manifest.json` and the exact failure output; any partially restored clone is intentionally retained rather than automatically dropped.
+
+The default backup folder is `%LOCALAPPDATA%\MTCGS-EMS-Backups`. A FAT32 drive cannot enforce file permissions, so the script refuses plaintext backup output to FAT32 (including USB drives formatted as FAT32). Copy backups to a separate secure/off-site location only after arranging encryption and access controls. This local rehearsal is not a substitute for a real hosting staging environment, production backup, or tested off-host restore.
 
 ### Optional MySQL integration tests
 

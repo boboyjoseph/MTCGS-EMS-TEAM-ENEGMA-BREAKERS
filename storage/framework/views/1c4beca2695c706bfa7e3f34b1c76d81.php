@@ -123,7 +123,7 @@
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <h2><i class="fas fa-fingerprint me-2"></i> Biometric Management</h2>
-                    <p class="mb-0">Manage fingerprint registrations for users in your branch and handle admin biometric setup.</p>
+                    <p class="mb-0">Manage fingerprint registrations for eligible employees in your branch.</p>
                 </div>
             </div>
         </div>
@@ -133,14 +133,16 @@
     <?php
         $user = Auth::user();
         $adminProfile = $user ? $user->getAdminProfile() : null;
+        $isHrAdmin = $user && $user->role === 'admin'
+            && (($user->admin_type ?? '') === 'hr' || strtolower((string) ($adminProfile?->admin_level ?? '')) === 'hr');
         $branchHeadProfile = $user ? $user->getBranchHeadProfile() : null;
         $employeeProfile = $adminProfile ? App\Models\EmployeeProfile::find($adminProfile->employee_profile_id) : ($branchHeadProfile ? App\Models\EmployeeProfile::find($branchHeadProfile->employee_profile_id) : null);
         $todayAttendance = $employeeProfile ? App\Models\AttendanceLog::where('employee_profile_id', $employeeProfile->id)->whereDate('attendance_date', today())->first() : null;
-        $canSelfRegisterAdminFingerprint = $user && ($user->isSuperAdmin() || $user->role === 'branch_head' || $user->role === 'admin');
+        $canSelfRegisterAdminFingerprint = $user && $user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin';
         $isBranchHeadSelfAttendance = $user && $user->role === 'branch_head';
     ?>
 
-    <?php if($adminProfile): ?>
+    <?php if($adminProfile && $canSelfRegisterAdminFingerprint && !$isHrAdmin): ?>
     <div class="row mb-4">
         <div class="col-md-6 mx-auto">
             <div class="card shadow-sm">
@@ -219,7 +221,7 @@
         <div class="card-body">
             <div class="mb-3">
                 <h6 class="text-primary mb-2"><i class="fas fa-user-tie me-2"></i>Employees</h6>
-                <small class="text-muted">HR approval is separate from fingerprint registration. Employees remain listed here until their fingerprint is registered.</small>
+                <small class="text-muted">HR approval is separate from fingerprint registration. All employees remain listed with their current fingerprint status.</small>
             </div>
             <div id="unregisteredEmployeesList" class="biometric-status-list">
                 <div class="text-center">
@@ -252,6 +254,16 @@
     <?php endif; ?>
 </div>
 
+<?php
+    $adminFingerprintProfile = $adminProfile ? [
+        'first_name' => $adminProfile->first_name,
+        'last_name' => $adminProfile->last_name,
+        'employee_number' => $adminProfile->employee_number,
+        'email' => $adminProfile->user->email ?? '',
+        'branch' => $adminProfile->branch->branch_name ?? '',
+        'position' => $adminProfile->position ?? '',
+    ] : null;
+?>
 <script>
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 const appBaseUrl = <?php echo json_encode(request()->getBaseUrl(), 15, 512) ?>;
@@ -276,8 +288,7 @@ function getOrCreateFingerprint(key, seed) {
 async function registerAdminFingerprint() {
     const button = document.getElementById('registerAdminFingerprintButton');
     const status = document.getElementById('adminFingerprintStatus');
-    const profile = <?php echo json_encode($adminProfile ? [
-        'first_name' => $adminProfile->first_name, 'last_name' => $adminProfile->last_name, 'employee_number' => $adminProfile->employee_number) ?>;
+    const profile = <?php echo e(\Illuminate\Support\Js::from($adminFingerprintProfile)); ?>;
 
     if (!profile || !profile.employee_number || !profile.first_name || !profile.last_name) {
         if (status) {
@@ -410,68 +421,79 @@ async function processAdminAttendance() {
 
 // Load unregistered employees grouped by branch
 async function loadUnregisteredEmployees() {
-    const response = await fetch(apiUrl('biometric/unregistered-employees'), {
-        headers: jsonHeaders
-    });
-    
-    const result = await response.json();
-    
     const container = document.getElementById('unregisteredEmployeesList');
     if (!container) {
         return;
     }
 
-    if (!result.success || !result.data || result.data.length === 0) {
-        container.innerHTML = '<div class="alert alert-success">All employees have registered fingerprints!</div>';
-        return;
-    }
-
-    const branches = {};
-    result.data.forEach(emp => {
-        const branchName = emp.branch_name || 'Unknown Branch';
-        if (!branches[branchName]) {
-            branches[branchName] = [];
+    try {
+        const response = await fetch(apiUrl('biometric/unregistered-employees'), {
+            headers: jsonHeaders
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success || !Array.isArray(result.data)) {
+            throw new Error(result.error || 'The employee list could not be loaded.');
         }
-        branches[branchName].push(emp);
-    });
 
-    const branchEntries = Object.entries(branches);
-    let html = '<div class="list-group biometric-status-list">';
+        if (result.data.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">No employee profiles were found.</div>';
+            return;
+        }
 
-    branchEntries.forEach(([branchName, employees]) => {
-        html += `
-            <div class="list-group-item bg-light">
-                <h6 class="mb-0 fw-bold text-primary">${branchName}</h6>
-            </div>
-        `;
+        const branches = {};
+        result.data.forEach(emp => {
+            const branchName = emp.branch_name || 'Unknown Branch';
+            if (!branches[branchName]) {
+                branches[branchName] = [];
+            }
+            branches[branchName].push(emp);
+        });
 
-        employees.forEach(emp => {
-            const isRegistered = Boolean(emp.is_fingerprint_registered);
-            const buttonLabel = isRegistered ? 'Registered' : 'Not Registered';
-            const statusClass = isRegistered ? 'bg-success' : 'bg-warning';
-            const buttonIcon = isRegistered ? 'fa-check-circle' : 'fa-clock';
+        const branchEntries = Object.entries(branches);
+        let html = '<div class="list-group biometric-status-list">';
 
+        branchEntries.forEach(([branchName, employees]) => {
             html += `
-                <div class="list-group-item">
-                    <div class="biometric-status-item">
-                        <div class="biometric-profile-card biometric-status-copy">
-                            ${profileAvatar(emp)}
-                            <div>
-                                ${profileLink(emp)}
-                            <small class="text-muted">${emp.employee_number} - ${emp.position || 'Staff'}</small>
-                            </div>
-                        </div>
-                        <span class="badge ${statusClass} text-white biometric-status-badge">
-                            <i class="fas ${buttonIcon}"></i> ${buttonLabel}
-                        </span>
-                    </div>
+                <div class="list-group-item bg-light">
+                    <h6 class="mb-0 fw-bold text-primary">${branchName}</h6>
                 </div>
             `;
-        });
-    });
 
-    html += '</div>';
-    container.innerHTML = html;
+            employees.forEach(emp => {
+                const isRegistered = Boolean(emp.is_fingerprint_registered);
+                const buttonLabel = isRegistered ? 'Registered' : 'Not Registered';
+                const statusClass = isRegistered ? 'bg-success' : 'bg-warning';
+                const buttonIcon = isRegistered ? 'fa-check-circle' : 'fa-clock';
+
+                html += `
+                    <div class="list-group-item">
+                        <div class="biometric-status-item">
+                            <div class="biometric-profile-card biometric-status-copy">
+                                ${profileAvatar(emp)}
+                                <div>
+                                    ${profileLink(emp)}
+                                <small class="text-muted">${emp.employee_number} - ${emp.position || 'Staff'}</small>
+                                </div>
+                            </div>
+                            <span class="badge ${statusClass} text-white biometric-status-badge">
+                                <i class="fas ${buttonIcon}"></i> ${buttonLabel}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '';
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger';
+        alert.setAttribute('role', 'alert');
+        alert.textContent = `Employee list unavailable: ${error.message}`;
+        container.appendChild(alert);
+    }
 }
 
 function profileAvatar(item) {
@@ -569,17 +591,22 @@ async function loadUnregisteredFinanceOfficers() {
         return;
     }
 
-    const response = await fetch(apiUrl('biometric/unregistered-finance-officers'), {
-        headers: jsonHeaders
-    });
-    
-    const result = await response.json();
-    
-    if (result.success && result.data.length > 0) {
-        const financeOfficers = result.data;
-        renderStatusList(financeOfficerList, financeOfficers, 'All finance officers have registered fingerprints!', 'bg-primary', 'Finance Officer', true);
-    } else {
-        renderStatusList(financeOfficerList, [], 'All finance officers have registered fingerprints!', 'bg-primary', 'Finance Officer');
+    try {
+        const response = await fetch(apiUrl('biometric/unregistered-finance-officers'), {
+            headers: jsonHeaders
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success || !Array.isArray(result.data)) {
+            throw new Error(result.error || 'The finance officer list could not be loaded.');
+        }
+        renderStatusList(financeOfficerList, result.data, 'No finance officer profiles were found.', 'bg-primary', 'Finance Officer', true);
+    } catch (error) {
+        financeOfficerList.innerHTML = '';
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger';
+        alert.setAttribute('role', 'alert');
+        alert.textContent = `Finance officer list unavailable: ${error.message}`;
+        financeOfficerList.appendChild(alert);
     }
 }
 
@@ -590,17 +617,22 @@ async function loadUnregisteredAdmins() {
         return;
     }
 
-    const response = await fetch(apiUrl('biometric/unregistered-admins'), {
-        headers: jsonHeaders
-    });
-    
-    const result = await response.json();
-    
-    if (result.success && result.data.length > 0) {
-        const branchAdmins = result.data;
-        renderStatusList(branchAdminList, branchAdmins, 'All branch admins have registered fingerprints!', 'bg-warning', 'Branch Admin', true);
-    } else {
-        renderStatusList(branchAdminList, [], 'All branch admins have registered fingerprints!', 'bg-warning', 'Branch Admin');
+    try {
+        const response = await fetch(apiUrl('biometric/unregistered-admins'), {
+            headers: jsonHeaders
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success || !Array.isArray(result.data)) {
+            throw new Error(result.error || 'The branch administrator list could not be loaded.');
+        }
+        renderStatusList(branchAdminList, result.data, 'No branch administrator profiles were found.', 'bg-warning', 'Branch Admin', true);
+    } catch (error) {
+        branchAdminList.innerHTML = '';
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger';
+        alert.setAttribute('role', 'alert');
+        alert.textContent = `Branch administrator list unavailable: ${error.message}`;
+        branchAdminList.appendChild(alert);
     }
 }
 

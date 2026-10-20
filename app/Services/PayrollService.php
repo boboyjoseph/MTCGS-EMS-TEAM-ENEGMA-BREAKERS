@@ -148,7 +148,7 @@ class PayrollService
         $tax = $this->computeTax($taxableIncome);
         
         $totalDeductions = $sss['employee_share'] + $philhealth['employee_share'] + $pagibig['employee_share'] + $tax + $basicPayData['late_deduction'];
-        $netPay = $totalEarnings - $totalDeductions;
+        $netPay = $grossPay - $totalDeductions;
         
         return [
             'employee_id' => $employee->id,

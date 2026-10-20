@@ -91,8 +91,9 @@
             @foreach ($daysInPeriod as $day)
                 @php($log = $day['log'] ?? null)
                 @php($status = $day['status'] ?? 'N/A')
+                @php($isLeaveDay = in_array($status, ['leave', 'lwop'], true))
                 @php($lateEarlyOutMinutes = \App\Models\DTR::normalizeLateMinutesForLog($log))
-                @if ($log && in_array($status, ['present', 'late'], true))
+                @if ($log && !$isLeaveDay && in_array($status, ['present', 'late'], true))
                     @php($attendanceStatus = $log->getDtrStatus())
                     @if (in_array($attendanceStatus, ['Half Day', 'Early Out', 'Late', 'Late / Early Out'], true))
                         @php($status = $attendanceStatus)
@@ -104,10 +105,10 @@
                 @endif
                 <tr>
                     <td class="center">{{ $day['date']->format('M d, Y') }}</td>
-                    <td class="center">{{ ($log?->am_in ?? $log?->pm_in)?->format('h:i A') ?? '--' }}</td>
-                    <td class="center">{{ ($log?->pm_out ?? $log?->am_out)?->format('h:i A') ?? '--' }}</td>
-                    <td class="center">{{ $lateEarlyOutMinutes }}</td>
-                    <td class="status">{{ is_string($status) && $status === 'Half Day' ? $status : ucfirst($status) }}</td>
+                    <td class="center">{{ !$isLeaveDay ? (($log?->am_in ?? $log?->pm_in)?->format('h:i A') ?? '--') : '--' }}</td>
+                    <td class="center">{{ !$isLeaveDay ? (($log?->pm_out ?? $log?->am_out)?->format('h:i A') ?? '--') : '--' }}</td>
+                    <td class="center">{{ $isLeaveDay ? 0 : $lateEarlyOutMinutes }}</td>
+                    <td class="status">{{ $status === 'leave' ? 'Paid Leave' : ($status === 'lwop' ? 'Leave Without Pay' : (is_string($status) && $status === 'Half Day' ? $status : ucfirst($status))) }}</td>
                 </tr>
             @endforeach
         </tbody>

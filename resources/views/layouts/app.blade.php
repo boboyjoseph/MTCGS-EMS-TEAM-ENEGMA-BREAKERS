@@ -656,7 +656,23 @@
                     @endif
                     <a class="nav-link {{ request()->routeIs('admin.dtr.*') ? 'active' : '' }}" href="{{ route('admin.dtr.index') }}">
                         <i class="fas fa-clock"></i> DTR Management
-                        @php $pendingDTRs = \App\Models\DTR::where('status', 'submitted')->count(); @endphp
+                        @php
+                            $pendingDTRQuery = \App\Models\DTR::query();
+                            if (Auth::user()->isBranchAdmin()) {
+                                $branchId = Auth::user()->getEffectiveBranchId();
+                                if ($branchId) {
+                                    $pendingDTRQuery->where('status', 'submitted')
+                                        ->whereHas('employeeProfile', fn ($query) => $query->where('branch_id', $branchId));
+                                } else {
+                                    $pendingDTRQuery->whereRaw('0 = 1');
+                                }
+                            } elseif (Auth::user()->isSuperAdmin()) {
+                                $pendingDTRQuery->where('status', 'pending_system_admin');
+                            } else {
+                                $pendingDTRQuery->whereRaw('0 = 1');
+                            }
+                            $pendingDTRs = $pendingDTRQuery->count();
+                        @endphp
                         @if($pendingDTRs > 0)
                             <span class="badge bg-warning ms-auto">{{ $pendingDTRs }}</span>
                         @endif

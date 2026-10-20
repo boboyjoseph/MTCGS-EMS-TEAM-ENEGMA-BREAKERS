@@ -19,6 +19,26 @@ class PayrollComputationService
 {
     public const SUSPENSION_HOURLY_RATE = 60.0;
 
+    public function calculateOvertimePay(float $holidayBonus, float $suspensionPay): float
+    {
+        return round(max(0, $holidayBonus) + max(0, $suspensionPay), 2);
+    }
+
+    public function calculateTotalEarnings(
+        float $totalDailyRate,
+        float $holidayBonus,
+        float $suspensionPay,
+        float $paidLeaveRate
+    ): float {
+        return round(
+            max(0, $totalDailyRate)
+                + max(0, $holidayBonus)
+                + max(0, $suspensionPay)
+                + max(0, $paidLeaveRate),
+            2
+        );
+    }
+
     /**
      * Generate payroll entry from approved DTR
      */
@@ -39,16 +59,25 @@ class PayrollComputationService
         $cashChargeDeduction = $cashCharge['amount'];
         $totalDeductions = (float) $calculation['total_deductions'] + $cashAdvanceDeduction + $cashChargeDeduction;
         $grossPay = (float) $calculation['basic_pay'];
-        $netPay = (float) $calculation['basic_pay']
-            + (float) $calculation['overtime_pay']
-            + (float) ($existing->allowances ?? 0)
-            + (float) ($existing->bonuses ?? 0)
-            - $totalDeductions;
+        $existingBreakdown = is_string($existing?->payroll_breakdown)
+            ? (json_decode($existing->payroll_breakdown, true) ?? [])
+            : (array) ($existing?->payroll_breakdown ?? []);
+        $holidayBonus = (float) ($existingBreakdown['holiday_bonus'] ?? 0);
+        $suspendedHoursToPay = (float) ($existingBreakdown['suspended_hours_to_pay'] ?? 0);
+        $suspensionPay = $this->calculateSuspensionPay($suspendedHoursToPay);
+        $overtimePay = $this->calculateOvertimePay($holidayBonus, $suspensionPay);
+        $totalEarnings = $this->calculateTotalEarnings(
+            (float) $calculation['total_daily_rate'],
+            $holidayBonus,
+            $suspensionPay,
+            (float) $calculation['paid_leave_rate']
+        );
+        $netPay = $grossPay - $totalDeductions;
 
         $payload = [
             'branch_id' => $employeeProfile?->branch_id,
             'basic_pay' => $calculation['basic_pay'],
-            'overtime_pay' => $calculation['overtime_pay'],
+            'overtime_pay' => $overtimePay,
             'overtime_hours' => $calculation['overtime_hours'],
             'days_present' => $calculation['days_worked'],
             'days_absent' => $calculation['days_absent'],
@@ -67,6 +96,11 @@ class PayrollComputationService
             'net_pay' => $netPay,
             'status' => 'draft',
             'payroll_breakdown' => json_encode(array_merge($calculation['breakdown'], [
+                'holiday_bonus' => number_format($holidayBonus, 2, '.', ''),
+                'suspended_hours_to_pay' => $suspendedHoursToPay,
+                'suspension_pay' => number_format($suspensionPay, 2, '.', ''),
+                'overtime_pay' => number_format($overtimePay, 2, '.', ''),
+                'total_earnings' => number_format($totalEarnings, 2, '.', ''),
                 'cash_advance_deduction' => $cashAdvanceDeduction,
                 'cash_charge_id' => $cashCharge['id'],
                 'cash_charge_deduction' => $cashChargeDeduction,
@@ -277,7 +311,9 @@ class PayrollComputationService
 
         // Gross Pay follows the payroll display rule: Basic Pay only.
         $grossPay = $basicPay;
-        $totalEarnings = $basicPay + $overtimePay;
+        $totalDailyRate = $daysWorked * $dailyRate;
+        $paidLeaveRate = $paidLeaveDays * $dailyRate;
+        $totalEarnings = $this->calculateTotalEarnings($totalDailyRate, 0, 0, $paidLeaveRate);
 
         // Calculate SSS, PhilHealth, Pag-ibig contributions
         $sssDeduction = $this->calculateSSS($monthlySalary);
@@ -294,7 +330,7 @@ class PayrollComputationService
             $totalDeductions += $earlyOutDeduction;
 
         // Net pay
-        $netPay = $totalEarnings - $totalDeductions;
+        $netPay = $grossPay - $totalDeductions;
 
         $calculation = [
             'dtr_period' => $dtr->period_start->format('M d') . ' - ' . $dtr->period_end->format('M d, Y'),
@@ -308,6 +344,9 @@ class PayrollComputationService
             'overtime_hours' => round($overtimeHours, 2),
             'basic_pay' => round($basicPay, 2),
             'overtime_pay' => round($overtimePay, 2),
+            'total_daily_rate' => round($totalDailyRate, 2),
+            'paid_leave_rate' => round($paidLeaveRate, 2),
+            'total_earnings' => $totalEarnings,
             'late_deduction' => round($lateDeduction, 2),
             'early_out_deduction' => round($earlyOutDeduction, 2),
             'absent_deduction' => round($absentDeduction, 2),
@@ -330,6 +369,9 @@ class PayrollComputationService
                 'leave_without_pay' => $leaveWithoutPayDays,
                 'basic_pay' => number_format($basicPay, 2),
                 'overtime_pay' => number_format($overtimePay, 2),
+                'total_daily_rate' => number_format($totalDailyRate, 2),
+                'paid_leave_rate' => number_format($paidLeaveRate, 2),
+                'total_earnings' => number_format($totalEarnings, 2),
                 'late_deduction' => number_format($lateDeduction, 2),
                 'early_out_deduction' => number_format($earlyOutDeduction, 2),
                 'absent_deduction' => number_format($absentDeduction, 2),

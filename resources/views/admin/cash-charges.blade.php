@@ -84,18 +84,9 @@
             @php
                 $profileForSummary = Auth::user()->getEmployeeProfile() ?? Auth::user()->getAdminProfile()?->employeeProfile ?? null;
                 $balanceForSummary = $profileForSummary
-                    ? \App\Models\LeaveBalance::firstOrCreate([
-                        'employee_profile_id' => $profileForSummary->id,
-                        'year' => now()->year,
-                    ], [
-                        'sick_leave_used' => 0,
-                        'vacation_leave_used' => 0,
-                        'emergency_leave_used' => 0,
-                        'birthday_leave_used' => 0,
-                        'cash_charge_used' => 0,
-                        'maternity_leave_used' => 0,
-                        'paternity_leave_used' => 0,
-                    ])
+                    ? \App\Models\LeaveBalance::where('employee_profile_id', $profileForSummary->id)
+                        ->where('year', now()->year)
+                        ->first()
                     : null;
                 $pendingChargeRequest = $myCharges
                     ->whereIn('status', ['pending_branch_admin', 'pending_super_admin'])
@@ -378,8 +369,20 @@
                                 <label class="form-label">Employee</label>
                                 <select name="employee_id" class="form-select" required>
                                     <option value="">Select employee</option>
-                                    @foreach($employees as $employee)
-                                        <option value="{{ $employee->id }}">{{ $employee->first_name }} {{ $employee->last_name }} - {{ $employee->branch?->branch_name ?? 'N/A' }}</option>
+                                    @foreach($groupedEmployees as $branchEmployees)
+                                        @php $branchName = $branchEmployees->first()?->first()?->branch?->branch_name ?? 'Unassigned Branch'; @endphp
+                                        @foreach($branchEmployees as $role => $roleEmployees)
+                                            <optgroup label="{{ $branchName }} - {{ $role }}">
+                                                @foreach($roleEmployees as $employee)
+                                                    <option value="{{ $employee->id }}" @selected(old('employee_id') == $employee->id)>
+                                                        {{ $employee->last_name }}, {{ $employee->first_name }}
+                                                        @if($employee->employee_number)
+                                                            - {{ $employee->employee_number }}
+                                                        @endif
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
                                     @endforeach
                                 </select>
                             </div>

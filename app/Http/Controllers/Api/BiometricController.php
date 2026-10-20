@@ -11,6 +11,7 @@ use App\Models\AttendanceLog;
 use App\Models\Branch;
 use App\Models\Device;
 use App\Models\AuditLog;
+use App\Models\User;
 use App\Services\BiometricDeviceAuthenticator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,6 +20,52 @@ use Illuminate\Support\Facades\Storage;
 
 class BiometricController extends Controller
 {
+    private function isHrAdmin(?User $user): bool
+    {
+        if (!$user || $user->role !== 'admin') {
+            return false;
+        }
+
+        return strtolower((string) ($user->admin_type ?? '')) === 'hr'
+            || strtolower((string) ($user->getAdminProfile()?->admin_level ?? '')) === 'hr';
+    }
+
+    private function branchAdminProfiles()
+    {
+        return AdminProfile::query()->where(function ($query) {
+            $query->whereHas('user', fn ($userQuery) => $userQuery
+                ->where('role', 'admin')
+                ->where('admin_type', 'branch_admin'))
+                ->orWhere(function ($profileQuery) {
+                    $profileQuery->where('admin_level', 'branch_admin')
+                        ->whereDoesntHave('user', fn ($userQuery) => $userQuery
+                            ->whereIn('admin_type', ['hr', 'super_admin']));
+                });
+        });
+    }
+
+    private function eligibleAdminFingerprintProfiles()
+    {
+        return AdminProfile::query()
+            ->where(function ($query) {
+                $query->whereNull('admin_level')
+                    ->orWhereRaw('LOWER(TRIM(admin_level)) != ?', ['hr']);
+            })
+            ->whereDoesntHave('user', fn ($query) => $query
+                ->where('role', 'admin')
+                ->where('admin_type', 'hr'));
+    }
+
+    private function isBranchAdminProfile(AdminProfile $profile): bool
+    {
+        $adminType = strtolower((string) ($profile->user?->admin_type ?? ''));
+
+        return $adminType === 'branch_admin'
+            || ($adminType !== 'hr'
+                && $adminType !== 'super_admin'
+                && strtolower((string) ($profile->admin_level ?? '')) === 'branch_admin');
+    }
+
     // Register employee fingerprint (Admin or Finance Head)
     public function registerFingerprint(Request $request)
     {
@@ -35,6 +82,10 @@ class BiometricController extends Controller
         }
 
         $employee = EmployeeProfile::findOrFail($request->employee_id);
+        if ($this->isHrAdmin($employee->user)) {
+            return response()->json(['error' => 'HR accounts are not eligible for fingerprint registration.'], 422);
+        }
+
         if ($user->role === 'admin' && $user->admin_type === 'branch_admin'
             && (int) $employee->branch_id !== (int) $user->getEffectiveBranchId()) {
             return response()->json(['error' => 'You can only register fingerprints for employees in your branch.'], 403);
@@ -106,8 +157,8 @@ class BiometricController extends Controller
 
         $user = auth()->user();
         
-        if ($user->role !== 'admin') {
-            return response()->json(['error' => 'Only Admin can register their own fingerprint'], 403);
+        if ($user->role !== 'admin' || $user->admin_type !== 'branch_admin' || $this->isHrAdmin($user)) {
+            return response()->json(['error' => 'Only branch administrators may register their own fingerprint.'], 403);
         }
         
         $profile = $user->getAdminProfile();
@@ -261,6 +312,10 @@ class BiometricController extends Controller
     // Process attendance for admin (same as employee)
     public function processAdminAttendance(Request $request)
     {
+        if ($this->isHrAdmin(auth()->user())) {
+            return response()->json(['error' => 'HR accounts are not eligible for biometric attendance.'], 403);
+        }
+
         $request->validate([
             'fingerprint_data' => 'required|string',
             'device_serial' => 'nullable|string',
@@ -281,7 +336,8 @@ class BiometricController extends Controller
         
         // Find admin by fingerprint
         $incomingFingerprint = $this->fingerprintBytes($request->fingerprint_data);
-        $admin = AdminProfile::where('is_fingerprint_registered', true)
+        $admin = $this->eligibleAdminFingerprintProfiles()
+            ->where('is_fingerprint_registered', true)
             ->whereNotNull('fingerprint_template')->get()
             ->first(fn ($profile) => $this->templatesMatch($profile->fingerprint_template, $incomingFingerprint));
         
@@ -295,7 +351,20 @@ class BiometricController extends Controller
         if (!$employeeProfile) {
             return response()->json(['error' => 'Employee profile not linked for this admin'], 400);
         }
-        
+
+        $now = now();
+        $leaveBlockReason = app(\App\Services\ApprovedLeaveAttendanceGuard::class)
+            ->blockedReason($employeeProfile, $now);
+        if ($leaveBlockReason) {
+            return response()->json([
+                'success' => false,
+                'error' => $leaveBlockReason,
+                'message' => $leaveBlockReason,
+                'attendance_blocked' => true,
+                'date' => $now->toDateString(),
+            ], 403);
+        }
+
         $attendance = AttendanceLog::firstOrNew([
             'employee_profile_id' => $employeeProfile->id,
             'attendance_date' => today(),
@@ -306,7 +375,6 @@ class BiometricController extends Controller
         $attendance->branch_id = $admin->branch_id ?? 1;
         $attendance->attendance_date = today();
         
-        $now = now();
         $currentHour = (int)date('H', strtotime($now));
         $message = '';
         $action = '';
@@ -402,6 +470,10 @@ class BiometricController extends Controller
     // Process attendance for finance officer
     public function processFinanceAttendance(Request $request)
     {
+        if ($this->isHrAdmin(auth()->user())) {
+            return response()->json(['error' => 'HR accounts are not eligible for biometric attendance.'], 403);
+        }
+
         $request->validate([
             'fingerprint_data' => 'required|string',
             'mac_address' => 'nullable|string',
@@ -453,6 +525,18 @@ class BiometricController extends Controller
             } catch (\Throwable $exception) {
                 $now = now();
             }
+        }
+
+        $leaveBlockReason = app(\App\Services\ApprovedLeaveAttendanceGuard::class)
+            ->blockedReason($employeeProfile, $now);
+        if ($leaveBlockReason) {
+            return response()->json([
+                'success' => false,
+                'error' => $leaveBlockReason,
+                'message' => $leaveBlockReason,
+                'attendance_blocked' => true,
+                'date' => $now->toDateString(),
+            ], 403);
         }
 
         if (app(\App\Services\WorkingDayService::class)->isSuspension($now, $employeeProfile->branch_id)) {
@@ -596,7 +680,10 @@ class BiometricController extends Controller
                             ->where('fingerprint_template', '!=', '')
                             ->whereRaw('LOWER(TRIM(fingerprint_template)) != "null"');
                     });
-            })->get()->first(fn ($item) => $this->templatesMatch($item->fingerprint_template, $scannedTemplate));
+            })->with('user')->get()->first(fn ($item) =>
+                !$this->isHrAdmin($item->user)
+                && $this->templatesMatch($item->fingerprint_template, $scannedTemplate)
+            );
 
         if (!$profile) {
             $profile = FinanceProfile::where('branch_id', $device->branch_id)
@@ -607,11 +694,19 @@ class BiometricController extends Controller
                                 ->where('fingerprint_template', '!=', '')
                                 ->whereRaw('LOWER(TRIM(fingerprint_template)) != "null"');
                         });
-                })->get()->first(fn ($item) => $this->templatesMatch($item->fingerprint_template, $scannedTemplate));
+                })
+                ->with('user')
+                ->with('user')
+                ->get()
+                ->first(fn ($item) =>
+                    !$this->isHrAdmin($item->user)
+                    && $this->templatesMatch($item->fingerprint_template, $scannedTemplate)
+                );
         }
 
         if (!$profile) {
-            $profile = AdminProfile::where('branch_id', $device->branch_id)
+            $profile = $this->eligibleAdminFingerprintProfiles()
+                ->where('branch_id', $device->branch_id)
                 ->where(function ($query) {
                     $query->where('is_fingerprint_registered', true)
                         ->orWhere(function ($subQuery) {
@@ -898,20 +993,8 @@ class BiometricController extends Controller
             return 'Attendance is not allowed because today is a holiday.';
         }
 
-        $leave = \App\Models\LeaveRequest::where('employee_profile_id', $employee->id)
-            ->where('status', 'approved')
-            ->whereDate('start_date', '<=', $day->toDateString())
-            ->whereDate('end_date', '>=', $day->toDateString())
-            ->latest('id')
-            ->first();
-
-        if (!$leave) {
-            return null;
-        }
-
-        return $leave->is_absent
-            ? 'Attendance is not allowed because the employee is on leave without pay.'
-            : 'Attendance is not allowed because the employee is on paid leave.';
+        return app(\App\Services\ApprovedLeaveAttendanceGuard::class)
+            ->blockedReason($employee, $day);
     }
 
     public function evaluateTimeOutStatus($actualOut, $scheduledOut): array
@@ -934,6 +1017,10 @@ class BiometricController extends Controller
     // Process regular employee attendance
     public function processAttendance(Request $request)
     {
+        if ($this->isHrAdmin(auth()->user())) {
+            return response()->json(['error' => 'HR accounts are not eligible for biometric attendance.'], 403);
+        }
+
         $request->validate([
             'fingerprint_data' => 'required|string',
             'mac_address' => 'nullable|string',
@@ -974,6 +1061,18 @@ class BiometricController extends Controller
             } catch (\Throwable $exception) {
                 $now = now();
             }
+        }
+
+        $leaveBlockReason = app(\App\Services\ApprovedLeaveAttendanceGuard::class)
+            ->blockedReason($employee, $now);
+        if ($leaveBlockReason) {
+            return response()->json([
+                'success' => false,
+                'error' => $leaveBlockReason,
+                'message' => $leaveBlockReason,
+                'attendance_blocked' => true,
+                'date' => $now->toDateString(),
+            ], 403);
         }
 
         if (app(\App\Services\WorkingDayService::class)->isSuspension($now, $employee->branch_id)) {
@@ -1133,18 +1232,6 @@ class BiometricController extends Controller
         }
         
         $query = EmployeeProfile::query()
-            ->where(function ($fingerprintQuery) {
-                $fingerprintQuery
-                    ->where(function ($statusQuery) {
-                        $statusQuery->where('is_fingerprint_registered', false)
-                            ->orWhereNull('is_fingerprint_registered');
-                    })
-                    ->where(function ($templateQuery) {
-                        $templateQuery->whereNull('fingerprint_template')
-                            ->orWhere('fingerprint_template', '')
-                            ->orWhereRaw('LOWER(TRIM(fingerprint_template)) = ?', ['null']);
-                    });
-            })
             ->whereNotIn('id', FinanceProfile::query()->select('employee_profile_id')->whereNotNull('employee_profile_id'))
             ->whereDoesntHave('user', function ($userQuery) {
                 $userQuery->whereIn('role', ['finance_officer', 'finance_head']);
@@ -1156,7 +1243,9 @@ class BiometricController extends Controller
             $query->where('branch_id', $branchId);
         }
 
-        $employees = $query->with('branch')->get()->map(function($employee) {
+        $employees = $query->with(['branch', 'user'])->get()
+            ->reject(fn ($employee) => $this->isHrAdmin($employee->user))
+            ->map(function($employee) {
             $hasFingerprintTemplate = is_string($employee->fingerprint_template)
                 && trim($employee->fingerprint_template) !== ''
                 && strtolower(trim($employee->fingerprint_template)) !== 'null';
@@ -1235,11 +1324,8 @@ class BiometricController extends Controller
             return response()->json(['error' => 'Only Super Admin can access this'], 403);
         }
         
-        $admins = AdminProfile::with(['user', 'branch'])
-            ->where(function ($query) {
-                $query->whereHas('user', fn ($userQuery) => $userQuery->where('admin_type', 'branch_admin'))
-                    ->orWhere('admin_level', 'branch_admin');
-            })
+        $admins = $this->branchAdminProfiles()
+            ->with(['user', 'branch'])
             ->get()
             ->map(function($admin) {
             $userAdminType = $admin->user?->admin_type ?? $admin->admin_level ?? 'admin';
@@ -1321,9 +1407,7 @@ class BiometricController extends Controller
         }
 
         $admin = AdminProfile::findOrFail($request->admin_id);
-        $userAdminType = strtolower((string) ($admin->user?->admin_type ?? ''));
-        $profileAdminLevel = strtolower((string) ($admin->admin_level ?? ''));
-        if ($userAdminType !== 'branch_admin' && $profileAdminLevel !== 'branch_admin') {
+        if (!$this->isBranchAdminProfile($admin)) {
             return response()->json(['error' => 'HR and Super Admin fingerprint registration is not allowed'], 422);
         }
 
@@ -1345,8 +1429,8 @@ class BiometricController extends Controller
     {
         $user = auth()->user();
         
-        if ($user->role !== 'admin') {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        if ($user->role !== 'admin' || $this->isHrAdmin($user)) {
+            return response()->json(['error' => 'HR accounts cannot use fingerprint registration.'], 403);
         }
         
         $profile = $user->getAdminProfile();
@@ -1413,13 +1497,18 @@ class BiometricController extends Controller
         $crossBranchDuplicateCheck = $request->input('fingerprint_scope') === 'duplicate-check';
         $templates = collect();
         foreach ([EmployeeProfile::class, FinanceProfile::class, AdminProfile::class, BranchHeadProfile::class] as $profileType) {
-            $profiles = $profileType::query()
+            $profilesQuery = $profileType === AdminProfile::class
+                ? $this->eligibleAdminFingerprintProfiles()
+                : $profileType::query();
+
+            $profiles = $profilesQuery
                 ->whereNotNull('fingerprint_template')
                 ->where('fingerprint_template', '!=', '')
                 ->when(!$crossBranchDuplicateCheck, fn ($query) => $query->where('branch_id', $device->branch_id))
                 ->when(!$crossBranchDuplicateCheck && $request->filled('employee_number'), fn ($query) => $query->where('employee_number', trim($request->employee_number)))
-                ->with('branch:id,branch_name')
-                ->get(['employee_number', 'first_name', 'last_name', 'branch_id', 'position', 'fingerprint_template']);
+                ->with($profileType === EmployeeProfile::class ? ['user', 'branch'] : ['branch'])
+                ->get(['id', 'user_id', 'employee_number', 'first_name', 'last_name', 'branch_id', 'position', 'fingerprint_template'])
+                ->reject(fn ($profile) => $profileType === EmployeeProfile::class && $this->isHrAdmin($profile->user));
 
             $templates = $templates->concat(
                 $profiles->flatMap(fn ($profile) => $this->fingerprintTemplateResponseItems($profile))
@@ -1557,9 +1646,11 @@ class BiometricController extends Controller
                             ->whereRaw('LOWER(TRIM(fingerprint_template)) != "null"');
                     });
             })
+            ->with('user')
             ->get()
             ->first(function ($profile) use ($incomingFingerprint) {
-                return $this->templatesMatch($profile->fingerprint_template, $incomingFingerprint);
+                return !$this->isHrAdmin($profile->user)
+                    && $this->templatesMatch($profile->fingerprint_template, $incomingFingerprint);
             });
         
         if (!$employee) {
@@ -1584,7 +1675,19 @@ class BiometricController extends Controller
         $now = $rawTimestamp ? \Carbon\Carbon::parse($rawTimestamp)->setTimezone(config('app.timezone')) : now();
         $attendanceDate = $now->copy()->toDateString();
         $requestedAction = strtoupper(trim($request->input('action')));
-        $attendance = AttendanceLog::where('employee_profile_id', $employee->id)
+    $leaveBlockReason = app(\App\Services\ApprovedLeaveAttendanceGuard::class)
+        ->blockedReason($employee, $attendanceDate);
+    if ($leaveBlockReason) {
+        return response()->json([
+            'success' => false,
+            'error' => $leaveBlockReason,
+            'message' => $leaveBlockReason,
+            'attendance_blocked' => true,
+            'date' => $attendanceDate,
+        ], 403);
+    }
+
+    $attendance = AttendanceLog::where('employee_profile_id', $employee->id)
             ->whereDate('attendance_date', $attendanceDate)
             ->first();
         if (!$attendance) {
@@ -1936,6 +2039,15 @@ class BiometricController extends Controller
                     || (bool) $profile->is_fingerprint_registered;
             }
 
+        }
+
+        if (($profile instanceof AdminProfile
+                && strtolower((string) ($profile->admin_level ?? '')) === 'hr')
+            || ($profile && $this->isHrAdmin($profile->user))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'HR and Super Admin accounts are not eligible for fingerprint enrollment.',
+            ], 422);
         }
 
         $profileBranchId = $profile?->branch_id;

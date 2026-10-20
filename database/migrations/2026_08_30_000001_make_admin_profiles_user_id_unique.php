@@ -18,26 +18,16 @@ return new class extends Migration
 
         $duplicates = DB::table('admin_profiles')
             ->select('user_id')
+            ->whereNotNull('user_id')
             ->groupBy('user_id')
             ->havingRaw('COUNT(*) > 1')
             ->pluck('user_id');
 
-        foreach ($duplicates as $userId) {
-            $rows = DB::table('admin_profiles')
-                ->where('user_id', $userId)
-                ->orderBy('id')
-                ->get();
-
-            if ($rows->count() <= 1) {
-                continue;
-            }
-
-            $keepId = (int) $rows->first()->id;
-
-            DB::table('admin_profiles')
-                ->where('user_id', $userId)
-                ->where('id', '!=', $keepId)
-                ->delete();
+        if ($duplicates->isNotEmpty()) {
+            throw new RuntimeException(
+                'Cannot add the admin_profiles.user_id unique index without deleting data. '
+                . 'Duplicate user IDs: ' . $duplicates->implode(', ')
+            );
         }
 
         Schema::table('admin_profiles', function (Blueprint $table) {

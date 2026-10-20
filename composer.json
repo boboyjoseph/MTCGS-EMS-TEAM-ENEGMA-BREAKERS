@@ -41,11 +41,10 @@
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
             "npm install --ignore-scripts",
             "npm run build"
         ],
+        "migrate": "@php artisan migrate --force",
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"npm.cmd run dev\" --names=server,queue,vite --kill-others"

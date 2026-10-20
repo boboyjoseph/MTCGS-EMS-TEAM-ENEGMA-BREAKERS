@@ -208,7 +208,6 @@
             </a>
         </div>
     </div>
-
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul class="mb-0">
@@ -348,14 +347,12 @@
                     $absentDeductionValue = $daysAbsentValue * $dailyRateValue;
                     $halfDayDeductionValue = $halfDayDaysValue * $dailyRateValue * 0.5;
                     $suspensionPayValue = $suspendedHoursToPayValue * \App\Services\PayrollComputationService::SUSPENSION_HOURLY_RATE;
-                    $overtimePayDisplayValue = (float) ($entry->overtime_pay ?? 0);
+                    $overtimePayDisplayValue = $holidayBonusValue + $suspensionPayValue;
                     $grossPayDisplayValue = (float) ($entry->basic_pay ?? 0);
-                    $totalEarningsDisplayValue = $grossPayDisplayValue
-                        + $overtimePayDisplayValue
+                    $totalEarningsDisplayValue = $totalDailyRateValue
                         + $holidayBonusValue
                         + $suspensionPayValue
-                        + (float) ($entry->allowances ?? 0)
-                        + (float) ($entry->bonuses ?? 0);
+                        + $paidLeaveValue;
                 @endphp
                 <div class="payroll-section">
                     <div class="payroll-section-header">
@@ -405,6 +402,7 @@
                                 <span class="input-group-text">₱</span>
                                 <input type="text" id="overtime_pay_display" class="form-control payroll-field payroll-readonly" value="{{ number_format($overtimePayDisplayValue, 2, '.', '') }}" readonly>
                             </div>
+                            <small class="text-muted">Holiday Bonus + Suspension Pay.</small>
                         </div>
                         <div class="col-md-3">
                             <label>Suspended Work Hours to Pay</label>
@@ -545,6 +543,13 @@
                             </div>
                         </div>
                         <div class="col-md-3">
+                            <label>Total Earnings</label>
+                            <div class="payroll-currency-group input-group">
+                                <span class="input-group-text">₱</span>
+                                <input type="text" id="total_earnings_display" class="form-control payroll-field payroll-readonly" value="{{ number_format($totalEarningsDisplayValue, 2, '.', '') }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <label>Total Deductions</label>
                             <input type="text" id="total_deductions" class="form-control payroll-field payroll-readonly" value="₱{{ number_format($entry->total_deductions, 2) }}" readonly>
                         </div>
@@ -557,7 +562,7 @@
                         </div>
                         <div class="col-md-3">
                             <label>Computed Net Pay</label>
-                            <input type="text" id="computed_net_pay" class="form-control payroll-field payroll-readonly" value="₱{{ number_format($totalEarningsDisplayValue - $entry->total_deductions, 2) }}" readonly>
+                            <input type="text" id="computed_net_pay" class="form-control payroll-field payroll-readonly" value="₱{{ number_format($grossPayDisplayValue - $entry->total_deductions, 2) }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -592,6 +597,7 @@
         const overtimePayDisplay = document.getElementById('overtime_pay_display');
         const totalDeductionsDisplay = document.getElementById('total_deductions');
         const computedNetPayDisplay = document.getElementById('computed_net_pay');
+        const totalEarningsDisplay = document.getElementById('total_earnings_display');
         const holidayBonusInput = document.getElementById('holiday_bonus_input');
         const statusInput = document.getElementById('status_input');
 
@@ -606,8 +612,6 @@
         const leaveWithoutPayDays = Number('{{ $leaveWithoutPayTotal }}') || 0;
         const missedHolidayDays = Number('{{ $dtrStats['missed_holiday_days'] ?? 0 }}') || 0;
         const deductibleSuspensionDays = Number('{{ $dtrStats['deductible_suspension_days'] ?? 0 }}') || 0;
-        const overtimePay = Number('{{ $entry->overtime_pay ?? 0 }}') || 0;
-        const otherEarnings = Number('{{ (float) ($entry->allowances ?? 0) + (float) ($entry->bonuses ?? 0) }}') || 0;
         const suspensionHourlyRate = Number('{{ \App\Services\PayrollComputationService::SUSPENSION_HOURLY_RATE }}') || 0;
         const isFinanceHead = @json($isFinanceHead);
         const canCorrectReturnedEntry = @json($canCorrectReturnedEntry ?? false);
@@ -653,19 +657,21 @@
                 const suspendedHours = Number(suspendedHoursInput?.value) || 0;
                 const suspensionPay = suspendedHours * suspensionHourlyRate;
                 const holidayBonus = Number(holidayBonusInput?.value || 0);
-                const basicPay = Number(basicPayInput?.value) || 0;
-                const totalEarnings = basicPay
-                    + overtimePay
-                    + holidayBonus
-                    + suspensionPay
-                    + otherEarnings;
+                const totalDailyRate = daysPresent * rate;
+                const paidLeaveRate = paidLeave * rate;
+                const overtimePay = holidayBonus + suspensionPay;
+                const totalEarnings = totalDailyRate + holidayBonus + suspensionPay + paidLeaveRate;
                 if (overtimePayDisplay) {
                     overtimePayDisplay.value = overtimePay.toFixed(2);
                 }
-                const computedNetPay = totalEarnings - totalDeductions;
+                if (totalEarningsDisplay) {
+                    totalEarningsDisplay.value = formatCurrency(totalEarnings);
+                }
+                const grossPay = Number(basicPayInput?.value) || 0;
+                const computedNetPay = grossPay - totalDeductions;
                 computedNetPayDisplay.value = formatCurrency(computedNetPay);
                 if (grossPayDisplay) {
-                    grossPayDisplay.value = formatCurrency(basicPay);
+                    grossPayDisplay.value = formatCurrency(grossPay);
                 }
             }
         };
