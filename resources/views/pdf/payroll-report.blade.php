@@ -55,7 +55,7 @@
                     <td>{{ trim(($entry->employee->first_name ?? '') . ' ' . ($entry->employee->last_name ?? '')) }}</td>
                     <td>{{ $entry->employee->employee_number ?? 'N/A' }}</td>
                     <td class="amount">₱{{ number_format($entry->basic_pay, 2) }}</td>
-                    <td class="amount">₱{{ number_format($entry->gross_pay, 2) }}</td>
+                    <td class="amount">₱{{ number_format($entry->basic_pay, 2) }}</td>
                     <td class="amount">₱{{ number_format($entry->total_deductions, 2) }}</td>
                     <td class="amount">₱{{ number_format($entry->net_pay, 2) }}</td>
                     <td class="status">{{ $isApprovedPayroll ? ($period->admin_approval_stage === 'hr_fd' ? 'Approved HR/FD' : 'Finance Head Approved') : ucfirst($period->status) }}</td>
@@ -71,7 +71,7 @@
                 <tr class="total">
                     <td colspan="2">TOTAL</td>
                     <td class="amount">₱{{ number_format($entries->sum('basic_pay'), 2) }}</td>
-                    <td class="amount">₱{{ number_format($entries->sum('gross_pay'), 2) }}</td>
+                    <td class="amount">₱{{ number_format($entries->sum('basic_pay'), 2) }}</td>
                     <td class="amount">₱{{ number_format($entries->sum('total_deductions'), 2) }}</td>
                     <td class="amount">₱{{ number_format($entries->sum('net_pay'), 2) }}</td>
                     <td></td>

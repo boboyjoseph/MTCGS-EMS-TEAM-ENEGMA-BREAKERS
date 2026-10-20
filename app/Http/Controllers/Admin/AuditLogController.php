@@ -73,7 +73,7 @@ class AuditLogController extends Controller
                 }
             }
 
-            $log->audit_context = $values;
+            $log->setAttribute('audit_context', $values);
 
             return $log;
         });

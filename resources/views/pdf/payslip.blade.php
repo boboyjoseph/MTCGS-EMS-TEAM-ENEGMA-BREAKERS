@@ -35,7 +35,7 @@
         $employeeName = trim((string) ($entry->employeeProfile?->first_name ?? $entry->employee?->first_name ?? '')) . ' ' . trim((string) ($entry->employeeProfile?->last_name ?? $entry->employee?->last_name ?? ''));
         $employeeNumber = $entry->employeeProfile?->employee_number ?? $entry->employee?->employee_number ?? 'N/A';
         $basicPay = is_numeric($entry->basic_pay ?? null) ? (float) $entry->basic_pay : 0;
-        $grossPay = is_numeric($entry->gross_pay ?? null) ? (float) $entry->gross_pay : 0;
+        $grossPay = $basicPay;
         $totalDeductions = is_numeric($entry->total_deductions ?? null) ? (float) $entry->total_deductions : 0;
         $netPay = is_numeric($entry->net_pay ?? null) ? (float) $entry->net_pay : 0;
         $lateDeduction = is_numeric($entry->late_deduction ?? null) ? (float) $entry->late_deduction : 0;

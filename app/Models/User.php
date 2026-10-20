@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -28,31 +31,37 @@ class User extends Authenticatable
         'is_verified' => 'boolean',
     ];
 
-    public function profile()
+    /** @return MorphTo<\Illuminate\Database\Eloquent\Model, $this> */
+    public function profile(): MorphTo
     {
         return $this->morphTo();
     }
 
-    public function branch()
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
-    public function auditLogs()
+    /** @return HasMany<AuditLog, $this> */
+    public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class);
     }
 
-    public function loginHistories()
+    /** @return HasMany<LoginHistory, $this> */
+    public function loginHistories(): HasMany
     {
         return $this->hasMany(LoginHistory::class);
     }
     
     // Helper methods para makuha ang profile ng user ayon sa role
-    public function getEmployeeProfile()
+    public function getEmployeeProfile(): ?EmployeeProfile
     {
         if ($this->role === 'employee' && $this->profile_type === EmployeeProfile::class) {
-            return $this->profile;
+            $profile = $this->profile;
+
+            return $profile instanceof EmployeeProfile ? $profile : null;
         }
         return null;
     }
@@ -83,47 +92,63 @@ class User extends Authenticatable
         ], true);
     }
     
-    public function getFinanceProfile()
+    public function getFinanceProfile(): ?FinanceProfile
     {
         if (in_array($this->role, ['finance_officer', 'finance_head'], true) && $this->profile_type === FinanceProfile::class) {
-            return $this->profile;
+            $profile = $this->profile;
+
+            return $profile instanceof FinanceProfile ? $profile : null;
         }
         return null;
     }
     
-    public function getAdminProfile()
+    public function getAdminProfile(): ?AdminProfile
     {
         if ($this->role !== 'admin') {
             return null;
         }
 
-        if ($this->profile_type === AdminProfile::class && $this->profile) {
-            return $this->profile;
+        $profile = $this->profile;
+        if ($this->profile_type === AdminProfile::class && $profile instanceof AdminProfile) {
+            return $profile;
         }
 
         return AdminProfile::where('user_id', $this->id)->orderBy('id')->first();
     }
     
-    public function getBranchHeadProfile()
+    public function getBranchHeadProfile(): ?BranchHeadProfile
     {
         if ($this->role === 'branch_head' && $this->profile_type === BranchHeadProfile::class) {
-            return $this->profile;
+            $profile = $this->profile;
+
+            return $profile instanceof BranchHeadProfile ? $profile : null;
         }
         return null;
     }
     
-    public function getEffectiveBranchId()
+    public function getEffectiveBranchId(): ?int
     {
         if (!is_null($this->branch_id)) {
-            return $this->branch_id;
+            return (int) $this->branch_id;
         }
 
         $profile = $this->profile;
-        if ($profile && !is_null($profile->branch_id)) {
-            return $profile->branch_id;
+        if ($profile instanceof EmployeeProfile
+            || $profile instanceof Employee
+            || $profile instanceof FinanceProfile
+            || $profile instanceof AdminProfile
+            || $profile instanceof BranchHeadProfile) {
+            return $profile->branch_id === null ? null : (int) $profile->branch_id;
         }
 
         return null;
+    }
+
+    public function getAdminBranch(): ?Branch
+    {
+        $branchId = $this->getEffectiveBranchId();
+
+        return $branchId === null ? null : Branch::find($branchId);
     }
 
     public function isSuperAdmin()

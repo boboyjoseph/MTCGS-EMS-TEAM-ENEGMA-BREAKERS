@@ -38,6 +38,12 @@ class PayrollComputationService
         $cashCharge = $this->cashChargeDeductionForPayroll($employeeProfile->id, $payrollPeriod);
         $cashChargeDeduction = $cashCharge['amount'];
         $totalDeductions = (float) $calculation['total_deductions'] + $cashAdvanceDeduction + $cashChargeDeduction;
+        $grossPay = (float) $calculation['basic_pay'];
+        $netPay = (float) $calculation['basic_pay']
+            + (float) $calculation['overtime_pay']
+            + (float) ($existing->allowances ?? 0)
+            + (float) ($existing->bonuses ?? 0)
+            - $totalDeductions;
 
         $payload = [
             'branch_id' => $employeeProfile?->branch_id,
@@ -49,7 +55,7 @@ class PayrollComputationService
             'late_deduction' => $calculation['late_deduction'],
             'absent_deduction' => $calculation['absent_deduction'],
             'leave_deduction' => $calculation['leave_deduction'],
-            'gross_pay' => $calculation['gross_pay'],
+            'gross_pay' => $grossPay,
             'sss_contribution' => $calculation['sss_deduction'],
             'philhealth_contribution' => $calculation['philhealth_deduction'],
             'pagibig_contribution' => $calculation['pagibig_deduction'],
@@ -58,7 +64,7 @@ class PayrollComputationService
             'cash_charge_id' => $cashCharge['id'],
             'cash_charge_deduction' => $cashChargeDeduction,
             'total_deductions' => $totalDeductions,
-            'net_pay' => (float) $calculation['gross_pay'] - $totalDeductions,
+            'net_pay' => $netPay,
             'status' => 'draft',
             'payroll_breakdown' => json_encode(array_merge($calculation['breakdown'], [
                 'cash_advance_deduction' => $cashAdvanceDeduction,
@@ -117,7 +123,7 @@ class PayrollComputationService
         $installment = (float) ($cashCharge->installment_per_cutoff ?: ($totalBalance / 2));
         $previousDeductions = PayrollEntry::where('employee_profile_id', $employeeProfileId)
             ->where('cash_charge_id', $cashCharge->id)
-            ->whereHas('payrollPeriod', function ($query) use ($payrollPeriod, $cashCharge) {
+            ->whereHas('payrollPeriod', function ($query) use ($payrollPeriod) {
                 $query->whereDate('end_date', '<', $payrollPeriod->start_date)
                     ->where('status', 'completed')
                     ->whereNotNull('approved_at')
@@ -269,8 +275,9 @@ class PayrollComputationService
         $hourlyRate = $dailyRate / 8;
         $overtimePay = $overtimeHours * $hourlyRate * 1.25;
 
-        // Gross pay (before deductions)
-        $grossPay = $basicPay + $overtimePay;
+        // Gross Pay follows the payroll display rule: Basic Pay only.
+        $grossPay = $basicPay;
+        $totalEarnings = $basicPay + $overtimePay;
 
         // Calculate SSS, PhilHealth, Pag-ibig contributions
         $sssDeduction = $this->calculateSSS($monthlySalary);
@@ -278,7 +285,7 @@ class PayrollComputationService
         $pagibigDeduction = $this->calculatePagIBIG($monthlySalary);
 
         // Calculate withholding tax
-        $taxableIncome = $grossPay - $sssDeduction - $philhealthDeduction - $pagibigDeduction;
+        $taxableIncome = $totalEarnings - $sssDeduction - $philhealthDeduction - $pagibigDeduction;
         $withholdingTax = $this->calculateWithholdingTax($taxableIncome);
 
         // Total deductions
@@ -287,7 +294,7 @@ class PayrollComputationService
             $totalDeductions += $earlyOutDeduction;
 
         // Net pay
-        $netPay = $grossPay - $totalDeductions;
+        $netPay = $totalEarnings - $totalDeductions;
 
         $calculation = [
             'dtr_period' => $dtr->period_start->format('M d') . ' - ' . $dtr->period_end->format('M d, Y'),

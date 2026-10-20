@@ -18,7 +18,7 @@ class BranchAdminMiddleware
         
         // Branch Admin can only access their branch
         if ($user->isBranchAdmin()) {
-            $branchId = $user->getAdminBranch()->id ?? null;
+            $branchId = $user->getAdminBranch()?->id;
             
             // Add branch filter to request
             $request->merge(['branch_filter' => $branchId]);

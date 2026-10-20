@@ -95,6 +95,10 @@ class AuthController extends Controller
     
     public function login(Request $request)
     {
+        $request->merge([
+            'email' => mb_strtolower(trim((string) $request->input('email'))),
+        ]);
+
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -106,7 +110,7 @@ class AuthController extends Controller
             return $this->loginLockoutResponse($request, RateLimiter::availableIn($lockoutKey));
         }
         
-        $user = User::where('email', $request->email)->first();
+        $user = User::whereRaw('LOWER(email) = ?', [$credentials['email']])->first();
         
         // Check if account exists
         if (!$user) {
@@ -125,7 +129,7 @@ class AuthController extends Controller
             ]);
         }
         
-        if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+        if (Auth::attempt(['email' => $user->email, 'password' => $credentials['password']])) {
             RateLimiter::clear($throttleKey);
             RateLimiter::clear($lockoutKey);
             $user = Auth::user();

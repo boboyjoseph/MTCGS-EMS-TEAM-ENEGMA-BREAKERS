@@ -45,6 +45,8 @@
             </div>
         </div>
     </div>
+
+    <?php echo $__env->make('cash-advances.partials.payroll-preview', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-0 py-3">

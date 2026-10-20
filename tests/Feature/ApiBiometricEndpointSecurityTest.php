@@ -260,4 +260,13 @@ class ApiBiometricEndpointSecurityTest extends TestCase
             ->getJson('/api/fingerprint-temp?employee_number=EMP-TEMP-USER')
             ->assertForbidden();
     }
+
+    public function test_bridge_status_reads_enrollment_executable_from_config(): void
+    {
+        config(['services.mtcgs_enroll.exe' => 'C:\\enrollment\\MTCGS_Enroll.exe']);
+
+        $this->getJson('/api/biometric/bridge-status')
+            ->assertOk()
+            ->assertJsonPath('enrollment_exe', 'C:\\enrollment\\MTCGS_Enroll.exe');
+    }
 }

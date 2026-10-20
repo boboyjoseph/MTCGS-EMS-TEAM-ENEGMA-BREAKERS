@@ -217,10 +217,10 @@
                             <?php else: ?> <span class="text-muted">--</span> <?php endif; ?>
                         </td>
                         <td class="text-center">
-                            <?php if($att['status'] == 'present'): ?> <span class="badge bg-success">Present</span>
-                            <?php elseif($att['status'] == 'late'): ?> <span class="badge bg-warning text-dark">Late</span>
-                            <?php else: ?> <span class="badge bg-danger">Absent</span>
-                            <?php endif; ?>
+                            <span class="badge bg-<?php echo e($att['status'] === 'Half Day' ? 'warning text-dark' : (str_contains($att['status'], 'Late') ? 'warning text-dark' : ($att['status'] === 'Present' ? 'success' : 'secondary'))); ?>">
+                                <?php echo e($att['status']); ?>
+
+                            </span>
                         </td>
                         <td class="text-center table-hide-mobile">
                             <?php if($att['verification_method'] === 'fingerprint'): ?>

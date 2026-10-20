@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeaveRequest extends Model
 {
@@ -21,17 +22,20 @@ class LeaveRequest extends Model
         'system_admin_approved_at' => 'datetime',
     ];
     
-    public function employee()
+    /** @return BelongsTo<User, $this> */
+    public function employee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'employee_id');
     }
     
-    public function employeeProfile()
+    /** @return BelongsTo<EmployeeProfile, $this> */
+    public function employeeProfile(): BelongsTo
     {
         return $this->belongsTo(EmployeeProfile::class, 'employee_profile_id');
     }
     
-    public function leaveBalance()
+    /** @return BelongsTo<LeaveBalance, $this> */
+    public function leaveBalance(): BelongsTo
     {
         return $this->belongsTo(LeaveBalance::class, 'employee_profile_id', 'employee_profile_id')
             ->where('year', date('Y'));

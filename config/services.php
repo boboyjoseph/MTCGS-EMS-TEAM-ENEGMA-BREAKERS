@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'mtcgs_enroll' => [
+        'exe' => env('MTCGS_ENROLL_EXE', ''),
+    ],
+
 ];

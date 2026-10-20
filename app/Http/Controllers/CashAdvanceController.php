@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\CashAdvanceApplication;
 use App\Models\EmployeeProfile;
 use App\Models\PayrollEntry;
+use App\Models\PayrollPeriod;
 use App\Models\User;
 use App\Notifications\SystemNotification;
-use Carbon\Carbon;
+use App\Services\CashAdvancePayrollPreviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -86,23 +87,16 @@ class CashAdvanceController extends Controller
                     : $user->getAdminProfile()?->employeeProfile))
             : null;
 
-        $cutoffStart = Carbon::parse('2026-09-01')->startOfDay();
-        $cutoffEnd = Carbon::parse('2026-09-15')->endOfDay();
-        $cutoffCashAdvancesQuery = CashAdvanceApplication::with('employeeProfile')
-            ->eligibleForPayrollCutoff($profile?->id, $cutoffStart, $cutoffEnd);
-
+        $cutoffPeriodsQuery = PayrollPeriod::with('branch')->where('status', 'draft');
         if ($profile) {
-            $cutoffCashAdvancesQuery->where('employee_profile_id', $profile->id);
+            $cutoffPeriodsQuery->where('branch_id', $profile->branch_id);
         } elseif ($user->role === 'finance_officer' || $user->isBranchAdmin()) {
-            $cutoffCashAdvancesQuery->whereHas('employeeProfile', fn ($q) => $q->where('branch_id', $user->getEffectiveBranchId()));
+            $cutoffPeriodsQuery->where('branch_id', $user->getEffectiveBranchId());
         }
 
-        $cutoffCashAdvances = $cutoffCashAdvancesQuery
-            ->orderBy('fh_reviewed_at')
-            ->orderBy('created_at')
-            ->get();
-        $cutoffApprovedTotal = $cutoffCashAdvances->sum(fn ($application) =>
-            (float) ($application->approved_amount ?: $application->requested_amount)
+        $cutoffPreviews = app(CashAdvancePayrollPreviewService::class)->forPeriods(
+            $cutoffPeriodsQuery->orderBy('start_date')->orderBy('id')->get(),
+            $profile
         );
         $cashAdvanceAvailableByEmployee = [];
         $applicationEmployeeIds = $applications->getCollection()->pluck('employee_profile_id')->filter()->unique();
@@ -149,29 +143,43 @@ class CashAdvanceController extends Controller
             'remainingCashAdvanceBalance',
             'availableCashAdvanceBalance',
             'cashAdvanceAvailableByEmployee',
+<<<<<<< HEAD
             'historyView',
             'canViewHistory',
             'reviewerRelation',
             'reviewedAtColumn',
             'cutoffCashAdvances',
             'cutoffApprovedTotal'
+=======
+            'cutoffPreviews'
+>>>>>>> 9bc41b890d1cf2493ca79fb5b2e5ed892c3a7ad5
         ));
     }
 
     public function history(Request $request)
     {
         $user = Auth::user();
+<<<<<<< HEAD
         $scope = $request->query('scope');
         $period = $request->validate([
             'period_start' => 'nullable|required_with:period_end|date',
             'period_end' => 'nullable|required_with:period_start|date|after_or_equal:period_start',
         ]);
+=======
+        $scope = request()->query('scope');
+        $entries = $this->cashAdvanceHistoryQuery($user, $scope)
+            ->orderByDesc('payroll_period_id')
+            ->orderByDesc('id')
+            ->paginate(20);
+
+        return view('cash-advances.history', compact('entries'));
+    }
+
+    private function cashAdvanceHistoryQuery(User $user, ?string $scope)
+    {
+>>>>>>> 9bc41b890d1cf2493ca79fb5b2e5ed892c3a7ad5
         $query = PayrollEntry::with(['employeeProfile', 'payrollPeriod'])
-            ->where('cash_advance_deduction', '>', 0)
-            ->whereHas('payrollPeriod', fn ($periodQuery) => $periodQuery
-                ->whereIn('status', ['completed', 'approved'])
-                ->whereDate('end_date', '<', today())
-            );
+            ->fullyApprovedCashAdvanceHistory();
 
         if (($period['period_start'] ?? null) || ($period['period_end'] ?? null)) {
             $query->whereHas('payrollPeriod', function ($periodQuery) use ($period) {
@@ -199,12 +207,16 @@ class CashAdvanceController extends Controller
             abort(403);
         }
 
+<<<<<<< HEAD
         $entries = $query->orderByDesc('payroll_period_id')
             ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
 
         return view('cash-advances.history', compact('entries'));
+=======
+        return $query;
+>>>>>>> 9bc41b890d1cf2493ca79fb5b2e5ed892c3a7ad5
     }
 
     public function store(Request $request)

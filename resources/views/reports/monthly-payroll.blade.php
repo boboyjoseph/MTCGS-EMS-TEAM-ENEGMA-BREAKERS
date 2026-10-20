@@ -43,7 +43,7 @@
             @foreach($entries as $entry)
             @php
                 $employee = $entry->employeeProfile;
-                $totalGross += $entry->gross_pay;
+                $totalGross += $entry->basic_pay;
                 $totalNet += $entry->net_pay;
             @endphp
             <tr>
@@ -51,7 +51,7 @@
                 <td>{{ ($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '') }}</td>
                 <td class="text-right">₱{{ number_format($entry->basic_pay, 2) }}</td>
                 <td class="text-right">₱{{ number_format($entry->overtime_pay, 2) }}</td>
-                <td class="text-right">₱{{ number_format($entry->gross_pay, 2) }}</td>
+                <td class="text-right">₱{{ number_format($entry->basic_pay, 2) }}</td>
                 <td class="text-right">₱{{ number_format($entry->sss_contribution, 2) }}</td>
                 <td class="text-right">₱{{ number_format($entry->philhealth_contribution, 2) }}</td>
                 <td class="text-right">₱{{ number_format($entry->pagibig_contribution, 2) }}</td>

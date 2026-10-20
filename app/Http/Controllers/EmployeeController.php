@@ -390,10 +390,10 @@ class EmployeeController extends Controller
                 $branches = Branch::all();
             } else if (($user->role === 'admin' && $user->admin_type === 'branch_admin') || $user->role === 'branch_head') {
                 // Branch heads may submit employees from their assigned branch for approval.
-                if (!$user->profile || !$user->profile->branch_id) {
+                $branchId = $user->getEffectiveBranchId();
+                if (!$branchId) {
                     abort(403, 'Branch admin must have a branch assigned.');
                 }
-                $branchId = $user->profile->branch_id;
                 $branches = Branch::where('id', $branchId)->get();
             } else {
                 abort(403, 'Unauthorized');
@@ -403,7 +403,7 @@ class EmployeeController extends Controller
             if (!($user->profile->can_create_employees ?? false)) {
                 return back()->with('error', 'You do not have authority to create employees. Please request authority from the Super Admin.');
             }
-            $branchId = $user->profile->branch_id;
+            $branchId = $user->getEffectiveBranchId();
             $branches = Branch::where('id', $branchId)->get();
         } else {
             abort(403, 'Unauthorized');
@@ -422,7 +422,7 @@ class EmployeeController extends Controller
         if ($user->role === 'admin' || $user->role === 'branch_head') {
             if ($user->role === 'admin' && ($user->admin_type === 'super_admin' || !$user->admin_type || $user->admin_type === 'admin')) {
                 $hasAuthority = true;
-            } else if (($user->role === 'admin' && $user->admin_type === 'branch_admin' && $user->profile?->branch_id) || ($user->role === 'branch_head' && $user->profile?->branch_id)) {
+            } else if (($user->role === 'admin' && $user->admin_type === 'branch_admin' && $user->getEffectiveBranchId()) || ($user->role === 'branch_head' && $user->getEffectiveBranchId())) {
                 // Branch heads can submit accounts; System Administrator approval is still required.
                 $hasAuthority = true;
             }
@@ -467,7 +467,7 @@ class EmployeeController extends Controller
         
         try {
             if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-                $allowedBranch = Auth::user()->profile->branch_id;
+                $allowedBranch = Auth::user()->getEffectiveBranchId();
                 if (!$isFinanceHead && $request->branch_id != $allowedBranch) {
                     return back()->with('error', 'You can only add employees to your branch.');
                 }
@@ -629,7 +629,7 @@ class EmployeeController extends Controller
         }
         
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $allowedBranch = Auth::user()->profile->branch_id;
+            $allowedBranch = Auth::user()->getEffectiveBranchId();
             if ($employee->branch_id != $allowedBranch) {
                 abort(403, 'You can only edit accounts in your branch.');
             }
@@ -637,7 +637,7 @@ class EmployeeController extends Controller
         
         $branches = Branch::all();
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $branchId = Auth::user()->profile->branch_id;
+            $branchId = Auth::user()->getEffectiveBranchId();
             $branches = Branch::where('id', $branchId)->get();
         }
         
@@ -674,7 +674,7 @@ class EmployeeController extends Controller
         
         // STRICT: Branch admins can ONLY update accounts from their branch
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $allowedBranch = Auth::user()->profile->branch_id;
+            $allowedBranch = Auth::user()->getEffectiveBranchId();
             if ($employee->branch_id != $allowedBranch) {
                 abort(403, 'You can only update accounts in your branch.');
             }
@@ -854,7 +854,7 @@ class EmployeeController extends Controller
             ->findOrFail($id);
         
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $allowedBranch = Auth::user()->profile->branch_id;
+            $allowedBranch = Auth::user()->getEffectiveBranchId();
             if ($admin->branch_id != $allowedBranch) {
                 abort(403, 'You can only edit accounts in your branch.');
             }
@@ -862,7 +862,7 @@ class EmployeeController extends Controller
         
         $branches = Branch::all();
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $branchId = Auth::user()->profile->branch_id;
+            $branchId = Auth::user()->getEffectiveBranchId();
             $branches = Branch::where('id', $branchId)->get();
         }
         
@@ -896,7 +896,7 @@ class EmployeeController extends Controller
         $admin = AdminProfile::findOrFail($id);
         
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $allowedBranch = Auth::user()->profile->branch_id;
+            $allowedBranch = Auth::user()->getEffectiveBranchId();
             if ($admin->branch_id != $allowedBranch) {
                 abort(403, 'You can only update accounts in your branch.');
             }
@@ -956,7 +956,7 @@ class EmployeeController extends Controller
         $employee = EmployeeProfile::findOrFail($id);
         
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $allowedBranch = Auth::user()->profile->branch_id;
+            $allowedBranch = Auth::user()->getEffectiveBranchId();
             if ($employee->branch_id != $allowedBranch) {
                 abort(403, 'You can only delete employees in your branch.');
             }
@@ -988,7 +988,7 @@ class EmployeeController extends Controller
         
         // STRICT: Branch admins can ONLY restore employees from their branch
         if ((Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin') || Auth::user()->role === 'branch_head') {
-            $userBranch = Auth::user()->profile->branch_id ?? Auth::user()->branch_id;
+            $userBranch = Auth::user()->getEffectiveBranchId();
             if (!$userBranch || $employee->branch_id != $userBranch) {
                 abort(403, 'You can only restore employees in your branch.');
             }

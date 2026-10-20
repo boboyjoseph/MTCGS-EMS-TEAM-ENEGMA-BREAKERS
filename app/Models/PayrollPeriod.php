@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PayrollPeriod extends Model
 {
@@ -37,37 +39,44 @@ class PayrollPeriod extends Model
         'total_net' => 'decimal:2',
     ];
     
-    public function branch()
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Branch::class);
     }
 
-    public function entries()
+    /** @return HasMany<PayrollEntry, $this> */
+    public function entries(): HasMany
     {
         return $this->hasMany(PayrollEntry::class);
     }
     
-    public function processedBy()
+    /** @return BelongsTo<User, $this> */
+    public function processedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by');
     }
     
-    public function approvedBy()
+    /** @return BelongsTo<User, $this> */
+    public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function hrApprovedBy()
+    /** @return BelongsTo<User, $this> */
+    public function hrApprovedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'hr_approved_by');
     }
 
-    public function branchApprovedBy()
+    /** @return BelongsTo<User, $this> */
+    public function branchApprovedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'branch_approved_by');
     }
 
-    public function financeSubmittedBy()
+    /** @return BelongsTo<User, $this> */
+    public function financeSubmittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'finance_submitted_by');
     }

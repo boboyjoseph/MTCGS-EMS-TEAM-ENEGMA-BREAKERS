@@ -12,6 +12,7 @@ use App\Models\CashAdvanceApplication;
 use App\Models\LeaveRequest;
 use App\Services\PayrollService;
 use App\Services\PayrollComputationService;
+use App\Services\CashAdvancePayrollPreviewService;
 use App\Notifications\SystemNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -46,26 +47,16 @@ class PayrollController extends Controller
     {
         $this->checkAdmin();
         $periods = PayrollPeriod::orderBy('created_at', 'desc')->paginate(15);
-        $cutoffStart = Carbon::parse('2026-09-01')->startOfDay();
-        $cutoffEnd = Carbon::parse('2026-09-15')->endOfDay();
-        $cutoffCashAdvancesQuery = CashAdvanceApplication::with('employeeProfile')
-            ->eligibleForPayrollCutoff(null, $cutoffStart, $cutoffEnd);
+        $cutoffPeriodsQuery = PayrollPeriod::with('branch')->where('status', 'draft');
 
         if (Auth::user()->role === 'finance_officer' || Auth::user()->isBranchAdmin()) {
-            $cutoffCashAdvancesQuery->whereHas('employeeProfile', fn ($query) =>
-                $query->where('branch_id', Auth::user()->getEffectiveBranchId())
-            );
+            $cutoffPeriodsQuery->where('branch_id', Auth::user()->getEffectiveBranchId());
         }
 
-        $cutoffCashAdvances = $cutoffCashAdvancesQuery
-            ->orderBy('fh_reviewed_at')
-            ->orderBy('created_at')
-            ->get();
-        $cutoffApprovedTotal = $cutoffCashAdvances->sum(fn ($application) =>
-            (float) ($application->approved_amount ?: $application->requested_amount)
+        $cutoffPreviews = app(CashAdvancePayrollPreviewService::class)->forPeriods(
+            $cutoffPeriodsQuery->orderBy('start_date')->orderBy('id')->get()
         );
-
-        return view('admin.payroll.periods', compact('periods', 'cutoffCashAdvances', 'cutoffApprovedTotal'));
+        return view('admin.payroll.periods', compact('periods', 'cutoffPreviews'));
     }
     
     // Create new payroll period
@@ -253,6 +244,11 @@ class PayrollController extends Controller
             $leaveWithoutPayDeduction = (int) ($dtrBreakdown['leave_without_pay'] ?? 0) * $dailyRate;
             $lateDeduction = (float) ($calculation['late_deduction'] ?? 0);
             $earlyOutDeduction = (float) ($calculation['early_out_deduction'] ?? 0);
+            $additionalEarnings = (float) ($calculation['overtime_pay'] ?? 0)
+                + $holidayBonus
+                + $suspensionPay
+                + (float) ($entry->allowances ?? 0)
+                + (float) ($entry->bonuses ?? 0);
 
             $entry->days_present = (int) ($dtrBreakdown['days_present'] ?? 0);
             $entry->days_absent = (int) ($dtrBreakdown['days_absent'] ?? 0);
@@ -260,7 +256,7 @@ class PayrollController extends Controller
             $entry->overtime_hours = $calculation['overtime_hours'] ?? 0;
             $entry->overtime_pay = $calculation['overtime_pay'] ?? 0;
             $entry->absent_deduction = (int) $entry->days_absent * $dailyRate;
-            $entry->gross_pay = (float) $entry->basic_pay + (float) $entry->overtime_pay;
+            $entry->gross_pay = (float) $entry->basic_pay;
             $entry->total_deductions = (float) $entry->sss_contribution
                 + (float) $entry->philhealth_contribution
                 + (float) $entry->pagibig_contribution
@@ -274,7 +270,7 @@ class PayrollController extends Controller
                 + $halfDayDeduction
                 + $holidayDeduction
                 + $suspensionDeduction;
-            $entry->net_pay = (float) $entry->gross_pay - (float) $entry->total_deductions + $holidayBonus + $suspensionPay;
+            $entry->net_pay = (float) $entry->gross_pay + $additionalEarnings - (float) $entry->total_deductions;
             $entryBreakdown['days_present'] = $entry->days_present;
             $entryBreakdown['days_absent'] = $entry->days_absent;
             $entryBreakdown['late_minutes'] = (int) ($calculation['late_minutes'] ?? 0);
@@ -548,9 +544,13 @@ class PayrollController extends Controller
             $suspensionPay = $this->payrollComputationService->calculateSuspensionPay(
                 (float) ($serializedBreakdown['suspended_hours_to_pay'] ?? 0)
             );
-            $entry->net_pay = (float) $entry->gross_pay - (float) $entry->total_deductions
+            $additionalEarnings = (float) ($entry->overtime_pay ?? 0)
                 + (float) ($serializedBreakdown['holiday_bonus'] ?? 0)
-                + $suspensionPay;
+                + $suspensionPay
+                + (float) ($entry->allowances ?? 0)
+                + (float) ($entry->bonuses ?? 0);
+            $entry->gross_pay = (float) $entry->basic_pay;
+            $entry->net_pay = (float) $entry->gross_pay + $additionalEarnings - (float) $entry->total_deductions;
             $serializedBreakdown['net_pay'] = number_format($entry->net_pay, 2, '.', '');
             $entry->payroll_breakdown = json_encode($serializedBreakdown);
             $entry->save();
@@ -748,9 +748,14 @@ class PayrollController extends Controller
         $breakdown['suspension_deduction'] = $suspensionDeduction;
         $entry->payroll_breakdown = json_encode($breakdown);
 
-        $entry->gross_pay = $entry->basic_pay + ($entry->overtime_pay ?? 0);
+        $additionalEarnings = (float) ($entry->overtime_pay ?? 0)
+            + $holidayBonus
+            + $suspensionPay
+            + (float) ($entry->allowances ?? 0)
+            + (float) ($entry->bonuses ?? 0);
+        $entry->gross_pay = $entry->basic_pay;
         $entry->total_deductions = $entry->sss_contribution + $entry->philhealth_contribution + $entry->pagibig_contribution + $entry->withholding_tax + ($entry->cash_advance_deduction ?? 0) + $cashChargeDeduction + $entry->late_deduction + $entry->absent_deduction + $leaveWithoutPayDeduction + $validatedEarlyOutDeduction + $halfDayDeduction + $holidayDeduction + $suspensionDeduction;
-        $entry->net_pay = $entry->gross_pay - $entry->total_deductions + $holidayBonus + $suspensionPay;
+        $entry->net_pay = $entry->gross_pay + $additionalEarnings - $entry->total_deductions;
         $breakdown['net_pay'] = number_format($entry->net_pay, 2, '.', '');
         $entry->payroll_breakdown = json_encode($breakdown);
         $entry->status = $validated['status'];

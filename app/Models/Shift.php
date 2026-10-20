@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Shift extends Model
 {
@@ -12,12 +14,14 @@ class Shift extends Model
 
     protected $casts = ['is_active' => 'boolean'];
 
-    public function employeeProfiles()
+    /** @return HasMany<EmployeeProfile, $this> */
+    public function employeeProfiles(): HasMany
     {
         return $this->hasMany(EmployeeProfile::class);
     }
 
-    public function assignedEmployees()
+    /** @return BelongsToMany<EmployeeProfile, $this> */
+    public function assignedEmployees(): BelongsToMany
     {
         return $this->belongsToMany(EmployeeProfile::class, 'employee_shift_assignments');
     }
