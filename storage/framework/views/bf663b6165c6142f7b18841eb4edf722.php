@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <meta name="turbo-cache-control" content="no-cache">
+    <link rel="icon" type="image/jpeg" href="<?php echo e(asset('images/logo.jpg')); ?>?v=20261020">
     <title>MTCGS-EMS - <?php echo $__env->yieldContent('title'); ?></title>
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <?php echo $__env->yieldPushContent('styles'); ?>

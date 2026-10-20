@@ -12,21 +12,28 @@ use App\Http\Controllers\EmployeeController;
 
 // Public landing page (show before login)
 Route::get('/', function () {
-    $homepageSettings = \App\Models\SiteSetting::query()
-        ->whereIn('key', [
-            'homepage_hero_title',
-            'homepage_hero_text',
-            'homepage_about_text',
-            'homepage_support_text',
-            'homepage_logo_url',
-            'homepage_background_url',
-        ])
+    $settings = \App\Models\SiteSetting::query()
+        ->where(function ($query) {
+            $query->whereIn('key', [
+                'homepage_hero_title',
+                'homepage_hero_text',
+                'homepage_about_text',
+                'homepage_support_text',
+                'homepage_logo_url',
+                'homepage_background_url',
+            ])->orWhere('key', 'like', 'homepage_slide_%');
+        })
         ->pluck('value', 'key');
-    $slideSettings = \App\Models\SiteSetting::query()
-        ->where('key', 'like', 'homepage_slide_%')
-        ->pluck('value', 'key');
+    $homepageSettings = $settings->only([
+        'homepage_hero_title',
+        'homepage_hero_text',
+        'homepage_about_text',
+        'homepage_support_text',
+        'homepage_logo_url',
+        'homepage_background_url',
+    ]);
     $slides = [];
-    foreach ($slideSettings as $key => $value) {
+    foreach ($settings as $key => $value) {
         if (preg_match('/^homepage_slide_(\d+)_(image|title|text)$/', $key, $matches)) {
             $slides[(int) $matches[1]][$matches[2]] = $value;
         }
@@ -36,7 +43,10 @@ Route::get('/', function () {
     return view('landing', [
         'homepageSettings' => $homepageSettings,
         'slides' => $slides,
-        'branches' => \App\Models\Branch::query()->orderBy('branch_name')->get(),
+        'branches' => \App\Models\Branch::query()
+            ->select(['branch_name', 'branch_code', 'address'])
+            ->orderBy('branch_name')
+            ->get(),
     ]);
 })->name('landing');
 
