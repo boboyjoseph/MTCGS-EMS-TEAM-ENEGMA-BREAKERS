@@ -31,10 +31,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('site_settings')->whereIn('key', [
-            'homepage_slide_1_image', 'homepage_slide_1_title', 'homepage_slide_1_text',
-            'homepage_slide_2_image', 'homepage_slide_2_title', 'homepage_slide_2_text',
-            'homepage_slide_3_image', 'homepage_slide_3_title', 'homepage_slide_3_text',
-        ])->delete();
+        // Keep settings; administrators may have edited these values since they were added.
     }
 };

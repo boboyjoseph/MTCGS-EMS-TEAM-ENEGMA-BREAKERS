@@ -229,7 +229,9 @@ class DTR extends Model
 
         $this->days_present = $daysPresent;
         $this->total_hours = $totalHours;
-        $this->overtime_hours = $logs->sum('overtime_hours') ?? 0;
+        $this->overtime_hours = $logs
+            ->reject(fn ($log) => isset($approvedLeaveByDate[$log->attendance_date->format('Y-m-d')]))
+            ->sum('overtime_hours');
         $this->late_minutes = $lateMinutesTotal;
         $this->days_absent = $daysAbsent;
 

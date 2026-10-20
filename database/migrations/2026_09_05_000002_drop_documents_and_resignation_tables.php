@@ -7,13 +7,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::dropIfExists('clearance_items');
-        Schema::dropIfExists('resignation_requests');
-        Schema::dropIfExists('employee_documents');
+        // Retain historical records; table removal requires an explicit archival plan.
     }
 
     public function down(): void
     {
-        // The removed feature is not restored by rollback.
+        // No schema change is performed by this migration.
     }
 };

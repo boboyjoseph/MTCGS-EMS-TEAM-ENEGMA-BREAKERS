@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\DTRController;
 use App\Models\AttendanceLog;
 use App\Models\Branch;
 use App\Models\DTR;
@@ -11,6 +12,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use App\Services\PayrollComputationService;
+use App\Services\ApprovedLeaveAttendanceGuard;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -330,6 +332,133 @@ class DTRSubmitWorkflowTest extends TestCase
         $this->assertSame(1, $breakdown['paid_leave']);
         $this->assertSame(0, $breakdown['leave_without_pay']);
         $this->assertGreaterThan(0, $breakdown['total_hours']);
+    }
+
+    public function test_dtr_day_hides_attendance_times_during_approved_leave(): void
+    {
+        $profile = $this->createEmployeeProfile();
+        $date = '2026-08-17';
+
+        $log = AttendanceLog::create([
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
+            'attendance_date' => $date,
+            'am_in' => $date.' 06:32:00',
+            'pm_out' => $date.' 17:33:00',
+            'status' => 'present',
+        ]);
+        $leave = LeaveRequest::create([
+            'employee_profile_id' => $profile->id,
+            'employee_id' => $profile->user_id,
+            'start_date' => $date,
+            'end_date' => $date,
+            'leave_type' => 'vacation',
+            'status' => 'approved',
+            'total_days' => 1,
+            'is_absent' => false,
+        ]);
+
+        $method = new \ReflectionMethod(DTRController::class, 'getDaysInPeriod');
+        $method->setAccessible(true);
+        $days = $method->invoke(
+            app(DTRController::class),
+            \Carbon\Carbon::parse($date),
+            \Carbon\Carbon::parse($date),
+            collect([$log]),
+            collect([$leave]),
+            $profile,
+            'draft'
+        );
+
+        $this->assertSame('leave', $days[0]['status']);
+        $this->assertSame('--', $days[0]['am_in']);
+        $this->assertSame('--', $days[0]['pm_out']);
+        $this->assertSame('06:32 AM', $days[0]['log']->am_in->format('h:i A'));
+        $this->assertSame('05:33 PM', $days[0]['log']->pm_out->format('h:i A'));
+    }
+
+    public function test_active_leave_requests_block_attendance_recording(): void
+    {
+        $profile = $this->createEmployeeProfile();
+        $date = '2026-08-17';
+        $guard = app(ApprovedLeaveAttendanceGuard::class);
+        $leave = LeaveRequest::create([
+            'employee_profile_id' => $profile->id,
+            'employee_id' => $profile->user_id,
+            'start_date' => $date,
+            'end_date' => $date,
+            'leave_type' => 'vacation',
+            'status' => 'pending',
+            'total_days' => 1,
+            'is_absent' => false,
+        ]);
+
+        $this->assertSame(
+            'Attendance is not allowed because the employee has a leave request for this date.',
+            $guard->blockedReason($profile, $date)
+        );
+
+        $leave->update(['status' => 'pending_system_admin']);
+        $this->assertNotNull($guard->blockedReason($profile, $date));
+        $leave->update(['status' => 'approved']);
+
+        $this->assertSame(
+            'Attendance is not allowed because the employee is on paid leave.',
+            $guard->blockedReason($profile, $date)
+        );
+
+        $anotherBranchEmployee = $this->createEmployeeProfile();
+        LeaveRequest::create([
+            'employee_profile_id' => $anotherBranchEmployee->id,
+            'employee_id' => $anotherBranchEmployee->user_id,
+            'start_date' => $date,
+            'end_date' => $date,
+            'leave_type' => 'vacation',
+            'status' => 'approved',
+            'total_days' => 1,
+            'is_absent' => false,
+        ]);
+
+        $this->assertNotNull($guard->blockedReason($anotherBranchEmployee, $date));
+    }
+
+    public function test_dtr_totals_keep_approved_leave_classification_for_attendance_conflict(): void
+    {
+        $profile = $this->createEmployeeProfile();
+        $date = '2026-08-17';
+        $dtr = DTR::create([
+            'employee_profile_id' => $profile->id,
+            'period_start' => $date,
+            'period_end' => $date,
+            'status' => 'draft',
+        ]);
+
+        AttendanceLog::create([
+            'employee_id' => $profile->user_id,
+            'employee_profile_id' => $profile->id,
+            'attendance_date' => $date,
+            'am_in' => $date.' 08:00:00',
+            'pm_out' => $date.' 17:00:00',
+            'status' => 'present',
+            'overtime_hours' => 2,
+        ]);
+        LeaveRequest::create([
+            'employee_profile_id' => $profile->id,
+            'employee_id' => $profile->user_id,
+            'start_date' => $date,
+            'end_date' => $date,
+            'leave_type' => 'vacation',
+            'status' => 'approved',
+            'total_days' => 1,
+            'is_absent' => false,
+        ]);
+
+        $breakdown = $dtr->getCalculationBreakdown();
+
+        $this->assertSame(0, $breakdown['days_present']);
+        $this->assertSame(1, $breakdown['paid_leave']);
+        $this->assertSame(0.0, $breakdown['total_hours']);
+        $this->assertSame(0.0, (float) $dtr->overtime_hours);
     }
 
     public function test_missing_past_attendance_log_is_counted_as_absent(): void

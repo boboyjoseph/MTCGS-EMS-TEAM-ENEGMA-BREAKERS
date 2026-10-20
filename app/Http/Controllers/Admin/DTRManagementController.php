@@ -245,11 +245,14 @@ class DTRManagementController
                 ->get();
 
             $approvedLeaveByDate = [];
+            $employeeBranchId = $employee?->branch_id;
             foreach ($approvedLeaves as $leave) {
                 $current = $leave->start_date->copy();
                 $end = $leave->end_date->copy();
                 while ($current <= $end) {
-                    $approvedLeaveByDate[$current->format('Y-m-d')] = $leave;
+                    if ($workingDayService->isWorkingDay($current, $employeeBranchId)) {
+                        $approvedLeaveByDate[$current->format('Y-m-d')] = $leave;
+                    }
                     $current->addDay();
                 }
             }
@@ -258,17 +261,19 @@ class DTRManagementController
             $sheet->setCellValue('B' . $row, $employee?->employee_number);
 
             $breakdown = $dtr->getCalculationBreakdown();
-            $earlyOutMinutes = $logsByDate->sum(function ($log) {
-                if (!$log->pm_out) {
-                    return 0;
-                }
+            $earlyOutMinutes = $logsByDate
+                ->reject(fn ($log) => isset($approvedLeaveByDate[$log->attendance_date->format('Y-m-d')]))
+                ->sum(function ($log) {
+                    if (!$log->pm_out) {
+                        return 0;
+                    }
 
-                $scheduledEnd = $log->pm_out->copy()->setTime(17, 0, 0);
+                    $scheduledEnd = $log->pm_out->copy()->setTime(17, 0, 0);
 
-                return $log->pm_out->lt($scheduledEnd)
-                    ? (int) $log->pm_out->diffInMinutes($scheduledEnd)
-                    : 0;
-            });
+                    return $log->pm_out->lt($scheduledEnd)
+                        ? (int) $log->pm_out->diffInMinutes($scheduledEnd)
+                        : 0;
+                });
             $summaryRows[] = [
                 'employee' => $employee?->first_name . ' ' . $employee?->last_name,
                 'days_present' => $breakdown['days_present'],
@@ -284,7 +289,7 @@ class DTRManagementController
                 $approvedLeave = $approvedLeaveByDate[$dateStr] ?? null;
                 $startColumn = Coordinate::stringFromColumnIndex($columnIndex);
                 $endColumn = Coordinate::stringFromColumnIndex($columnIndex + 1);
-                $branchId = $employee?->branch_id;
+                $branchId = $employeeBranchId;
                 $isHoliday = $workingDayService->isHoliday($headerDate, $branchId);
                 $isSuspension = $workingDayService->isSuspension($headerDate, $branchId);
                 $hasAttendanceTime = $log && ($log->am_in || $log->am_out || $log->pm_in || $log->pm_out);
@@ -658,6 +663,15 @@ class DTRManagementController
             ->whereDate('start_date', '<=', $dtr->period_end)
             ->whereDate('end_date', '>=', $dtr->period_start)
             ->get();
+        $approvedLeaveDates = [];
+        foreach ($approvedLeaves as $leave) {
+            $current = max($leave->start_date->copy(), $dtr->period_start->copy());
+            $end = min($leave->end_date->copy(), $dtr->period_end->copy());
+            while ($current <= $end) {
+                $approvedLeaveDates[$current->format('Y-m-d')] = true;
+                $current->addDay();
+            }
+        }
 
         $breakdown = $dtr->getCalculationBreakdown();
         $workingDayService = app(\App\Services\WorkingDayService::class);
@@ -669,6 +683,10 @@ class DTRManagementController
         $totalSuspendedHours = 0.0;
 
         foreach ($attendanceLogs as $log) {
+            if (isset($approvedLeaveDates[$log->attendance_date->format('Y-m-d')])) {
+                continue;
+            }
+
             if ($workingDayService->isSuspension($log->attendance_date, $branchId)) {
                 continue;
             }

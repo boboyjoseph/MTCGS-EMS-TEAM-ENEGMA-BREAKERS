@@ -480,6 +480,7 @@
                                                 && $day['log']->am_in
                                                 && $day['log']->am_in->format('H:i:s') > '07:00:00';
                                             $canRequestCorrection = !$isSuspension && $day['log']
+                                                && !$isLeave && !$isLWOP
                                                 && (in_array($attendanceStatus, ['Late', 'Late / Early Out', 'Early Out', 'Half Day'], true) || $legacyApprovedWithoutCorrection)
                                                 && (!in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin', 'approved'], true) || $legacyApprovedWithoutCorrection);
                                             $correctionFormId = 'attendance-correction-' . ($day['log']->id ?? $day['date']->format('Ymd'));
@@ -551,9 +552,9 @@
                                                 <?php else: ?>
                                                     Present
                                                 <?php endif; ?>
-                                                <?php if($day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
+                                                <?php if(!$isLeave && !$isLWOP && $day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
                                                     <small class="d-block text-muted mt-1">Adjustment pending approval</small>
-                                                <?php elseif($day['log'] && $day['log']->override_status === 'approved'): ?>
+                                                <?php elseif(!$isLeave && !$isLWOP && $day['log'] && $day['log']->override_status === 'approved'): ?>
                                                     <small class="d-block text-success mt-1">Adjusted to Present</small>
                                                 <?php endif; ?>
                                             </td>
@@ -564,9 +565,9 @@
                                                         <input type="text" name="reason" class="form-control form-control-sm mb-1" placeholder="Reason" required minlength="5">
                                                         <button type="submit" class="btn btn-sm btn-outline-dark">Request Attendance Correction</button>
                                                     </form>
-                                                <?php elseif($day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
+                                                <?php elseif(!$isLeave && !$isLWOP && $day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
                                                     <small class="d-block text-muted">Adjustment pending approval</small>
-                                                <?php elseif($day['log'] && $day['log']->override_status === 'approved'): ?>
+                                                <?php elseif(!$isLeave && !$isLWOP && $day['log'] && $day['log']->override_status === 'approved'): ?>
                                                     <small class="d-block text-success">Adjusted to Present</small>
                                                 <?php else: ?>
                                                     --

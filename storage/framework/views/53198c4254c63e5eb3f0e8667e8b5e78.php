@@ -91,6 +91,7 @@
             <?php $__currentLoopData = $daysInPeriod; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <?php ($log = $day['log'] ?? null); ?>
                 <?php ($status = $day['status'] ?? 'N/A'); ?>
+                <?php ($hasLeaveAttendanceConflict = $day['has_leave_attendance_conflict'] ?? false); ?>
                 <?php ($lateEarlyOutMinutes = \App\Models\DTR::normalizeLateMinutesForLog($log)); ?>
                 <?php if($log && in_array($status, ['present', 'late'], true)): ?>
                     <?php ($attendanceStatus = $log->getDtrStatus()); ?>
@@ -107,7 +108,13 @@
                     <td class="center"><?php echo e(($log?->am_in ?? $log?->pm_in)?->format('h:i A') ?? '--'); ?></td>
                     <td class="center"><?php echo e(($log?->pm_out ?? $log?->am_out)?->format('h:i A') ?? '--'); ?></td>
                     <td class="center"><?php echo e($lateEarlyOutMinutes); ?></td>
-                    <td class="status"><?php echo e(is_string($status) && $status === 'Half Day' ? $status : ucfirst($status)); ?></td>
+                    <td class="status">
+                        <?php echo e(is_string($status) && $status === 'Half Day' ? $status : ucfirst($status)); ?>
+
+                        <?php if($hasLeaveAttendanceConflict): ?>
+                            <br><small>Attendance recorded during approved leave — review required</small>
+                        <?php endif; ?>
+                    </td>
                 </tr>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>

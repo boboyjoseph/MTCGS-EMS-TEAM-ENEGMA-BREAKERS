@@ -232,7 +232,7 @@ class DTRController extends Controller
                 $totalLeaveWithoutPay++;
             }
 
-            if ($log) {
+            if ($log && !in_array($status, ['leave', 'lwop'], true)) {
                 $totalLateMinutes += DTR::normalizeLateMinutesForLog($log);
 
                 if ($log->pm_out) {
@@ -307,15 +307,16 @@ class DTRController extends Controller
 
         $row = 10;
         foreach ($daysInPeriod as $day) {
-            $log = $day['log'] ?? null;
             $sheet->fromArray([[
                 $day['date']->format('M d, Y'),
-                $log?->am_in?->format('h:i A') ?? '--',
-                $log?->am_out?->format('h:i A') ?? '--',
-                $log?->pm_in?->format('h:i A') ?? '--',
-                $log?->pm_out?->format('h:i A') ?? '--',
-                (int) ($log?->late_minutes ?? 0),
-                ucfirst($day['status'] ?? 'N/A'),
+                $day['am_in'] ?? '--',
+                $day['am_out'] ?? '--',
+                $day['pm_in'] ?? '--',
+                $day['pm_out'] ?? '--',
+                (int) ($day['late_minutes'] ?? 0),
+                ($day['status'] ?? null) === 'leave'
+                    ? 'Paid Leave'
+                    : (($day['status'] ?? null) === 'lwop' ? 'Leave Without Pay' : ucfirst($day['status'] ?? 'N/A')),
             ]], null, 'A' . $row++);
         }
 
@@ -618,13 +619,12 @@ class DTRController extends Controller
             $log = $logsByDate->get($dateStr);
             $isSuspension = $workingDayService->isSuspension($current, $branchId);
             $isHoliday = $workingDayService->isHoliday($current, $branchId);
-            $isWorkingDay = !$current->isWeekend() && !$isHoliday && !$isSuspension;
+            $isWorkingDay = $workingDayService->isWorkingDay($current, $branchId);
             $approvedLeave = $isWorkingDay ? $approvedLeaves->first(function ($leave) use ($current) {
                 return $current->betweenIncluded($leave->start_date, $leave->end_date);
             }) : null;
             $isApprovedLeave = (bool) $approvedLeave;
             $isLWOP = $isApprovedLeave && (bool) $approvedLeave->is_absent;
-
             $dayData = [
                 'date' => $current->copy(),
                 'day_name' => $current->format('l'),

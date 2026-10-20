@@ -73,9 +73,12 @@ class AttendanceSingleStepUiTest extends TestCase
         $response = $this->actingAs($user)->getJson('/api/biometric/unregistered-employees');
 
         $response->assertOk();
-        $response->assertJsonPath('count', 1);
-        $this->assertCount(1, $response->json('data'));
-        $response->assertJsonPath('data.0.employee_number', 'EMP-2002');
+        $response->assertJsonPath('count', 2);
+        $this->assertCount(2, $response->json('data'));
+        $this->assertEqualsCanonicalizing(
+            ['EMP-2001', 'EMP-2002'],
+            array_column($response->json('data'), 'employee_number')
+        );
     }
 
     public function test_biometric_employee_list_returns_branch_grouping_metadata(): void
@@ -120,7 +123,7 @@ class AttendanceSingleStepUiTest extends TestCase
         $response->assertOk();
         $this->assertNotNull($response->json('data.0.branch_name'));
         $this->assertEquals('MTC-IRIGA', $response->json('data.0.branch_name'));
-        $response->assertJsonPath('count', 1);
+        $response->assertJsonPath('count', 2);
     }
 
     public function test_branch_admin_stats_only_count_branch_admins_not_hr_for_same_branch(): void

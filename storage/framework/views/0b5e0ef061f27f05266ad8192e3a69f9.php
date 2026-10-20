@@ -300,10 +300,16 @@
                                                                         default => 'text-muted',
                                                                     };
                                                                     $hasAnyAttendanceTime = $log && ($log->am_in || $log->am_out || $log->pm_in || $log->pm_out);
+                                                                    $hasLeaveAttendanceConflict = $approvedLeave && $hasAnyAttendanceTime;
                                                                     $statusText = '';
                                                                     $statusClass = 'text-muted';
                                                                     $inTimeClass = 'small fw-bold text-dark';
                                                                     $outTimeClass = 'small fw-bold text-dark';
+                                                                    if ($log && $log->pm_out) {
+                                                                        $outTimeClass = str_contains($log->getDtrStatus(), 'Early Out')
+                                                                            ? 'small fw-bold text-danger'
+                                                                            : 'small fw-bold text-success';
+                                                                    }
 
                                                                     if ($approvedLeave) {
                                                                         $statusText = (bool) $approvedLeave->is_absent ? 'Leave Without Pay' : 'Paid Leave';
@@ -315,16 +321,11 @@
                                                                         if ($hasAnyAttendanceTime) {
                                                                             $shift = $log->employeeProfile?->shift;
                                                                             $scheduledStart = $shift?->start_time ?: '08:00:00';
-                                                                            $scheduledEnd = $shift?->end_time ?: '17:00:00';
 
                                                                             if ($log->am_in) {
                                                                                 $scheduledStartTime = $log->am_in->copy()->setTimeFromTimeString($scheduledStart);
                                                                                 $isLateTimeIn = \App\Services\AttendanceTimeRules::lateMinutes($log->am_in, $scheduledStartTime) > 0;
                                                                                 $inTimeClass = $isLateTimeIn ? 'small fw-bold text-danger' : 'small fw-bold text-success';
-                                                                            }
-
-                                                                            if ($log->pm_out) {
-                                                                                $outTimeClass = $log->pm_out->lt($log->pm_out->copy()->setTimeFromTimeString($scheduledEnd)) ? 'small fw-bold text-danger' : 'small fw-bold text-success';
                                                                             }
 
                                                                             if ($statusText === 'Half Day') {
@@ -346,6 +347,9 @@
                                                                         <div class="<?php echo e($inTimeClass); ?>"><?php echo e($log->am_in ? $log->am_in->format('h:i A') : '--'); ?></div>
                                                                         <div class="small fw-semibold text-dark mt-1">OUT</div>
                                                                         <div class="<?php echo e($outTimeClass); ?>"><?php echo e($log->pm_out ? $log->pm_out->format('h:i A') : '--'); ?></div>
+                                                                        <?php if($hasLeaveAttendanceConflict): ?>
+                                                                            <small class="d-block text-danger fw-bold">Leave + attendance conflict</small>
+                                                                        <?php endif; ?>
                                                                     <?php else: ?>
                                                                         <span class="<?php echo e($statusClass); ?>">
                                                                             <?php echo e($statusText); ?>

@@ -460,6 +460,7 @@
                                             $isWeekend = $day['is_weekend'];
                                             $isHoliday = ($day['status'] ?? null) === 'holiday' || ($day['is_holiday'] ?? false);
                                             $isSuspension = ($day['status'] ?? null) === 'suspension' || ($day['is_suspension'] ?? false);
+                                            $hasLeaveAttendanceConflict = $day['has_leave_attendance_conflict'] ?? false;
                                             $attendanceStatus = $day['log'] ? $day['log']->getDtrStatus() : null;
                                             $isNoRecordYet = false;
                                             $dayStatus = $day['status'] ?? null;
@@ -493,7 +494,7 @@
                                                 <?php if($canRequestCorrection): ?>
                                                     <input type="time" name="corrected_time_in" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-in" value="<?php echo e($day['log']->corrected_time_in?->format('H:i') ?? $day['log']->am_in?->format('H:i')); ?>">
                                                 <?php else: ?>
-                                                    <?php echo e(!$isLeave && !$isLWOP ? ($day['am_in'] ?? '') : '--'); ?>
+                                                    <?php echo e($day['am_in'] ?? ''); ?>
 
                                                 <?php endif; ?>
                                             </td>
@@ -501,7 +502,7 @@
                                                 <?php if($canRequestCorrection): ?>
                                                     <input type="time" name="corrected_time_out" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-out" value="<?php echo e($day['log']->corrected_time_out?->format('H:i') ?? $day['log']->pm_out?->format('H:i')); ?>">
                                                 <?php else: ?>
-                                                    <?php echo e(!$isLeave && !$isLWOP ? ($day['pm_out'] ?? '') : '--'); ?>
+                                                    <?php echo e($day['pm_out'] ?? ''); ?>
 
                                                 <?php endif; ?>
                                             </td>
@@ -550,6 +551,9 @@
                                                 <?php elseif($isNoRecordYet): ?>
                                                 <?php else: ?>
                                                     Present
+                                                <?php endif; ?>
+                                                <?php if($hasLeaveAttendanceConflict): ?>
+                                                    <small class="d-block text-danger mt-1">Attendance recorded during approved leave — review required</small>
                                                 <?php endif; ?>
                                                 <?php if($day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
                                                     <small class="d-block text-muted mt-1">Adjustment pending approval</small>

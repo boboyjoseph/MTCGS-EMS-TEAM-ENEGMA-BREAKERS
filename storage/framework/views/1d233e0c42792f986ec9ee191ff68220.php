@@ -210,11 +210,12 @@
                         <div class="tab-pane fade show active" id="pending-tab-pane" role="tabpanel" aria-labelledby="pending-tab">
                             <?php if($pendingDTRs->count() > 0): ?>
                                 <?php
-                                    $pendingGroups = Auth::user()->isSuperAdmin() ? $pendingDTRs->groupBy(fn($dtr) => $dtr->employeeProfile && $dtr->employeeProfile->branch ? $dtr->employeeProfile->branch->branch_name : 'Unassigned Branch') : [null => $pendingDTRs];
+                            $pendingGroups = Auth::user()->isSuperAdmin() ? $pendingDTRs->groupBy(fn($dtr) => $dtr->employeeProfile?->branch_id ?? 'unassigned') : [null => $pendingDTRs];
                                 ?>
 
-                                <?php $__currentLoopData = $pendingGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branchName => $branchDTRs): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <div class="mb-4">
+                        <?php $__currentLoopData = $pendingGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branchKey => $branchDTRs): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php $branchName = $branchDTRs->first()?->employeeProfile?->branch?->branch_name ?? 'Unassigned Branch'; ?>
+                            <div class="mb-4">
                                         <?php if(Auth::user()->isSuperAdmin()): ?>
                                             <div class="fw-bold text-white mb-2 border-bottom pb-2"><?php echo e($branchName); ?></div>
                                         <?php endif; ?>
@@ -269,11 +270,18 @@
                                                                 ->get();
 
                                                             $approvedLeaveByDate = [];
+                                                            $employeeBranchId = $dtr->employeeProfile?->branch_id;
                                                             foreach ($approvedLeaves as $leave) {
                                                                 $current = $leave->start_date->copy();
                                                                 $end = $leave->end_date->copy();
                                                                 while ($current <= $end) {
-                                                                    $approvedLeaveByDate[$current->format('Y-m-d')] = $leave;
+                                                                    $dateStr = $current->format('Y-m-d');
+                                                                    $calendarStatus = $calendarStatuses[$dateStr] ?? [];
+                                                                    if (!$current->isWeekend()
+                                                                        && !($calendarStatus['holiday'] ?? false)
+                                                                        && !($calendarStatus['suspension'] ?? false)) {
+                                                                        $approvedLeaveByDate[$dateStr] = $leave;
+                                                                    }
                                                                     $current->addDay();
                                                                 }
                                                             }
@@ -291,6 +299,9 @@
                                                                     $calendarStatus = $calendarStatuses[$dateStr] ?? [];
                                                                     $isHoliday = $calendarStatus['holiday'] ?? false;
                                                                     $isSuspension = $calendarStatus['suspension'] ?? false;
+                                                                    if ($isHoliday || $isSuspension) {
+                                                                        $approvedLeave = null;
+                                                                    }
                                                                     $noAttendanceStatus = $isSuspension
                                                                         ? 'Suspension'
                                                                         : ($isHoliday ? 'Holiday' : ($headerDate->lt($today) ? 'Absent' : 'Pending'));
@@ -304,6 +315,11 @@
                                                                     $statusClass = 'text-muted';
                                                                     $inTimeClass = 'small fw-bold text-dark';
                                                                     $outTimeClass = 'small fw-bold text-dark';
+                                                                    if ($log && $log->pm_out) {
+                                                                        $outTimeClass = str_contains($log->getDtrStatus(), 'Early Out')
+                                                                            ? 'small fw-bold text-danger'
+                                                                            : 'small fw-bold text-success';
+                                                                    }
 
                                                                     if ($approvedLeave) {
                                                                         $statusText = (bool) $approvedLeave->is_absent ? 'Leave Without Pay' : 'Paid Leave';
@@ -315,16 +331,11 @@
                                                                         if ($hasAnyAttendanceTime) {
                                                                             $shift = $log->employeeProfile?->shift;
                                                                             $scheduledStart = $shift?->start_time ?: '08:00:00';
-                                                                            $scheduledEnd = $shift?->end_time ?: '17:00:00';
 
                                                                             if ($log->am_in) {
                                                                                 $scheduledStartTime = $log->am_in->copy()->setTimeFromTimeString($scheduledStart);
                                                                                 $isLateTimeIn = \App\Services\AttendanceTimeRules::lateMinutes($log->am_in, $scheduledStartTime) > 0;
                                                                                 $inTimeClass = $isLateTimeIn ? 'small fw-bold text-danger' : 'small fw-bold text-success';
-                                                                            }
-
-                                                                            if ($log->pm_out) {
-                                                                                $outTimeClass = $log->pm_out->lt($log->pm_out->copy()->setTimeFromTimeString($scheduledEnd)) ? 'small fw-bold text-danger' : 'small fw-bold text-success';
                                                                             }
 
                                                                             if ($statusText === 'Half Day') {
@@ -341,7 +352,7 @@
                                                                     }
                                                                 ?>
                                                                 <td class="text-center align-middle" style="min-width: 76px; width: 90px; border: 1px solid #c8ced6; padding: 0.5rem 0.2rem; min-height: 72px; text-align: center; vertical-align: middle;">
-                                                                    <?php if($log && $hasAnyAttendanceTime): ?>
+                                                                    <?php if($log && $hasAnyAttendanceTime && !$approvedLeave): ?>
                                                                         <div class="small fw-semibold text-dark">IN</div>
                                                                         <div class="<?php echo e($inTimeClass); ?>"><?php echo e($log->am_in ? $log->am_in->format('h:i A') : '--'); ?></div>
                                                                         <div class="small fw-semibold text-dark mt-1">OUT</div>
@@ -406,10 +417,11 @@
                         <div class="tab-pane fade" id="approved-tab-pane" role="tabpanel" aria-labelledby="approved-tab">
                             <?php if($approvedDTRs->count() > 0): ?>
                                 <?php
-                                    $approvedGroups = $approvedDTRs->groupBy(fn($dtr) => $dtr->employeeProfile && $dtr->employeeProfile->branch ? $dtr->employeeProfile->branch->branch_name : 'Unassigned Branch');
+                                    $approvedGroups = $approvedDTRs->groupBy(fn($dtr) => $dtr->employeeProfile?->branch_id ?? 'unassigned');
                                 ?>
 
-                                <?php $__currentLoopData = $approvedGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branchName => $branchDTRs): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <?php $__currentLoopData = $approvedGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branchKey => $branchDTRs): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php $branchName = $branchDTRs->first()?->employeeProfile?->branch?->branch_name ?? 'Unassigned Branch'; ?>
                                     <div class="mb-4">
                                         <div class="fw-bold text-white mb-2 border-bottom pb-2">
                                             <i class="fas fa-building me-2 text-info"></i><?php echo e($branchName); ?>
@@ -421,7 +433,7 @@
                                         <?php $__currentLoopData = $periodGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $periodKey => $periodDTRs): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                             <?php $period = $periodDTRs->first(); ?>
                                             <div class="mb-3">
-                                                <?php $periodPanelId = 'approved-period-' . md5($branchName . '-' . $periodKey); ?>
+                                                <?php $periodPanelId = 'approved-period-' . md5($branchKey . '-' . $branchName . '-' . $periodKey); ?>
                                                 <button class="btn btn-link text-decoration-none text-start text-white-50 small fw-semibold p-0 mb-2 w-100"
                                                         type="button"
                                                         data-bs-toggle="collapse"

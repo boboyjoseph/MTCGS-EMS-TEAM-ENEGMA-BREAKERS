@@ -183,7 +183,8 @@
                                         $dateStr = $current->format('Y-m-d');
                                         $log = $logsByDate->get($dateStr);
                                         $isWeekend = in_array($current->dayOfWeek, [0, 6]);
-                                        $approvedLeave = !$isWeekend ? $approvedLeaves->first(function ($leave) use ($current) {
+                                        $isWorkingDay = $workingDayService->isWorkingDay($current, $branchId);
+                                        $approvedLeave = $isWorkingDay ? $approvedLeaves->first(function ($leave) use ($current) {
                                             return $current->betweenIncluded($leave->start_date, $leave->end_date);
                                         }) : null;
                                         $isApprovedLeave = (bool) $approvedLeave;
@@ -250,7 +251,7 @@
                                                     {{ $statusLetter }}
                                                 @endif
                                             </span>
-                                            @if ($log && in_array($log->override_status, ['pending_branch', 'pending_system_admin'], true))
+                                            @if (!$isApprovedLeave && $log && in_array($log->override_status, ['pending_branch', 'pending_system_admin'], true))
                                                 <div class="mt-2">
                                                     <small class="d-block text-muted">{{ ucfirst(str_replace('_', ' ', $log->override_status)) }}</small>
                                                     <small class="d-block">AM in: {{ $log->am_in?->format('h:i A') ?? '--' }} -> {{ $log->corrected_time_in?->format('h:i A') ?? '--' }}</small>

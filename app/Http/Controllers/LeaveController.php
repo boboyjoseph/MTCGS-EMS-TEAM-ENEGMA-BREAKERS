@@ -7,6 +7,9 @@ use App\Models\LeaveBalance;
 use App\Models\CalendarEvent;
 use App\Models\CashCharge;
 use App\Models\EmployeeProfile;
+use App\Models\Branch;
+use App\Models\FinanceProfile;
+use App\Models\AdminProfile;
 use App\Models\PayrollEntry;
 use App\Models\User;
 use App\Notifications\SystemNotification;
@@ -562,16 +565,7 @@ class LeaveController extends Controller
 
         $employees = EmployeeProfile::with(['user', 'branch'])
             ->whereHas('user', function ($userQuery) {
-                $userQuery->where('is_active', true)
-                    ->where(function ($roleQuery) {
-                        $roleQuery->where('role', 'employee')
-                            ->orWhere(function ($adminQuery) {
-                                $adminQuery->where('role', 'admin')
-                                    ->where('admin_type', 'branch_admin');
-                            })
-                            ->orWhereIn('role', ['finance_officer', 'finance_head'])
-                            ->orWhere('role', 'branch_head');
-                    });
+                $userQuery->where('is_active', true);
             })
             ->when($user->role === 'branch_head', function ($query) use ($user) {
                 $branch = $user->getBranchHeadProfile();
@@ -589,24 +583,82 @@ class LeaveController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        foreach ($employees as $employee) {
-            $employee->setRelation('leaveBalance', LeaveBalance::firstOrCreate(
-                [
-                    'employee_profile_id' => $employee->id,
-                    'year' => now()->year,
-                ],
-                array_merge($this->getLeaveEntitlements($employee), [
-                    'sick_leave_used' => 0,
-                    'vacation_leave_used' => 0,
-                    'emergency_leave_used' => 0,
-                    'birthday_leave_used' => 0,
-                    'cash_charge_used' => 0,
-                    'maternity_leave_used' => 0,
-                    'paternity_leave_used' => 0,
-                    'service_incentive_leave_used' => 0,
-                ])
-            ));
+        $linkedStaffProfiles = collect(FinanceProfile::with(['user', 'branch', 'employeeProfile.user', 'employeeProfile.branch'])
+            ->whereNotNull('employee_profile_id')
+            ->whereHas('user', function ($query) {
+                $query->where('is_active', true)
+                    ->whereIn('role', ['finance_officer', 'finance_head']);
+            })
+            ->get())
+            ->concat(
+                AdminProfile::with(['user', 'branch', 'employeeProfile.user', 'employeeProfile.branch'])
+                    ->whereNotNull('employee_profile_id')
+                    ->whereHas('user', function ($query) {
+                        $query->where('is_active', true)
+                            ->where('role', 'admin');
+                    })
+                    ->get()
+            )
+            ->unique(function ($profile) {
+                $employeeNumber = strtolower(trim((string) $profile->employee_number));
+                $branchId = $profile->branch_id
+                    ?? $profile->user?->branch_id
+                    ?? $profile->employeeProfile?->branch_id;
+
+                return $employeeNumber !== ''
+                    ? 'branch:' . $branchId . '|employee-number:' . $employeeNumber
+                    : 'branch:' . $branchId . '|employee-profile:' . $profile->employee_profile_id;
+            })
+            ->values();
+
+        $linkedStaffUserIds = $linkedStaffProfiles->pluck('user_id')->map(fn ($id) => (int) $id)->all();
+        $linkedStaffEmployeeNumbers = $linkedStaffProfiles
+            ->map(fn ($profile) => strtolower(trim((string) ($profile->employee_number ?: $profile->employeeProfile?->employee_number))))
+            ->filter()
+            ->all();
+        $employees = $employees->reject(function ($employee) use ($linkedStaffUserIds, $linkedStaffEmployeeNumbers) {
+            $employeeNumber = strtolower(trim((string) $employee->employee_number));
+
+            return in_array((int) $employee->user_id, $linkedStaffUserIds, true)
+                || ($employeeNumber !== '' && in_array($employeeNumber, $linkedStaffEmployeeNumbers, true));
+        })->values();
+
+        $allowedBranchId = match (true) {
+            $user->role === 'branch_head' => $user->getBranchHeadProfile()?->branch_id,
+            $user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin' => $user->getEffectiveBranchId(),
+            $user->role === 'finance_head' => $user->getFinanceProfile()?->branch_id,
+            default => null,
+        };
+
+        foreach ($linkedStaffProfiles as $staffProfile) {
+            $linkedEmployee = $staffProfile->employeeProfile;
+            $staffUser = $staffProfile->user;
+            if (!$linkedEmployee || !$staffUser) {
+                continue;
+            }
+
+            $staffBranchId = $staffProfile->branch_id ?? $staffUser->branch_id ?? $linkedEmployee->branch_id;
+            if ($allowedBranchId && (int) $staffBranchId !== (int) $allowedBranchId) {
+                continue;
+            }
+
+            $linkedEmployee->branch_id = $staffBranchId;
+            $linkedEmployee->setRelation(
+                'branch',
+                $staffProfile->branch
+                    ?? ($staffBranchId ? Branch::find($staffBranchId) : null)
+                    ?? $linkedEmployee->branch
+            );
+            $linkedEmployee->setRelation('user', $staffUser);
+            $employees->put($linkedEmployee->id, $linkedEmployee);
         }
+        $employees = $employees->values()->unique(function ($employee) {
+            $employeeNumber = strtolower(trim((string) $employee->employee_number));
+
+            return $employeeNumber !== ''
+                ? 'branch:' . $employee->branch_id . '|employee-number:' . $employeeNumber
+                : 'branch:' . $employee->branch_id . '|employee-profile:' . $employee->id;
+        })->values();
 
         $allMyCharges = CashCharge::with(['employeeProfile.user', 'employeeProfile.branch', 'requester', 'approver'])
             ->when($user->role === 'employee', function ($query) use ($employeeProfile) {
@@ -739,17 +791,30 @@ class LeaveController extends Controller
         )->values();
 
         $groupedEmployees = $employees
-            ->groupBy(fn ($employee) => $employee->branch?->branch_name ?? 'Unassigned')
+            ->sortBy(fn ($employee) => strtolower(
+                ($employee->branch?->branch_name ?? 'Unassigned') . '|'
+                . $employee->last_name . '|'
+                . $employee->first_name
+            ))
+            ->groupBy(fn ($employee) => $employee->branch_id ?? 'unassigned')
             ->map(function ($branchEmployees) {
                 return $branchEmployees->groupBy(function ($employee) {
                     $user = $employee->user;
+
+                    if ($user && $user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin') {
+                        return 'Branch Admin';
+                    }
+
+                    if ($user && $user->role === 'admin') {
+                        return 'HR / Super Admin';
+                    }
 
                     if ($user && in_array($user->role, ['finance_officer', 'finance_head'], true)) {
                         return 'Finance Officer';
                     }
 
-                    if ($user && $user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin') {
-                        return 'Branch Admin';
+                    if ($user && $user->role === 'branch_head') {
+                        return 'Branch Head';
                     }
 
                     return 'Employee';
@@ -779,27 +844,46 @@ class LeaveController extends Controller
         ]);
 
         $employee = EmployeeProfile::with('branch')->findOrFail($validated['employee_id']);
+        $financeProfile = FinanceProfile::with('user')
+            ->where('employee_profile_id', $employee->id)
+            ->whereHas('user', fn ($query) => $query
+                ->where('is_active', true)
+                ->whereIn('role', ['finance_officer', 'finance_head']))
+            ->orderBy('id')
+            ->first();
+        $adminProfile = AdminProfile::with('user')
+            ->where('employee_profile_id', $employee->id)
+            ->whereHas('user', fn ($query) => $query
+                ->where('is_active', true)
+                ->where('role', 'admin'))
+            ->orderBy('id')
+            ->first();
+        $chargeBranchId = $financeProfile?->branch_id
+            ?? $financeProfile?->user?->branch_id
+            ?? $adminProfile?->branch_id
+            ?? $adminProfile?->user?->branch_id
+            ?? $employee->branch_id;
 
         if ($user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin') {
-            $adminProfile = $user->getAdminProfile();
-            abort_if($employee->branch_id !== ($adminProfile?->branch_id ?? 0), 403, 'You can only add charges for your branch employees.');
+            $requesterProfile = $user->getAdminProfile();
+            abort_if((int) $chargeBranchId !== (int) ($requesterProfile?->branch_id ?? 0), 403, 'You can only add charges for your branch employees.');
         }
 
         if ($user->role === 'finance_head') {
-            $profile = $user->getFinanceProfile();
-            abort_if($employee->branch_id !== ($profile?->branch_id ?? 0), 403, 'You can only add charges for your branch employees.');
+            $requesterProfile = $user->getFinanceProfile();
+            abort_if((int) $chargeBranchId !== (int) ($requesterProfile?->branch_id ?? 0), 403, 'You can only add charges for your branch employees.');
         }
 
         if ($user->role === 'branch_head') {
-            $profile = $user->getBranchHeadProfile();
-            abort_if($employee->branch_id !== ($profile?->branch_id ?? 0), 403, 'You can only add charges for your branch employees.');
+            $requesterProfile = $user->getBranchHeadProfile();
+            abort_if((int) $chargeBranchId !== (int) ($requesterProfile?->branch_id ?? 0), 403, 'You can only add charges for your branch employees.');
         }
 
         $evidencePath = $request->file('evidence')?->store('cash-charge-evidence', 'local');
 
         $charge = CashCharge::create([
             'employee_profile_id' => $employee->id,
-            'branch_id' => $employee->branch_id,
+            'branch_id' => $chargeBranchId,
             'amount' => (float) $validated['amount'],
             'reason' => $validated['reason'],
             'evidence_path' => $evidencePath,

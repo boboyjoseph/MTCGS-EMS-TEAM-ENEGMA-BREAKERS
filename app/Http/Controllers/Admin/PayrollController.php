@@ -244,17 +244,21 @@ class PayrollController extends Controller
             $leaveWithoutPayDeduction = (int) ($dtrBreakdown['leave_without_pay'] ?? 0) * $dailyRate;
             $lateDeduction = (float) ($calculation['late_deduction'] ?? 0);
             $earlyOutDeduction = (float) ($calculation['early_out_deduction'] ?? 0);
-            $additionalEarnings = (float) ($calculation['overtime_pay'] ?? 0)
-                + $holidayBonus
-                + $suspensionPay
-                + (float) ($entry->allowances ?? 0)
-                + (float) ($entry->bonuses ?? 0);
+            $totalDailyRate = (int) ($dtrBreakdown['days_present'] ?? 0) * $dailyRate;
+            $paidLeaveRate = (int) ($dtrBreakdown['paid_leave'] ?? 0) * $dailyRate;
+            $overtimePay = $this->payrollComputationService->calculateOvertimePay($holidayBonus, $suspensionPay);
+            $totalEarnings = $this->payrollComputationService->calculateTotalEarnings(
+                $totalDailyRate,
+                $holidayBonus,
+                $suspensionPay,
+                $paidLeaveRate
+            );
 
             $entry->days_present = (int) ($dtrBreakdown['days_present'] ?? 0);
             $entry->days_absent = (int) ($dtrBreakdown['days_absent'] ?? 0);
             $entry->late_deduction = $lateDeduction;
             $entry->overtime_hours = $calculation['overtime_hours'] ?? 0;
-            $entry->overtime_pay = $calculation['overtime_pay'] ?? 0;
+            $entry->overtime_pay = $overtimePay;
             $entry->absent_deduction = (int) $entry->days_absent * $dailyRate;
             $entry->gross_pay = (float) $entry->basic_pay;
             $entry->total_deductions = (float) $entry->sss_contribution
@@ -270,7 +274,7 @@ class PayrollController extends Controller
                 + $halfDayDeduction
                 + $holidayDeduction
                 + $suspensionDeduction;
-            $entry->net_pay = (float) $entry->gross_pay + $additionalEarnings - (float) $entry->total_deductions;
+            $entry->net_pay = (float) $entry->gross_pay - (float) $entry->total_deductions;
             $entryBreakdown['days_present'] = $entry->days_present;
             $entryBreakdown['days_absent'] = $entry->days_absent;
             $entryBreakdown['late_minutes'] = (int) ($calculation['late_minutes'] ?? 0);
@@ -279,12 +283,15 @@ class PayrollController extends Controller
             $entryBreakdown['late_deduction'] = number_format($lateDeduction, 2, '.', '');
             $entryBreakdown['early_out_deduction'] = number_format($earlyOutDeduction, 2, '.', '');
             $entryBreakdown['daily_rate'] = $dailyRate;
+            $entryBreakdown['total_daily_rate'] = number_format($totalDailyRate, 2, '.', '');
+            $entryBreakdown['paid_leave_rate'] = number_format($paidLeaveRate, 2, '.', '');
+            $entryBreakdown['total_earnings'] = number_format($totalEarnings, 2, '.', '');
             $entryBreakdown['half_day_days'] = (int) ($dtrBreakdown['half_day_days'] ?? 0);
             $entryBreakdown['half_day_deduction'] = number_format($halfDayDeduction, 2, '.', '');
             $entryBreakdown['suspended_hours_to_pay'] = $suspendedHoursToPay;
             $entryBreakdown['suspension_pay'] = number_format($suspensionPay, 2, '.', '');
             $entryBreakdown['absent_deduction'] = number_format($entry->absent_deduction, 2, '.', '');
-            $entryBreakdown['overtime_pay'] = number_format($entry->overtime_pay, 2, '.', '');
+            $entryBreakdown['overtime_pay'] = number_format($overtimePay, 2, '.', '');
             $entryBreakdown['gross_pay'] = number_format($entry->gross_pay, 2, '.', '');
             $entryBreakdown['total_deductions'] = number_format($entry->total_deductions, 2, '.', '');
             $entryBreakdown['net_pay'] = number_format($entry->net_pay, 2, '.', '');
@@ -519,6 +526,9 @@ class PayrollController extends Controller
             $earlyOutDeduction = (float) $earlyOutMinutes;
             $previousLateDeduction = (float) ($entry->late_deduction ?? 0);
             $previousEarlyOutDeduction = (float) ($serializedBreakdown['early_out_deduction'] ?? 0);
+            $dailyRate = isset($serializedBreakdown['daily_rate']) && is_numeric($serializedBreakdown['daily_rate'])
+                ? (float) $serializedBreakdown['daily_rate']
+                : (float) $entry->basic_pay / max(1, $dtr->getWorkingDays());
 
             $serializedBreakdown['days_present'] = $daysPresent;
             $serializedBreakdown['days_absent'] = $daysAbsent;
@@ -528,9 +538,7 @@ class PayrollController extends Controller
             $serializedBreakdown['early_out_minutes'] = $earlyOutMinutes;
             $serializedBreakdown['late_deduction'] = number_format($lateDeduction, 2, '.', '');
             $serializedBreakdown['early_out_deduction'] = number_format($earlyOutDeduction, 2, '.', '');
-            if (isset($serializedBreakdown['daily_rate']) && is_numeric($serializedBreakdown['daily_rate'])) {
-                $serializedBreakdown['daily_rate'] = (float) $serializedBreakdown['daily_rate'];
-            }
+            $serializedBreakdown['daily_rate'] = $dailyRate;
 
             $entry->days_present = $daysPresent;
             $entry->days_absent = $daysAbsent;
@@ -541,16 +549,28 @@ class PayrollController extends Controller
                     + ($lateDeduction - $previousLateDeduction)
                     + ($earlyOutDeduction - $previousEarlyOutDeduction)
             );
+            $dailyRate = (float) ($serializedBreakdown['daily_rate'] ?? 0);
             $suspensionPay = $this->payrollComputationService->calculateSuspensionPay(
                 (float) ($serializedBreakdown['suspended_hours_to_pay'] ?? 0)
             );
-            $additionalEarnings = (float) ($entry->overtime_pay ?? 0)
-                + (float) ($serializedBreakdown['holiday_bonus'] ?? 0)
-                + $suspensionPay
-                + (float) ($entry->allowances ?? 0)
-                + (float) ($entry->bonuses ?? 0);
+            $holidayBonus = (float) ($serializedBreakdown['holiday_bonus'] ?? 0);
+            $totalDailyRate = $daysPresent * $dailyRate;
+            $paidLeaveRate = $paidLeave * $dailyRate;
+            $overtimePay = $this->payrollComputationService->calculateOvertimePay($holidayBonus, $suspensionPay);
+            $totalEarnings = $this->payrollComputationService->calculateTotalEarnings(
+                $totalDailyRate,
+                $holidayBonus,
+                $suspensionPay,
+                $paidLeaveRate
+            );
             $entry->gross_pay = (float) $entry->basic_pay;
-            $entry->net_pay = (float) $entry->gross_pay + $additionalEarnings - (float) $entry->total_deductions;
+            $entry->overtime_pay = $overtimePay;
+            $entry->net_pay = (float) $entry->gross_pay - (float) $entry->total_deductions;
+            $serializedBreakdown['total_daily_rate'] = number_format($totalDailyRate, 2, '.', '');
+            $serializedBreakdown['paid_leave_rate'] = number_format($paidLeaveRate, 2, '.', '');
+            $serializedBreakdown['suspension_pay'] = number_format($suspensionPay, 2, '.', '');
+            $serializedBreakdown['overtime_pay'] = number_format($overtimePay, 2, '.', '');
+            $serializedBreakdown['total_earnings'] = number_format($totalEarnings, 2, '.', '');
             $serializedBreakdown['net_pay'] = number_format($entry->net_pay, 2, '.', '');
             $entry->payroll_breakdown = json_encode($serializedBreakdown);
             $entry->save();
@@ -712,6 +732,15 @@ class PayrollController extends Controller
         $leaveWithoutPayDeduction = $leaveWithoutPayDays * $dailyRate;
         $entry->days_present = (int) ($dtrStats['days_present'] ?? 0);
         $entry->days_absent = (int) ($dtrStats['days_absent'] ?? 0);
+        $totalDailyRate = $entry->days_present * $dailyRate;
+        $paidLeaveRate = $paidLeaveDays * $dailyRate;
+        $overtimePay = $this->payrollComputationService->calculateOvertimePay($holidayBonus, $suspensionPay);
+        $totalEarnings = $this->payrollComputationService->calculateTotalEarnings(
+            $totalDailyRate,
+            $holidayBonus,
+            $suspensionPay,
+            $paidLeaveRate
+        );
         $entry->sss_contribution = $validated['sss_contribution'];
         $entry->philhealth_contribution = $validated['philhealth_contribution'];
         $entry->pagibig_contribution = $validated['pagibig_contribution'];
@@ -736,10 +765,13 @@ class PayrollController extends Controller
         $breakdown['cash_charge_deduction'] = $cashChargeDeduction;
         $breakdown['daily_rate'] = $dailyRate;
         $breakdown['total_daily_rate'] = ($entry->days_present ?? 0) * $dailyRate;
+        $breakdown['paid_leave_rate'] = $paidLeaveRate;
+        $breakdown['total_earnings'] = $totalEarnings;
         $breakdown['half_day_days'] = $halfDayCount;
         $breakdown['half_day_deduction'] = $halfDayDeduction;
         $breakdown['suspended_hours_to_pay'] = $suspendedHoursToPay;
         $breakdown['suspension_pay'] = $suspensionPay;
+        $breakdown['overtime_pay'] = $overtimePay;
         $breakdown['early_out_deduction'] = $validatedEarlyOutDeduction;
         $breakdown['absent_deduction'] = $entry->absent_deduction;
         $breakdown['leave_without_pay_deduction'] = $leaveWithoutPayDeduction;
@@ -748,14 +780,10 @@ class PayrollController extends Controller
         $breakdown['suspension_deduction'] = $suspensionDeduction;
         $entry->payroll_breakdown = json_encode($breakdown);
 
-        $additionalEarnings = (float) ($entry->overtime_pay ?? 0)
-            + $holidayBonus
-            + $suspensionPay
-            + (float) ($entry->allowances ?? 0)
-            + (float) ($entry->bonuses ?? 0);
         $entry->gross_pay = $entry->basic_pay;
+        $entry->overtime_pay = $overtimePay;
         $entry->total_deductions = $entry->sss_contribution + $entry->philhealth_contribution + $entry->pagibig_contribution + $entry->withholding_tax + ($entry->cash_advance_deduction ?? 0) + $cashChargeDeduction + $entry->late_deduction + $entry->absent_deduction + $leaveWithoutPayDeduction + $validatedEarlyOutDeduction + $halfDayDeduction + $holidayDeduction + $suspensionDeduction;
-        $entry->net_pay = $entry->gross_pay + $additionalEarnings - $entry->total_deductions;
+        $entry->net_pay = (float) $entry->gross_pay - (float) $entry->total_deductions;
         $breakdown['net_pay'] = number_format($entry->net_pay, 2, '.', '');
         $entry->payroll_breakdown = json_encode($breakdown);
         $entry->status = $validated['status'];

@@ -64,6 +64,10 @@
             ? (float) $breakdown['total_daily_rate']
             : $daysPresent * $dailyRate;
         $paidLeaveRate = $paidLeaveDays * $dailyRate;
+        $totalEarnings = is_numeric($breakdown['total_earnings'] ?? null)
+            ? (float) $breakdown['total_earnings']
+            : $totalDailyRate + $holidayBonus + $suspensionPay + $paidLeaveRate;
+        $overtimePay = is_numeric($entry->overtime_pay ?? null) ? (float) $entry->overtime_pay : 0;
     @endphp
 
     <div class="header">
@@ -153,6 +157,18 @@
             <td class="amount" style="text-align: right;">₱{{ number_format($paidLeaveDays * $dailyRate, 2) }}</td>
             <td>Late Deduction</td>
             <td class="amount" style="text-align: right;">-₱{{ number_format($lateDeduction, 2) }}</td>
+        </tr>
+        <tr>
+            <td>Overtime Pay (Holiday Bonus + Suspension Pay)</td>
+            <td class="amount" style="text-align: right;">₱{{ number_format($overtimePay, 2) }}</td>
+            <td></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td><strong>Total Earnings</strong></td>
+            <td class="amount" style="text-align: right;"><strong>₱{{ number_format($totalEarnings, 2) }}</strong></td>
+            <td></td>
+            <td></td>
         </tr>
         <tr>
             <td></td>
