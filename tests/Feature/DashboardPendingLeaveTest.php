@@ -80,7 +80,9 @@ class DashboardPendingLeaveTest extends TestCase
             ->get('/dashboard')
             ->assertOk()
             ->assertSee('Registered')
-            ->assertDontSee('Not Registered');
+            ->assertDontSee('Not Registered')
+            ->assertSee('body.dark-mode .employee-dashboard-theme .employee-schedule-title', false)
+            ->assertSee('<h5 class="fw-bold employee-schedule-title mb-2">No schedule assigned</h5>', false);
     }
 
     public function test_branch_admin_dtr_badge_only_counts_submitted_dtrs_in_their_branch(): void
