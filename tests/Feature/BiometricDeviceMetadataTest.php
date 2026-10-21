@@ -1320,6 +1320,46 @@ class BiometricDeviceMetadataTest extends TestCase
         ]);
     }
 
+    public function test_templates_endpoint_returns_service_unavailable_when_device_credential_cannot_be_decrypted(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-UNREADABLE-CREDENTIAL',
+            'branch_name' => 'Unreadable Credential Branch',
+            'address' => 'Unreadable Credential Address',
+        ]);
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-71',
+            'serial_number' => 'SERIAL-UNREADABLE-CREDENTIAL',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'Unreadable Credential Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+        \Illuminate\Support\Facades\DB::table('devices')
+            ->where('id', $device->id)
+            ->update(['api_secret' => 'not-a-valid-encrypted-credential']);
+
+        $payload = $this->signedDevicePayload([
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:71',
+            'device_id' => (string) $device->id,
+            'mac_address' => 'AA:BB:CC:DD:EE:71',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'unreadable-device-credential',
+            'fingerprint_scope' => 'duplicate-check',
+        ], 'GET', '/api/biometric/templates');
+        $response = (new BiometricController())->getFingerprintTemplates(
+            Request::create('/api/biometric/templates', 'GET', $payload)
+        );
+
+        $this->assertSame(503, $response->getStatusCode());
+        $this->assertSame(
+            'The server cannot decrypt this device credential. Restore the original APP_KEY or re-provision this device credential.',
+            json_decode($response->content(), true)['error']
+        );
+    }
+
     public function test_time_out_requires_time_in_and_a_valid_pair_is_reflected_in_dtr(): void
     {
         $this->travelTo(now()->nextWeekday()->startOfDay()->setTime(7, 0));

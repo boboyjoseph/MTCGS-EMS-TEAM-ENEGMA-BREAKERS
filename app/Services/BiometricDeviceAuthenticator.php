@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Device;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -82,7 +83,19 @@ class BiometricDeviceAuthenticator
             return $this->reject('Physical reader ID does not match the reader registered to this device.');
         }
 
-        $secret = (string) $device->api_secret;
+        try {
+            $secret = (string) $device->api_secret;
+        } catch (DecryptException) {
+            Log::error('Biometric device credential could not be decrypted; verify the production APP_KEY.', [
+                'device_id' => $device->getKey(),
+            ]);
+
+            return [
+                'error' => 'The server cannot decrypt this device credential. Restore the original APP_KEY or re-provision this device credential.',
+                'code' => 503,
+            ];
+        }
+
         if ($secret === '') {
             return $this->reject('This device has no provisioned credential. Ask a super administrator to provision it.');
         }
