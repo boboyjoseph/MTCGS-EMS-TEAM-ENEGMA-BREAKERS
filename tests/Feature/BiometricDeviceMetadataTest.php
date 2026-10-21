@@ -1216,6 +1216,14 @@ class BiometricDeviceMetadataTest extends TestCase
             $irigaEmployee->employee_number,
             $buhiEmployee->employee_number,
         ], $duplicateCheckNumbers);
+        $duplicateCheckTemplate = json_decode($duplicateCheckResponse->content(), true)['templates'][0];
+        $this->assertEqualsCanonicalizing([
+            'employee_number',
+            'first_name',
+            'last_name',
+            'branch_name',
+            'fingerprint_template',
+        ], array_keys($duplicateCheckTemplate));
 
         $duplicateEnrollment = $this->signedDevicePayload([
             'employee_number' => $irigaEmployee->employee_number,

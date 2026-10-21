@@ -1510,9 +1510,19 @@ class BiometricController extends Controller
                 ->get(['id', 'user_id', 'employee_number', 'first_name', 'last_name', 'branch_id', 'position', 'fingerprint_template'])
                 ->reject(fn ($profile) => $profileType === EmployeeProfile::class && $this->isHrAdmin($profile->user));
 
-            $templates = $templates->concat(
-                $profiles->flatMap(fn ($profile) => $this->fingerprintTemplateResponseItems($profile))
+            $profileTemplates = $profiles->flatMap(
+                fn ($profile) => $this->fingerprintTemplateResponseItems($profile)
             );
+            if ($crossBranchDuplicateCheck) {
+                $profileTemplates = $profileTemplates->map(fn ($item) => [
+                    'employee_number' => $item['employee_number'],
+                    'first_name' => $item['first_name'],
+                    'last_name' => $item['last_name'],
+                    'branch_name' => $item['branch_name'],
+                    'fingerprint_template' => $item['fingerprint_template'],
+                ]);
+            }
+            $templates = $templates->concat($profileTemplates);
         }
 
         return response()->json([
