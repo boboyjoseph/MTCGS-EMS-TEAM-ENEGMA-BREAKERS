@@ -94,6 +94,42 @@ class DashboardPendingLeaveTest extends TestCase
         $photoResponse->assertOk();
     }
 
+    public function test_branch_admin_header_uses_the_uploaded_admin_profile_photo(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create([
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'profile_type' => AdminProfile::class,
+        ]);
+        $profile = AdminProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => 1,
+            'employee_number' => 'ADMIN-AVATAR-001',
+            'first_name' => 'Branch',
+            'last_name' => 'Admin',
+            'position' => 'Branch Administrator',
+            'date_hired' => now()->toDateString(),
+            'profile_photo' => 'profile-photos/adminprofile-avatar-test.jpg',
+        ]);
+        Storage::disk('public')->put($profile->profile_photo, 'fake-image');
+        $user->forceFill([
+            'profile_id' => $profile->id,
+            'profile_type' => AdminProfile::class,
+        ])->save();
+
+        $photoUrl = route('profile.photo', ['adminprofile', $profile->id]);
+        $this->actingAs($user)
+            ->get('/profile')
+            ->assertOk()
+            ->assertSee($photoUrl, false)
+            ->assertSee('alt="Profile photo"', false);
+
+        $this->actingAs($user)
+            ->get($photoUrl)
+            ->assertOk();
+    }
+
     public function test_branch_admin_dtr_badge_only_counts_submitted_dtrs_in_their_branch(): void
     {
         $buhi = Branch::create([
