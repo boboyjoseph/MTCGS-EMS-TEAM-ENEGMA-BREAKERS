@@ -929,13 +929,14 @@
                         $headerProfile->id,
                     ]) . '?v=' . $headerProfile->updated_at?->timestamp;
                 }
+                $defaultAvatarUrl = asset('images/default-avatar.svg');
             @endphp
             <div class="dropdown">
                 <button id="profileMenuToggle" class="btn btn-light btn-sm d-inline-flex align-items-center gap-2 text-decoration-none" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Open account menu">
                     @if($headerPhotoUrl)
-                        <img src="{{ $headerPhotoUrl }}" alt="Profile photo" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
+                        <img src="{{ $headerPhotoUrl }}" onerror="this.onerror=null;this.src='{{ $defaultAvatarUrl }}';" alt="Profile photo" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
                     @else
-                        <i class="fas fa-user-circle"></i>
+                        <img src="{{ $defaultAvatarUrl }}" alt="Profile photo" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
                     @endif
                     <span class="d-none d-sm-inline">{{ Auth::user()->name }}</span>
                     <span class="badge bg-info ms-1">{{ $headerRoleLabel }}</span>

@@ -41,11 +41,9 @@
                         <div class="text-center">
                             <label for="profile_photo" class="d-inline-block position-relative" title="Click to upload a profile picture" style="cursor: pointer;">
                                 @if($profile && $profile->profile_photo)
-                                    <img src="{{ route('profile.photo', [strtolower(class_basename($profile)), $profile->id]) . '?v=' . $profile->updated_at?->timestamp }}" alt="Profile photo" class="rounded-circle border shadow-sm" style="width: 140px; height: 140px; object-fit: cover;">
+                                    <img src="{{ route('profile.photo', [strtolower(class_basename($profile)), $profile->id]) . '?v=' . $profile->updated_at?->timestamp }}" onerror="this.onerror=null;this.src='{{ asset('images/default-avatar.svg') }}';" alt="Profile photo" class="rounded-circle border shadow-sm" style="width: 140px; height: 140px; object-fit: cover;">
                                 @else
-                                    <span class="rounded-circle border bg-light text-primary shadow-sm d-flex align-items-center justify-content-center" style="width: 140px; height: 140px; font-size: 4rem;">
-                                        <i class="fas fa-user-circle"></i>
-                                    </span>
+                                    <img src="{{ asset('images/default-avatar.svg') }}" alt="Default profile avatar" class="rounded-circle border shadow-sm" style="width: 140px; height: 140px; object-fit: cover;">
                                 @endif
                                 <span class="position-absolute bottom-0 end-0 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center border border-white" style="width: 38px; height: 38px;" aria-hidden="true">
                                     <i class="fas fa-camera"></i>

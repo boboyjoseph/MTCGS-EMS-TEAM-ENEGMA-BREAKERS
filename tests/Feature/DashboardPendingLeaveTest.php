@@ -130,6 +130,8 @@ class DashboardPendingLeaveTest extends TestCase
         $this->assertStringContainsString($photoUrl, $menuHtml);
         $this->assertStringNotContainsString('/storage/', $menuHtml);
         $this->assertStringContainsString('alt="Profile photo"', $menuHtml);
+        $this->assertStringContainsString('onerror="this.onerror=null;this.src=', $menuHtml);
+        $this->assertStringContainsString(asset('images/default-avatar.svg'), $menuHtml);
 
         $this->actingAs($user)
             ->get($photoUrl)
