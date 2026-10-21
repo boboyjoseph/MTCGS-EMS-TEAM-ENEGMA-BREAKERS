@@ -897,9 +897,18 @@
                 <span id="themeLabel" class="theme-label">Dark Mode</span>
             </button>
             @php
-                $headerProfile = Auth::user()->profile;
-                if (!$headerProfile && Auth::user()->role === 'admin') {
-                    $headerProfile = Auth::user()->getAdminProfile();
+                $headerProfile = match (Auth::user()->role) {
+                    'employee' => Auth::user()->getEmployeeProfile(),
+                    'finance_officer', 'finance_head' => Auth::user()->getFinanceProfile(),
+                    'admin' => Auth::user()->getAdminProfile(),
+                    'branch_head' => Auth::user()->getBranchHeadProfile(),
+                    default => Auth::user()->profile,
+                };
+                if ((!$headerProfile || !$headerProfile->profile_photo)
+                    && $headerProfile
+                    && in_array(Auth::user()->role, ['admin', 'finance_officer', 'finance_head'], true)
+                    && $headerProfile->employee_profile_id) {
+                    $headerProfile = \App\Models\EmployeeProfile::find($headerProfile->employee_profile_id);
                 }
                 $headerRoleLabel = match (Auth::user()->role) {
                     'admin' => match (Auth::user()->admin_type ?? '') {
@@ -915,7 +924,10 @@
                 };
                 $headerPhotoUrl = null;
                 if ($headerProfile?->profile_photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($headerProfile->profile_photo)) {
-                    $headerPhotoUrl = asset('storage/' . ltrim($headerProfile->profile_photo, '/')) . '?v=' . $headerProfile->updated_at?->timestamp;
+                    $headerPhotoUrl = route('profile.photo', [
+                        strtolower(class_basename($headerProfile)),
+                        $headerProfile->id,
+                    ]) . '?v=' . $headerProfile->updated_at?->timestamp;
                 }
             @endphp
             <div class="dropdown">
