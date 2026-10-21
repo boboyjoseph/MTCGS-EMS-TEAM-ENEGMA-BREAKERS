@@ -119,11 +119,17 @@ class DashboardPendingLeaveTest extends TestCase
         ])->save();
 
         $photoUrl = route('profile.photo', ['adminprofile', $profile->id]);
-        $this->actingAs($user)
-            ->get('/profile')
-            ->assertOk()
-            ->assertSee($photoUrl, false)
-            ->assertSee('alt="Profile photo"', false);
+        $response = $this->actingAs($user)->get('/profile');
+        $response->assertOk();
+        $html = $response->getContent();
+        $menuStart = strpos($html, '<button id="profileMenuToggle"');
+        $this->assertNotFalse($menuStart, 'The account menu button should be rendered.');
+        $menuEnd = strpos($html, '</button>', $menuStart);
+        $this->assertNotFalse($menuEnd, 'The account menu button should be closed.');
+        $menuHtml = substr($html, $menuStart, $menuEnd - $menuStart);
+        $this->assertStringContainsString($photoUrl, $menuHtml);
+        $this->assertStringNotContainsString('/storage/', $menuHtml);
+        $this->assertStringContainsString('alt="Profile photo"', $menuHtml);
 
         $this->actingAs($user)
             ->get($photoUrl)
