@@ -8,11 +8,13 @@ use App\Models\FinanceProfile;
 use App\Models\AdminProfile;
 use App\Models\Branch;
 use App\Models\LoginHistory;
+use App\Support\EmployeeApprovalNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
@@ -71,7 +73,7 @@ class AuthController extends Controller
                 'date_resigned' => null,
                 'basic_salary' => 0,
                 'hourly_rate' => null,
-                'contact_number' => $data['contact_number'],
+                'contact_number' => $data['contact_number'] ?? null,
                 'emergency_contact_name' => null,
                 'emergency_contact_number' => null,
                 'address' => null,
@@ -84,13 +86,16 @@ class AuthController extends Controller
             $user->profile_type = EmployeeProfile::class;
             $user->save();
 
+            app(EmployeeApprovalNotifier::class)->notify($user);
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Employee self-registration failed.', ['exception' => $e]);
             return back()->withInput()->withErrors(['register' => 'Unable to create account. Please try again later.']);
         }
 
-        return redirect()->route('login')->with('success', 'Registration request sent successfully. Please wait for admin approval before logging in.');
+        return redirect()->route('login')->with('success', 'Registration request sent successfully. Please wait for HR approval before logging in.');
     }
     
     public function login(Request $request)

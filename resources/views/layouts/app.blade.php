@@ -697,6 +697,17 @@
                             <i class="fas fa-user-check"></i> My Cash Advance
                         </a>
                     @endif
+                    @if(Auth::user()->isSuperAdmin())
+                        <a class="nav-link {{ request()->routeIs('admin.verifications') ? 'active' : '' }}" href="{{ route('admin.verifications') }}">
+                            <i class="fas fa-id-card"></i> Account Creation Approval
+                            @php
+                                $pendingApprovalCount = \App\Models\User::where('id_verification_status', 'pending')->count();
+                            @endphp
+                            @if($pendingApprovalCount > 0)
+                                <span class="badge bg-warning ms-auto">{{ $pendingApprovalCount }}</span>
+                            @endif
+                        </a>
+                    @endif
                     @if(Auth::user()->admin_type === 'super_admin')
                         <div class="nav-group-label">Permissions &amp; Audit</div>
                         <a class="nav-link {{ request()->routeIs('admin.homepage.*') ? 'active' : '' }}" href="{{ route('admin.homepage.edit') }}">
@@ -707,15 +718,6 @@
                         </a>
                         <a class="nav-link {{ request()->routeIs('admin.authority') ? 'active' : '' }}" href="{{ route('admin.authority') }}">
                             <i class="fas fa-user-shield"></i> Employee Creation Authority
-                        </a>
-                        <a class="nav-link {{ request()->routeIs('admin.verifications') ? 'active' : '' }}" href="{{ route('admin.verifications') }}">
-                            <i class="fas fa-id-card"></i> Account Creation Approval
-                            @php
-                                $pendingApprovalCount = \App\Models\User::where('id_verification_status', 'pending')->count();
-                            @endphp
-                            @if($pendingApprovalCount > 0)
-                                <span class="badge bg-warning ms-auto">{{ $pendingApprovalCount }}</span>
-                            @endif
                         </a>
                         <a class="nav-link {{ request()->routeIs('admin.leave-credits.*') ? 'active' : '' }}" href="{{ route('admin.leave-credits.index') }}">
                             <i class="fas fa-award"></i> Leave Credits Management

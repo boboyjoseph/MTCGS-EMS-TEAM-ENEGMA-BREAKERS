@@ -29,14 +29,14 @@
         <a href="?tab=credentials" class="btn {{ request('tab') == 'credentials' ? 'btn-primary' : 'btn-secondary' }}">
             <i class="fas fa-envelope"></i> Credentials Not Sent ({{ $pendingCredentials->count() }})
         </a>
-        @if(Auth::user()->admin_type === 'super_admin')
+        @if(Auth::user()->isSuperAdmin())
             <a href="?tab=status_changes" class="btn {{ request('tab') == 'status_changes' ? 'btn-primary' : 'btn-secondary' }}">
                 <i class="fas fa-user-edit"></i> Status Changes ({{ $pendingStatusChanges->count() }})
             </a>
         @endif
     </div>
 
-    @if(request('tab') == 'status_changes' && Auth::user()->admin_type === 'super_admin')
+    @if(request('tab') == 'status_changes' && Auth::user()->isSuperAdmin())
     <div class="card">
         <div class="card-header bg-white">
             <h5 class="mb-0"><i class="fas fa-user-edit text-warning me-2"></i>Pending Employee Status Changes</h5>

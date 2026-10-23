@@ -6,6 +6,7 @@ use App\Models\AdminProfile;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class EmployeeApprovalFlowTest extends TestCase
@@ -145,6 +146,17 @@ class EmployeeApprovalFlowTest extends TestCase
             'id_verification_status' => 'approved',
         ]);
 
+        $hrAdmin = User::create([
+            'name' => 'HR Admin',
+            'email' => 'approval-hr@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+
         $branchAdmin = User::create([
             'name' => 'Branch Admin',
             'email' => 'approval-branch@example.com',
@@ -197,6 +209,66 @@ class EmployeeApprovalFlowTest extends TestCase
             'notifiable_type' => User::class,
             'notifiable_id' => $superAdmin->id,
             'type' => \App\Notifications\SystemNotification::class,
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_type' => User::class,
+            'notifiable_id' => $hrAdmin->id,
+            'type' => \App\Notifications\SystemNotification::class,
+        ]);
+    }
+
+    public function test_public_employee_registration_notifies_hr_and_hr_can_open_approval_page(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-HR-01',
+            'branch_name' => 'HR Approval Branch',
+            'address' => 'HR Address',
+        ]);
+
+        $hrAdmin = User::create([
+            'name' => 'HR Admin',
+            'email' => 'hr-approval@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+
+        $response = $this->post(route('register'), [
+            'first_name' => 'Registered',
+            'last_name' => 'Employee',
+            'email' => 'registered.employee@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'branch_id' => $branch->id,
+            'position' => 'Cashier',
+        ]);
+
+        $response->assertStatus(302)->assertSessionHas('success');
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_type' => User::class,
+            'notifiable_id' => $hrAdmin->id,
+            'type' => \App\Notifications\SystemNotification::class,
+        ]);
+
+        $this->actingAs($hrAdmin)
+            ->get(route('admin.verifications'))
+            ->assertOk()
+            ->assertSee('Account Creation Approval');
+
+        Mail::fake();
+        $employee = User::where('email', 'registered.employee@example.com')->firstOrFail();
+
+        $this->actingAs($hrAdmin)
+            ->post(route('admin.verify.approve', $employee))
+            ->assertStatus(302);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $employee->id,
+            'id_verification_status' => 'approved',
+            'is_active' => true,
         ]);
     }
 
