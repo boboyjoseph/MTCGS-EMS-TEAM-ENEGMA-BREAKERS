@@ -102,6 +102,27 @@ class AttendanceWorkHoursTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_super_admin_can_view_and_change_school_wide_default_work_hours(): void
+    {
+        $superAdmin = User::factory()->create([
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.shifts.index'))
+            ->assertOk()
+            ->assertSee('School-Wide Default Work Hours');
+
+        $this->put(route('admin.shifts.default-work-hours.update'), [
+            'start_time' => '07:00',
+            'end_time' => '16:00',
+        ])->assertRedirect();
+
+        $this->assertSame('07:00:00', SiteSetting::getValue(AttendanceWorkHours::START_TIME_SETTING));
+        $this->assertSame('16:00:00', SiteSetting::getValue(AttendanceWorkHours::END_TIME_SETTING));
+    }
+
     public function test_hr_can_change_a_configured_shift_for_employees_assigned_to_it(): void
     {
         $hr = User::factory()->create([

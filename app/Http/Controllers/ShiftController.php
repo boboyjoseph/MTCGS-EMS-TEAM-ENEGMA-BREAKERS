@@ -37,7 +37,7 @@ class ShiftController extends Controller
     {
         $user = Auth::user();
 
-        return $user?->role === 'admin' && $user->admin_type === 'hr';
+        return $user?->isSuperAdmin() === true;
     }
 
     public function index()
@@ -82,7 +82,7 @@ class ShiftController extends Controller
 
     public function updateDefaultWorkHours(Request $request)
     {
-        abort_unless($this->canManageDefaultWorkHours(), 403, 'Only HR can change the school-wide default work hours.');
+        abort_unless($this->canManageDefaultWorkHours(), 403, 'Only HR or Super Admin can change the school-wide default work hours.');
 
         $validated = $request->validate([
             'start_time' => 'required|date_format:H:i',
