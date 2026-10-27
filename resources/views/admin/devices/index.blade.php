@@ -99,7 +99,10 @@
                                     <div class="d-flex flex-wrap gap-2">
                                         <a href="{{ route('admin.devices.show', $device) }}" class="btn btn-sm btn-outline-primary">View</a>
                                         <a href="{{ route('admin.devices.edit', $device) }}" class="btn btn-sm btn-warning">Edit</a>
-                                        <form action="{{ route('admin.devices.destroy', $device) }}" method="POST" data-delete-device>
+                                        <form action="{{ route('admin.devices.destroy', $device) }}" method="POST"
+                                            data-delete-device
+                                            data-device-name="{{ $device->device_name }}"
+                                            data-branch-name="{{ $device->branch?->branch_name ?? '' }}">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
@@ -185,14 +188,21 @@ document.querySelectorAll('.device-status').forEach((select) => select.addEventL
 
 document.querySelectorAll('[data-delete-device]').forEach((form) => form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!confirm('Remove this device from the authorized list?')) return;
-    const response = await fetch(form.action, { method: 'DELETE', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken } });
-    const payload = await response.json();
-    if (!response.ok) {
-        window.showAppToast(payload.message || 'Unable to remove device.', 'error');
-        return;
+    const branchName = form.dataset.branchName;
+    const resetNotice = branchName
+        ? `All saved fingerprint templates for ${branchName} will also be permanently cleared. Everyone in that branch must enroll again.`
+        : 'No branch is assigned, so no branch fingerprints will be cleared.';
+    if (!confirm(`Remove ${form.dataset.deviceName} and revoke its credential?\n\n${resetNotice}`)) return;
+
+    try {
+        const response = await fetch(form.action, { method: 'DELETE', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || 'Unable to remove device.');
+        form.closest('tr').remove();
+        window.showAppToast(payload.message || 'Device removed successfully.', 'success');
+    } catch (error) {
+        window.showAppToast(error.message, 'error');
     }
-    form.closest('tr').remove();
 }));
 </script>
 @endpush
