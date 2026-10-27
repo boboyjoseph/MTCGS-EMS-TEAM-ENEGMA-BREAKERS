@@ -1018,6 +1018,99 @@
                 window.setTimeout(() => toast.remove(), 6000);
             }
 
+            function updateNotificationMenu(notifications, unreadCount, markAllReadUrl) {
+                const menu = document.querySelector('.notification-menu');
+                if (!menu || !Array.isArray(notifications)) return;
+
+                const snapshot = JSON.stringify({ notifications, unreadCount });
+                if (menu.dataset.notificationSnapshot === snapshot) return;
+                menu.dataset.notificationSnapshot = snapshot;
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const menuHeader = document.createElement('div');
+                menuHeader.className = 'd-flex justify-content-between align-items-center px-3 py-2 border-bottom';
+                const heading = document.createElement('strong');
+                heading.textContent = 'Notifications';
+                menuHeader.appendChild(heading);
+
+                if (unreadCount > 0) {
+                    const markAllForm = document.createElement('form');
+                    markAllForm.method = 'POST';
+                    markAllForm.action = markAllReadUrl;
+                    markAllForm.className = 'notification-mark-all-form';
+                    if (csrfToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = csrfToken;
+                        markAllForm.appendChild(tokenInput);
+                    }
+                    const markAllButton = document.createElement('button');
+                    markAllButton.type = 'submit';
+                    markAllButton.className = 'btn btn-link btn-sm p-0';
+                    markAllButton.textContent = 'Mark all read';
+                    markAllForm.appendChild(markAllButton);
+                    menuHeader.appendChild(markAllForm);
+                }
+
+                menu.replaceChildren(menuHeader);
+                if (notifications.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'px-3 py-4 text-center text-muted';
+                    emptyState.textContent = 'No notifications yet.';
+                    menu.appendChild(emptyState);
+                    return;
+                }
+
+                notifications.forEach((notification) => {
+                    const row = document.createElement('div');
+                    row.className = 'notification-row border-bottom';
+                    const link = document.createElement('a');
+                    link.href = notification.read_url;
+                    link.className = `dropdown-item notification-item notification-read-link${notification.is_read ? '' : ' unread'} py-2`;
+
+                    const title = document.createElement('strong');
+                    title.className = 'd-block';
+                    title.textContent = notification.title;
+                    const message = document.createElement('span');
+                    message.className = 'd-block';
+                    message.textContent = notification.message;
+                    const createdAt = document.createElement('small');
+                    createdAt.textContent = notification.created_at || '';
+                    link.append(title, message, createdAt);
+                    row.appendChild(link);
+
+                    const deleteForm = document.createElement('form');
+                    deleteForm.method = 'POST';
+                    deleteForm.action = notification.delete_url;
+                    deleteForm.className = 'notification-delete-form';
+                    if (csrfToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = csrfToken;
+                        deleteForm.appendChild(tokenInput);
+                    }
+                    const methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    methodInput.value = 'DELETE';
+                    deleteForm.appendChild(methodInput);
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'submit';
+                    deleteButton.className = 'btn btn-sm btn-link notification-delete-button p-1';
+                    deleteButton.setAttribute('aria-label', 'Delete notification');
+                    deleteButton.title = 'Delete notification';
+                    const deleteIcon = document.createElement('i');
+                    deleteIcon.className = 'fas fa-trash-alt';
+                    deleteIcon.setAttribute('aria-hidden', 'true');
+                    deleteButton.appendChild(deleteIcon);
+                    deleteForm.appendChild(deleteButton);
+                    row.appendChild(deleteForm);
+                    menu.appendChild(row);
+                });
+            }
+
             async function pollLiveUpdates() {
                 if (!liveUpdatesUrl || liveRequestInFlight || document.hidden) return;
                 liveRequestInFlight = true;
@@ -1038,6 +1131,7 @@
                         badge.textContent = count > 99 ? '99+' : count;
                         badge.classList.toggle('d-none', count === 0);
                     }
+                    updateNotificationMenu(data.notifications, Number(data.unread_notifications || 0), data.mark_all_read_url);
                     const arrivals = Array.isArray(data.arrivals) ? data.arrivals : [];
                     const currentWorkflowUpdatesSnapshot = JSON.stringify(data.workflow_updates || {
                         attendance: data.latest_attendance_updated_at || null,

@@ -215,6 +215,14 @@ class EmployeeApprovalFlowTest extends TestCase
             'notifiable_id' => $hrAdmin->id,
             'type' => \App\Notifications\SystemNotification::class,
         ]);
+
+        $this->actingAs($superAdmin)
+            ->getJson(route('live-updates'))
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonPath('unread_notifications', 1)
+            ->assertJsonPath('notifications.0.title', 'Employee account pending approval')
+            ->assertJsonPath('notifications.0.message', 'A new employee account for Pending Employee is waiting for HR approval.');
     }
 
     public function test_public_employee_registration_notifies_hr_and_hr_can_open_approval_page(): void
