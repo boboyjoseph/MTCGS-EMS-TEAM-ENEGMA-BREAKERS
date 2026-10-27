@@ -34,10 +34,9 @@
         'windowsCredentialFile' => '%LOCALAPPDATA%\\MTCGS-EMS\\' . $deviceSecretFile,
         'instructions' => [
             'Install the MTCGS Attendance and Enrollment desktop apps and the fingerprint reader driver on the registered kiosk computer.',
-            'Use appSettings to update the matching values in each app configuration file, then restart the apps.',
-            'For a new install or after rotating a credential, close both apps and remove the previous scanner credential file at windowsCredentialFile if it exists.',
-            'Open Attendance and run synchronization. When prompted, enter the credential from this package. It is stored protected for the current Windows user; Enrollment uses the same credential store.',
-            'Delete this setup package after both apps are configured. Do not send it through a public chat or email.',
+            'In Attendance and Enrollment, click IMPORT SETUP and choose this JSON package. The apps save device settings and protect the credential for the current Windows user.',
+            'Restart each app when prompted. After rotating a credential or deleting and re-registering the same kiosk, import the newly downloaded package; reinstalling the desktop apps is not required.',
+            'Delete this setup package after both apps are updated. It contains a one-time plain-text credential; do not send it through a public chat or email.',
         ],
     ];
 @endphp
@@ -62,7 +61,7 @@
                         <button class="btn btn-outline-secondary" type="button" data-copy-credential>Copy</button>
                     </div>
                     <button class="btn btn-primary btn-sm mt-2" type="button" data-download-device-setup>Download setup package</button>
-                    <div class="small mt-2">This is a configuration package, not the desktop app installer. It contains the credential in plain text; keep it private and delete it after configuring the kiosk apps.</div>
+                    <div class="small mt-2">Import this setup package from the Attendance and Enrollment apps. The credential is plain text in this download, so keep it private and delete it after importing.</div>
                 </div>
             @endif
 
@@ -78,9 +77,9 @@
                     </span>
                     <div class="small text-muted">
                         @if ($credentialStatus === 'unreadable')
-                            The stored credential cannot be decrypted with the current application key. Generate a new credential and update this device's installer.
+                            The stored credential cannot be decrypted with the current application key. Generate a new credential and import the new setup package in both kiosk apps.
                         @else
-                            The secret is not displayed again. Rotating it immediately disables the old installer credential.
+                            The secret is not displayed again. Rotating it immediately disables the previous device credential.
                         @endif
                     </div>
                 </div>
@@ -92,7 +91,7 @@
                 </button>
             </div>
             <div class="alert alert-warning d-none" role="alert" data-credential-result></div>
-            <div class="small text-muted mb-3">To reinstall an existing kiosk, rotate its credential first, then download a new setup package. The old credential stops working immediately.</div>
+            <div class="small text-muted mb-3">When the credential changes, download a fresh setup package and import it in Attendance and Enrollment. New app versions are checked automatically at startup; device credentials and local attendance data are retained during app updates.</div>
 
             <dl class="row mb-0">
                 <dt class="col-sm-4">Device Name</dt>
@@ -199,8 +198,8 @@ document.querySelector('[data-rotate-credential]')?.addEventListener('click', as
         result.classList.remove('d-none');
         result.replaceChildren();
         const notice = document.createElement('strong');
-        notice.textContent = 'Copy and save this credential now.';
-        result.append(notice, document.createTextNode(' It will not be shown again. Update this device\'s installer before using it.'));
+        notice.textContent = 'Credential rotated. Download the new setup package now.';
+        result.append(notice, document.createTextNode(' It will not be shown again. Import the package in both kiosk apps before recording attendance or enrolling fingerprints.'));
 
         const inputGroup = document.createElement('div');
         inputGroup.className = 'input-group mt-2';
@@ -224,7 +223,7 @@ document.querySelector('[data-rotate-credential]')?.addEventListener('click', as
         downloadButton.addEventListener('click', () => downloadDeviceSetupPackage(payload.credential));
         result.append(downloadButton);
         button.textContent = 'Credential Rotated';
-        window.showAppToast('Credential rotated. Download the new setup package and update the kiosk.', 'success');
+        window.showAppToast('Credential rotated. Download the package and import it in Attendance and Enrollment.', 'success');
     } catch (error) {
         window.showAppToast(error.message, 'error');
     } finally {
