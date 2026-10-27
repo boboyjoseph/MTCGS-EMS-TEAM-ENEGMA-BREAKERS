@@ -982,8 +982,8 @@
     <div class="main-content" id="mainContent">
         <main>
             @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-success alert-dismissible fade show" role="alert" data-auto-dismiss="5000">{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             @endif
             @if(session('error') && !(in_array(Auth::user()->role, ['finance_officer', 'finance_head'], true) && session('error') === 'Employee profile not found'))
@@ -1008,6 +1008,19 @@
             let liveRequestInFlight = false;
             let attendanceRefreshQueued = false;
             let livePollTimer = null;
+
+            function scheduleSuccessAlertDismissal() {
+                document.querySelectorAll('.alert-success[data-auto-dismiss]').forEach((alert) => {
+                    if (alert.dataset.dismissScheduled) return;
+                    alert.dataset.dismissScheduled = 'true';
+                    const delay = Number(alert.dataset.autoDismiss) || 5000;
+                    window.setTimeout(() => {
+                        if (!alert.isConnected) return;
+                        alert.classList.remove('show');
+                        window.setTimeout(() => alert.remove(), 150);
+                    }, delay);
+                });
+            }
 
             function showLiveArrival(arrival) {
                 const toast = document.createElement('div');
@@ -1317,6 +1330,7 @@
             }
 
             applyTheme(localStorage.getItem('mtcgsTheme') || 'light');
+            scheduleSuccessAlertDismissal();
             document.addEventListener('click', function (event) {
                 if (event.target.closest('#themeToggle')) {
                     applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
@@ -1324,6 +1338,7 @@
             });
             document.addEventListener('turbo:load', function () {
                 applyTheme(localStorage.getItem('mtcgsTheme') || 'light');
+                scheduleSuccessAlertDismissal();
             });
         })();
     </script>

@@ -148,7 +148,9 @@ class MultiBranchAssignmentTest extends TestCase
             ->withSession(['success' => $message])
             ->get(route('admin.branch-heads.assignments'))
             ->assertOk()
-            ->assertSee($message);
+            ->assertSee($message)
+            ->assertSee('data-auto-dismiss="5000"', false)
+            ->assertSee('scheduleSuccessAlertDismissal', false);
 
         $this->assertSame(1, substr_count($response->getContent(), $message));
     }

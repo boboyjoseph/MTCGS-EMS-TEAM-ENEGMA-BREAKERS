@@ -579,6 +579,26 @@
             <img src="<?php echo e(asset('images/logo.jpg')); ?>" alt="MTCGS" onerror="this.style.display='none'">
             <h5>MTCGS-EMS</h5>
             <small>v2.0</small>
+            <?php if(Auth::user()->isBranchAdmin()): ?>
+                <?php
+                    $accessibleBranchIds = Auth::user()->getAccessibleBranchIds();
+                    $accessibleBranches = \App\Models\Branch::whereIn('id', $accessibleBranchIds)->orderBy('branch_name')->get();
+                ?>
+                <?php if($accessibleBranches->count() > 1): ?>
+                    <form method="POST" action="<?php echo e(route('active-branch.update')); ?>" class="mt-3 px-2">
+                        <?php echo csrf_field(); ?>
+                        <label for="active-branch-select" class="form-label text-white small mb-1">Working Branch</label>
+                        <select id="active-branch-select" name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <?php $__currentLoopData = $accessibleBranches; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branch): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($branch->id); ?>" <?php echo e(Auth::user()->getEffectiveBranchId() === (int) $branch->id ? 'selected' : ''); ?>>
+                                    <?php echo e($branch->branch_name); ?>
+
+                                </option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        </select>
+                    </form>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
         <nav class="sidebar-nav nav flex-column" data-turbo="true">
             <div class="nav-section">
@@ -963,9 +983,9 @@
     <div class="main-content" id="mainContent">
         <main>
             <?php if(session('success')): ?>
-                <div class="alert alert-success alert-dismissible fade show"><?php echo e(session('success')); ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert" data-auto-dismiss="5000"><?php echo e(session('success')); ?>
 
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
             <?php if(session('error') && !(in_array(Auth::user()->role, ['finance_officer', 'finance_head'], true) && session('error') === 'Employee profile not found')): ?>
@@ -992,6 +1012,19 @@
             let attendanceRefreshQueued = false;
             let livePollTimer = null;
 
+            function scheduleSuccessAlertDismissal() {
+                document.querySelectorAll('.alert-success[data-auto-dismiss]').forEach((alert) => {
+                    if (alert.dataset.dismissScheduled) return;
+                    alert.dataset.dismissScheduled = 'true';
+                    const delay = Number(alert.dataset.autoDismiss) || 5000;
+                    window.setTimeout(() => {
+                        if (!alert.isConnected) return;
+                        alert.classList.remove('show');
+                        window.setTimeout(() => alert.remove(), 150);
+                    }, delay);
+                });
+            }
+
             function showLiveArrival(arrival) {
                 const toast = document.createElement('div');
                 toast.className = 'alert alert-success shadow position-fixed';
@@ -999,6 +1032,99 @@
                 toast.innerHTML = `<strong><i class="fas fa-fingerprint me-1"></i> New attendance</strong><br>${arrival.employee} (${arrival.employee_number}) at ${arrival.time || 'now'}`;
                 document.body.appendChild(toast);
                 window.setTimeout(() => toast.remove(), 6000);
+            }
+
+            function updateNotificationMenu(notifications, unreadCount, markAllReadUrl) {
+                const menu = document.querySelector('.notification-menu');
+                if (!menu || !Array.isArray(notifications)) return;
+
+                const snapshot = JSON.stringify({ notifications, unreadCount });
+                if (menu.dataset.notificationSnapshot === snapshot) return;
+                menu.dataset.notificationSnapshot = snapshot;
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const menuHeader = document.createElement('div');
+                menuHeader.className = 'd-flex justify-content-between align-items-center px-3 py-2 border-bottom';
+                const heading = document.createElement('strong');
+                heading.textContent = 'Notifications';
+                menuHeader.appendChild(heading);
+
+                if (unreadCount > 0) {
+                    const markAllForm = document.createElement('form');
+                    markAllForm.method = 'POST';
+                    markAllForm.action = markAllReadUrl;
+                    markAllForm.className = 'notification-mark-all-form';
+                    if (csrfToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = csrfToken;
+                        markAllForm.appendChild(tokenInput);
+                    }
+                    const markAllButton = document.createElement('button');
+                    markAllButton.type = 'submit';
+                    markAllButton.className = 'btn btn-link btn-sm p-0';
+                    markAllButton.textContent = 'Mark all read';
+                    markAllForm.appendChild(markAllButton);
+                    menuHeader.appendChild(markAllForm);
+                }
+
+                menu.replaceChildren(menuHeader);
+                if (notifications.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'px-3 py-4 text-center text-muted';
+                    emptyState.textContent = 'No notifications yet.';
+                    menu.appendChild(emptyState);
+                    return;
+                }
+
+                notifications.forEach((notification) => {
+                    const row = document.createElement('div');
+                    row.className = 'notification-row border-bottom';
+                    const link = document.createElement('a');
+                    link.href = notification.read_url;
+                    link.className = `dropdown-item notification-item notification-read-link${notification.is_read ? '' : ' unread'} py-2`;
+
+                    const title = document.createElement('strong');
+                    title.className = 'd-block';
+                    title.textContent = notification.title;
+                    const message = document.createElement('span');
+                    message.className = 'd-block';
+                    message.textContent = notification.message;
+                    const createdAt = document.createElement('small');
+                    createdAt.textContent = notification.created_at || '';
+                    link.append(title, message, createdAt);
+                    row.appendChild(link);
+
+                    const deleteForm = document.createElement('form');
+                    deleteForm.method = 'POST';
+                    deleteForm.action = notification.delete_url;
+                    deleteForm.className = 'notification-delete-form';
+                    if (csrfToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = csrfToken;
+                        deleteForm.appendChild(tokenInput);
+                    }
+                    const methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    methodInput.value = 'DELETE';
+                    deleteForm.appendChild(methodInput);
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'submit';
+                    deleteButton.className = 'btn btn-sm btn-link notification-delete-button p-1';
+                    deleteButton.setAttribute('aria-label', 'Delete notification');
+                    deleteButton.title = 'Delete notification';
+                    const deleteIcon = document.createElement('i');
+                    deleteIcon.className = 'fas fa-trash-alt';
+                    deleteIcon.setAttribute('aria-hidden', 'true');
+                    deleteButton.appendChild(deleteIcon);
+                    deleteForm.appendChild(deleteButton);
+                    row.appendChild(deleteForm);
+                    menu.appendChild(row);
+                });
             }
 
             async function pollLiveUpdates() {
@@ -1021,6 +1147,7 @@
                         badge.textContent = count > 99 ? '99+' : count;
                         badge.classList.toggle('d-none', count === 0);
                     }
+                    updateNotificationMenu(data.notifications, Number(data.unread_notifications || 0), data.mark_all_read_url);
                     const arrivals = Array.isArray(data.arrivals) ? data.arrivals : [];
                     const currentWorkflowUpdatesSnapshot = JSON.stringify(data.workflow_updates || {
                         attendance: data.latest_attendance_updated_at || null,
@@ -1206,6 +1333,7 @@
             }
 
             applyTheme(localStorage.getItem('mtcgsTheme') || 'light');
+            scheduleSuccessAlertDismissal();
             document.addEventListener('click', function (event) {
                 if (event.target.closest('#themeToggle')) {
                     applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
@@ -1213,6 +1341,7 @@
             });
             document.addEventListener('turbo:load', function () {
                 applyTheme(localStorage.getItem('mtcgsTheme') || 'light');
+                scheduleSuccessAlertDismissal();
             });
         })();
     </script>
