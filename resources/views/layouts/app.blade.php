@@ -193,6 +193,49 @@
         .notification-menu .notification-item span { color: var(--text-color); }
         .notification-menu .notification-item small { color: var(--muted-color); }
 
+        .app-toast-region {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 2100;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            width: min(390px, calc(100vw - 2rem));
+            pointer-events: none;
+        }
+        .app-toast {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid #d1d5db;
+            border-left: 4px solid #2563eb;
+            border-radius: 0.75rem;
+            background: #fff;
+            color: #1f2937;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+            pointer-events: auto;
+            animation: app-toast-enter 0.18s ease-out;
+        }
+        .app-toast[data-type="success"] { border-left-color: #16a34a; }
+        .app-toast[data-type="error"] { border-left-color: #dc2626; }
+        .app-toast[data-type="warning"] { border-left-color: #d97706; }
+        .app-toast-message { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .app-toast-close {
+            border: 0;
+            padding: 0;
+            background: transparent;
+            color: #6b7280;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .app-toast-close:hover { color: #111827; }
+        @keyframes app-toast-enter {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         .theme-toggle {
             border-radius: 10px;
@@ -1354,6 +1397,34 @@
                 scheduleSuccessAlertDismissal();
             });
         })();
+    </script>
+    <div id="appToastRegion" class="app-toast-region" aria-live="polite" aria-relevant="additions"></div>
+    <script>
+        window.showAppToast = function (message, type) {
+            const region = document.getElementById('appToastRegion');
+            if (!region) return;
+
+            const normalizedType = ['success', 'error', 'warning'].includes(type) ? type : 'info';
+            const toast = document.createElement('div');
+            toast.className = 'app-toast';
+            toast.dataset.type = normalizedType;
+            toast.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status');
+
+            const text = document.createElement('span');
+            text.className = 'app-toast-message';
+            text.textContent = String(message ?? '');
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'app-toast-close';
+            closeButton.type = 'button';
+            closeButton.setAttribute('aria-label', 'Dismiss notification');
+            closeButton.textContent = '×';
+            closeButton.addEventListener('click', () => toast.remove());
+
+            toast.append(text, closeButton);
+            region.appendChild(toast);
+            window.setTimeout(() => toast.remove(), normalizedType === 'error' ? 8000 : 5000);
+        };
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     @stack('scripts')

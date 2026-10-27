@@ -414,10 +414,10 @@ async function processAdminAttendance() {
     const result = await response.json();
     
     if (result.success) {
-        alert(result.message);
+        window.showAppToast(result.message, 'success');
         location.reload();
     } else {
-        alert('Error: ' + (result.error || 'Please follow schedule'));
+        window.showAppToast('Error: ' + (result.error || 'Please follow schedule'), 'error');
     }
 }
 
@@ -659,10 +659,10 @@ async function registerEmployeeFingerprint(employeeId, employeeName) {
     const result = await response.json();
     
     if (result.success) {
-        alert(`✅ Fingerprint registered for ${employeeName}`);
+        window.showAppToast(`Fingerprint registered for ${employeeName}`, 'success');
         await loadUnregisteredEmployees();
     } else {
-        alert('Error: ' + result.error);
+        window.showAppToast('Error: ' + result.error, 'error');
     }
 }
 
@@ -687,10 +687,10 @@ async function registerFinanceOfficerFingerprint(financeId, financeName) {
     const result = await response.json();
     
     if (result.success) {
-        alert(`✅ Fingerprint registered for finance officer: ${financeName}`);
+        window.showAppToast(`Fingerprint registered for finance officer: ${financeName}`, 'success');
         await loadUnregisteredFinanceOfficers();
     } else {
-        alert('Error: ' + result.error);
+        window.showAppToast('Error: ' + result.error, 'error');
     }
 }
 
@@ -715,10 +715,10 @@ async function registerAdminOfficerFingerprint(adminId, adminName) {
     const result = await response.json();
     
     if (result.success) {
-        alert(`✅ Fingerprint registered for admin: ${adminName}`);
+        window.showAppToast(`Fingerprint registered for admin: ${adminName}`, 'success');
         await loadUnregisteredAdmins();
     } else {
-        alert('Error: ' + result.error);
+        window.showAppToast('Error: ' + result.error, 'error');
     }
 }
 

@@ -175,7 +175,7 @@
                 if (!button) return;
                 const cards = container.querySelectorAll('.slide-card');
                 if (cards.length === 1) {
-                    alert('Keep at least one homepage carousel slide.');
+                    window.showAppToast('Keep at least one homepage carousel slide.', 'warning');
                     return;
                 }
                 const card = button.closest('.slide-card');
@@ -207,7 +207,7 @@
                     })
                     .catch((error) => {
                         button.disabled = false;
-                        alert(error.message);
+                        window.showAppToast(error.message, 'error');
                     });
             });
         })();

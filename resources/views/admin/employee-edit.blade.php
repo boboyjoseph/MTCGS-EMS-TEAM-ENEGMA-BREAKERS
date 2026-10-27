@@ -407,7 +407,7 @@
             : fallbackBranchName;
 
         if (!firstName || !lastName) {
-            alert('Please fill in First Name and Last Name before launching fingerprint enrollment.');
+            window.showAppToast('Please fill in First Name and Last Name before launching fingerprint enrollment.', 'warning');
             return;
         }
 

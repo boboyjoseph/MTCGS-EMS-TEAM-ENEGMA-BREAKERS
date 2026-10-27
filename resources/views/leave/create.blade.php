@@ -354,7 +354,7 @@
             if (overlapsBlockedLeave(startInput.value, endInput.value)) {
                 startInput.value = '';
                 endInput.value = '';
-                window.alert('You already have a pending or approved leave on the selected date(s). Please choose another date.');
+                window.showAppToast('You already have a pending or approved leave on the selected date(s). Please choose another date.', 'warning');
                 return true;
             }
 

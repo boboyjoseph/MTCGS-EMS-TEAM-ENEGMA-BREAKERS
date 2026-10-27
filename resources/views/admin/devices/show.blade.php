@@ -147,7 +147,7 @@ document.querySelector('[data-rotate-credential]')?.addEventListener('click', as
         result.append(inputGroup);
         button.textContent = 'Credential Rotated';
     } catch (error) {
-        alert(error.message);
+        window.showAppToast(error.message, 'error');
     } finally {
         button.disabled = false;
     }

@@ -511,7 +511,7 @@ document.addEventListener('turbo:load', function() {
                 window.location.reload();
             })
             .catch(() => {
-                alert('Unable to process the leave action. Please refresh and try again.');
+                window.showAppToast('Unable to process the leave action. Please refresh and try again.', 'error');
             });
     }
 

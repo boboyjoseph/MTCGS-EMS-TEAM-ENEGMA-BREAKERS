@@ -132,9 +132,9 @@ document.querySelector('[data-device-form]')?.addEventListener('submit', async (
         const response = await fetch(form.action, { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: new FormData(form) });
         const payload = await response.json();
         if (!response.ok) throw new Error(Object.values(payload.errors || {}).flat()[0] || payload.message || 'Unable to update device.');
-        alert(payload.message);
+        window.showAppToast(payload.message, 'success');
         window.location.href = '{{ route('admin.devices.index') }}';
-    } catch (error) { alert(error.message); } finally { submitButton.disabled = false; }
+    } catch (error) { window.showAppToast(error.message, 'error'); } finally { submitButton.disabled = false; }
 });
 document.querySelector('#branch_id')?.addEventListener('change', async (event) => {
     if (!event.target.value) return;

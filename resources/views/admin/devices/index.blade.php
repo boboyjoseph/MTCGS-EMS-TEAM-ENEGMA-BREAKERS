@@ -179,7 +179,7 @@ document.querySelectorAll('.device-status').forEach((select) => select.addEventL
         [...control.options].forEach((option) => { option.defaultSelected = option.value === control.value; });
     } catch (error) {
         if (previousStatus) control.value = previousStatus;
-        alert(error.message);
+        window.showAppToast(error.message, 'error');
     } finally { control.disabled = false; }
 }));
 
@@ -188,7 +188,10 @@ document.querySelectorAll('[data-delete-device]').forEach((form) => form.addEven
     if (!confirm('Remove this device from the authorized list?')) return;
     const response = await fetch(form.action, { method: 'DELETE', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken } });
     const payload = await response.json();
-    if (!response.ok) return alert(payload.message || 'Unable to remove device.');
+    if (!response.ok) {
+        window.showAppToast(payload.message || 'Unable to remove device.', 'error');
+        return;
+    }
     form.closest('tr').remove();
 }));
 </script>

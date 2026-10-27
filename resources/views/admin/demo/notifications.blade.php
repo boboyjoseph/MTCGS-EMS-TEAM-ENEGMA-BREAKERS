@@ -250,7 +250,7 @@ function demoSendNotification() {
         if (data.success) {
             demoShowNotification(data.data);
         } else {
-            alert('Notification failed: ' + (data.message || 'Unknown error'));
+            window.showAppToast('Notification failed: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {

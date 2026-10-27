@@ -623,7 +623,7 @@
         form.addEventListener('submit', (event) => {
             if (!hasInk) {
                 event.preventDefault();
-                alert('Please draw your signature first.');
+                window.showAppToast('Please draw your signature first.', 'warning');
                 return;
             }
             input.value = canvas.toDataURL('image/png');

@@ -473,9 +473,9 @@ document.getElementById('createPeriodForm')?.addEventListener('submit', async fu
     if (result.success) {
         bootstrap.Modal.getInstance(document.getElementById('createPeriodModal')).hide();
         loadPayrollData(); // Refresh immediately
-        alert('Payroll period created successfully!');
+        window.showAppToast('Payroll period created successfully!', 'success');
     } else {
-        alert('Error: ' + result.error);
+        window.showAppToast('Error: ' + result.error, 'error');
     }
 });
 
