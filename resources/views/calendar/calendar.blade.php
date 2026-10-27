@@ -250,7 +250,9 @@ document.addEventListener('turbo:load', function() {
             {
                 id: @json((string) $event->id),
                 title: @json($event->title),
-                start: @json($event->event_date->format('Y-m-d')),
+                start: @json($event->start_time ? $event->event_date->format('Y-m-d') . 'T' . $event->start_time : $event->event_date->format('Y-m-d')),
+                end: @json($event->end_time ? $event->event_date->format('Y-m-d') . 'T' . $event->end_time : null),
+                allDay: @json(!$event->start_time),
                 backgroundColor: @json($event->event_type === 'activity' ? '#0d6efd' : ($event->event_type === 'suspension' ? '#dc3545' : '#fd7e14')),
                 borderColor: @json($event->event_type === 'activity' ? '#0d6efd' : ($event->event_type === 'suspension' ? '#dc3545' : '#fd7e14')),
                 textColor: '#ffffff',
@@ -373,6 +375,9 @@ document.addEventListener('turbo:load', function() {
                     `}
                 `;
             } else {
+                const timeRange = !event.allDay && event.start
+                    ? `${event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${event.end ? ` - ${event.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`
+                    : null;
                 detailHtml = `
                     <div class="row mb-3">
                         <div class="col-6">
@@ -402,6 +407,17 @@ document.addEventListener('turbo:load', function() {
                             </div>
                         </div>
                     </div>
+
+                    ${timeRange ? `
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <strong class="d-block text-muted" style="font-size: 0.85rem;">Time</strong>
+                                    <span class="text-dark"><i class="far fa-clock me-1"></i>${timeRange}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
 
                     <div class="row mb-3">
                         <div class="col-12">

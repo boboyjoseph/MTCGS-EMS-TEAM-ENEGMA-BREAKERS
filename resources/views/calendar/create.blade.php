@@ -57,6 +57,26 @@
                             @enderror
                         </div>
 
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                            <label for="start_time" class="form-label fw-bold">Start Time <span class="text-danger" id="start-time-required">*</span></label>
+                            <input type="time" class="form-control @error('start_time') is-invalid @enderror"
+                                   id="start_time" name="start_time" value="{{ old('start_time') }}">
+                            @error('start_time')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            </div>
+                            <div class="col-md-6">
+                            <label for="end_time" class="form-label fw-bold">End Time <span class="text-danger" id="end-time-required">*</span></label>
+                            <input type="time" class="form-control @error('end_time') is-invalid @enderror"
+                                   id="end_time" name="end_time" value="{{ old('end_time') }}">
+                            @error('end_time')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            </div>
+                            <div class="col-12 form-text" id="event-time-help">Required for activities. Leave both blank for all-day holidays or suspensions.</div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="branch_id" class="form-label fw-bold">Branch</label>
                             @php
@@ -149,6 +169,11 @@ document.addEventListener('turbo:load', function() {
         document.getElementById('event-title-label').textContent = labels[0];
         document.getElementById('event-type-label').textContent = labels[1];
         document.getElementById('event-date-label').textContent = labels[2];
+        const timesRequired = typeInput.value === 'activity';
+        document.getElementById('start_time').required = timesRequired;
+        document.getElementById('end_time').required = timesRequired;
+        document.getElementById('start-time-required').classList.toggle('d-none', !timesRequired);
+        document.getElementById('end-time-required').classList.toggle('d-none', !timesRequired);
     }
 
     typeInput.addEventListener('change', updateEventLabels);

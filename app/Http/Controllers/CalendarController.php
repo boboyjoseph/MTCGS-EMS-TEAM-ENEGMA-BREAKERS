@@ -108,6 +108,8 @@ class CalendarController extends Controller
             'description' => 'nullable|string',
             'event_date' => 'required|date|after_or_equal:today',
             'event_type' => 'required|in:activity,holiday,suspension',
+            'start_time' => 'nullable|required_if:event_type,activity|required_with:end_time|date_format:H:i',
+            'end_time' => 'nullable|required_if:event_type,activity|required_with:start_time|date_format:H:i|after:start_time',
             'branch_id' => 'nullable|exists:branches,id'
         ]);
 
@@ -119,6 +121,8 @@ class CalendarController extends Controller
             'title' => $request->title,
             'description' => $request->description,
             'event_date' => $request->event_date,
+            'start_time' => $request->start_time,
+            'end_time' => $request->end_time,
             'event_type' => $request->event_type,
             'created_by' => Auth::id(),
             'branch_id' => $request->branch_id,
@@ -154,6 +158,8 @@ class CalendarController extends Controller
             'description' => 'nullable|string',
             'event_date' => 'required|date|after_or_equal:today',
             'event_type' => 'required|in:activity,holiday,suspension',
+            'start_time' => 'nullable|required_if:event_type,activity|required_with:end_time|date_format:H:i',
+            'end_time' => 'nullable|required_if:event_type,activity|required_with:start_time|date_format:H:i|after:start_time',
             'branch_id' => 'nullable|exists:branches,id'
         ]);
 
@@ -165,6 +171,8 @@ class CalendarController extends Controller
             'title' => $request->title,
             'description' => $request->description,
             'event_date' => $request->event_date,
+            'start_time' => $request->start_time,
+            'end_time' => $request->end_time,
             'event_type' => $request->event_type,
             'branch_id' => $request->branch_id,
             'approval_status' => $requiresApproval ? 'pending' : ($calendar->approval_status === 'pending' ? 'approved' : $calendar->approval_status),

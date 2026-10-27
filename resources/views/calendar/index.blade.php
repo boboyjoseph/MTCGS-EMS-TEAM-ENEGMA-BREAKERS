@@ -112,6 +112,10 @@
                                                 <strong>{{ $event->event_date->format('M d, Y') }}</strong>
                                                 <br>
                                                 <small class="text-muted">{{ $event->event_date->format('l') }}</small>
+                                                @if($event->start_time && $event->end_time)
+                                                    <br>
+                                                    <small class="text-primary"><i class="far fa-clock me-1"></i>{{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }} - {{ \Carbon\Carbon::parse($event->end_time)->format('g:i A') }}</small>
+                                                @endif
                                             </div>
                                         </td>
                                         <td>
