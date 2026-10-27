@@ -148,7 +148,7 @@ class UserManagementController extends Controller
             $userData = EmployeeProfile::with('user', 'branch')->findOrFail($id);
         } elseif ($role === 'finance') {
             $userData = FinanceProfile::with('user')->findOrFail($id);
-            if ($currentUser->admin_type === 'branch_admin' && $userData->branch_id !== $currentUser->getAdminProfile()?->branch_id) {
+            if ($currentUser->admin_type === 'branch_admin' && $userData->branch_id !== $currentUser->getEffectiveBranchId()) {
                 abort(403, 'You can only edit Finance Officers in your branch.');
             }
         } else {
@@ -199,7 +199,7 @@ class UserManagementController extends Controller
             }
         } elseif ($role === 'finance') {
             $profile = FinanceProfile::findOrFail($id);
-            if ($currentUser->admin_type === 'branch_admin' && $profile->branch_id !== $currentUser->getAdminProfile()?->branch_id) {
+            if ($currentUser->admin_type === 'branch_admin' && $profile->branch_id !== $currentUser->getEffectiveBranchId()) {
                 abort(403, 'You can only edit Finance Officers in your branch.');
             }
             $user = $profile->user;

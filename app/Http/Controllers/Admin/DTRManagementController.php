@@ -999,13 +999,18 @@ class DTRManagementController
         User::where(function ($query) use ($branchId) {
                 $query->where(function ($branchQuery) use ($branchId) {
                     $branchQuery->where('role', 'branch_head')
-                        ->whereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $branchId));
+                        ->where(function ($userQuery) use ($branchId) {
+                            $userQuery->where('branch_id', $branchId)
+                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $branchId))
+                                ->orWhereHas('assignedBranches', fn ($assignedBranchQuery) => $assignedBranchQuery->whereKey($branchId));
+                        });
                 })->orWhere(function ($branchQuery) use ($branchId) {
                     $branchQuery->where('role', 'admin')
                         ->where('admin_type', 'branch_admin')
                         ->where(function ($userQuery) use ($branchId) {
                             $userQuery->where('branch_id', $branchId)
-                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $branchId));
+                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $branchId))
+                                ->orWhereHas('assignedBranches', fn ($assignedBranchQuery) => $assignedBranchQuery->whereKey($branchId));
                         });
                 });
             })

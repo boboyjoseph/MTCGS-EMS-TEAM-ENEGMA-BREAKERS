@@ -6,6 +6,7 @@ use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -41,6 +42,14 @@ class User extends Authenticatable
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /** @return BelongsToMany<Branch, $this> */
+    public function assignedBranches(): BelongsToMany
+    {
+        return $this->belongsToMany(Branch::class, 'user_branch_assignments')
+            ->withPivot('assigned_by')
+            ->withTimestamps();
     }
 
     /** @return HasMany<AuditLog, $this> */
@@ -126,7 +135,7 @@ class User extends Authenticatable
         return null;
     }
     
-    public function getEffectiveBranchId(): ?int
+    public function getPrimaryBranchId(): ?int
     {
         if (!is_null($this->branch_id)) {
             return (int) $this->branch_id;
@@ -142,6 +151,42 @@ class User extends Authenticatable
         }
 
         return null;
+    }
+
+    /**
+     * @return array<int>
+     */
+    public function getAccessibleBranchIds(): array
+    {
+        $branchIds = $this->assignedBranches()->pluck('branches.id')
+            ->map(fn ($branchId) => (int) $branchId)
+            ->all();
+        $primaryBranchId = $this->getPrimaryBranchId();
+
+        if ($primaryBranchId !== null) {
+            $branchIds[] = $primaryBranchId;
+        }
+
+        return array_values(array_unique($branchIds));
+    }
+
+    public function canAccessBranch(int $branchId): bool
+    {
+        return in_array($branchId, $this->getAccessibleBranchIds(), true);
+    }
+
+    public function getEffectiveBranchId(): ?int
+    {
+        $primaryBranchId = $this->getPrimaryBranchId();
+        $activeBranchId = session('active_branch_id');
+
+        if ($this->isBranchAdmin()
+            && is_numeric($activeBranchId)
+            && $this->canAccessBranch((int) $activeBranchId)) {
+            return (int) $activeBranchId;
+        }
+
+        return $primaryBranchId;
     }
 
     public function getAdminBranch(): ?Branch

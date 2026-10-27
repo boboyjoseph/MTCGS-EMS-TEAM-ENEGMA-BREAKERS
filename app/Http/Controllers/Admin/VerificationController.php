@@ -51,9 +51,9 @@ class VerificationController extends Controller
         
         // Filter by branch for non-super-admins
         if ($currentUser->role === 'admin' && !$currentUser->isSuperAdmin()) {
-            $adminProfile = $currentUser->getAdminProfile();
-            if ($adminProfile && $adminProfile->branch_id) {
-                $query->where('branch_id', $adminProfile->branch_id);
+            $branchId = $currentUser->getEffectiveBranchId();
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
             }
         }
         
@@ -63,9 +63,9 @@ class VerificationController extends Controller
         
         $rejectedQuery = User::query();
         if ($currentUser->role === 'admin' && !$currentUser->isSuperAdmin()) {
-            $adminProfile = $currentUser->getAdminProfile();
-            if ($adminProfile && $adminProfile->branch_id) {
-                $rejectedQuery->where('branch_id', $adminProfile->branch_id);
+            $branchId = $currentUser->getEffectiveBranchId();
+            if ($branchId) {
+                $rejectedQuery->where('branch_id', $branchId);
             }
         }
         
@@ -75,9 +75,9 @@ class VerificationController extends Controller
         
         $deactivatedQuery = User::query();
         if ($currentUser->role === 'admin' && !$currentUser->isSuperAdmin()) {
-            $adminProfile = $currentUser->getAdminProfile();
-            if ($adminProfile && $adminProfile->branch_id) {
-                $deactivatedQuery->where('branch_id', $adminProfile->branch_id);
+            $branchId = $currentUser->getEffectiveBranchId();
+            if ($branchId) {
+                $deactivatedQuery->where('branch_id', $branchId);
             }
         }
         
@@ -91,9 +91,9 @@ class VerificationController extends Controller
             ->whereNotNull('pending_password')
             ->where('pending_password', '!=', '');
         if ($currentUser->role === 'admin' && !$currentUser->isSuperAdmin()) {
-            $adminProfile = $currentUser->getAdminProfile();
-            if ($adminProfile && $adminProfile->branch_id) {
-                $pendingCredentialsQuery->where('branch_id', $adminProfile->branch_id);
+            $branchId = $currentUser->getEffectiveBranchId();
+            if ($branchId) {
+                $pendingCredentialsQuery->where('branch_id', $branchId);
             }
         }
         $pendingCredentials = $pendingCredentialsQuery->orderBy('updated_at', 'desc')->get();
@@ -105,7 +105,7 @@ class VerificationController extends Controller
                 $q->where('is_active', true);
             })
             ->when(!$currentUser->isSuperAdmin(), function ($q) use ($currentUser) {
-                $branchId = $currentUser->getAdminProfile()?->branch_id;
+                $branchId = $currentUser->getEffectiveBranchId();
                 $q->where('branch_id', $branchId);
             })
             ->latest('status_change_requested_at')
@@ -154,8 +154,8 @@ class VerificationController extends Controller
         
         // Non-super admin can only approve users from their branch
         if ($currentUser->role === 'admin') {
-            $adminProfile = $currentUser->getAdminProfile();
-            if (!$adminProfile || !$adminProfile->branch_id || $user->branch_id !== $adminProfile->branch_id) {
+            $branchId = $currentUser->getEffectiveBranchId();
+            if (!$branchId || $user->branch_id !== $branchId) {
                 abort(403, 'You can only verify users from your branch');
             }
         }

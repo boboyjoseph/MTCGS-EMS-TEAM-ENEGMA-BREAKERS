@@ -59,6 +59,9 @@ Route::get('/register', [AuthController::class, 'showRegister'])->name('register
 Route::post('/register', [AuthController::class, 'register']);
 
 Route::middleware('auth')->group(function () {
+    Route::post('/active-branch', [App\Http\Controllers\Admin\BranchAssignmentController::class, 'updateActiveBranch'])
+        ->name('active-branch.update');
+
     Route::get('/confirm-password', function () {
         return view('auth.confirm-password');
     })->name('password.confirm');
@@ -252,6 +255,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/devices/{device}', [App\Http\Controllers\Admin\DeviceController::class, 'destroy'])->name('devices.destroy');
         
         Route::get('/branch-heads', [App\Http\Controllers\Admin\BranchHeadController::class, 'index'])->name('branch-heads.index');
+        Route::get('/branch-heads/assignments', [App\Http\Controllers\Admin\BranchAssignmentController::class, 'index'])->name('branch-heads.assignments');
+        Route::put('/branch-heads/{user}/assignments', [App\Http\Controllers\Admin\BranchAssignmentController::class, 'update'])->name('branch-heads.assignments.update');
         Route::get('/branch-heads/create', [App\Http\Controllers\Admin\BranchHeadController::class, 'create'])->name('branch-heads.create');
         Route::post('/branch-heads', [App\Http\Controllers\Admin\BranchHeadController::class, 'store'])->name('branch-heads.store');
         Route::get('/branch-heads/{branchHead}', [App\Http\Controllers\Admin\BranchHeadController::class, 'show'])->name('branch-heads.show');

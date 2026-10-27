@@ -9,9 +9,14 @@
             <h3 class="mb-1">Branch Admin Management</h3>
             <p class="text-muted mb-0">Manage branch-specific admin accounts and access control.</p>
         </div>
-        <a href="{{ route('admin.branch-heads.create') }}" class="btn btn-primary branch-admin-create">
-            <i class="fas fa-plus me-1"></i> Create Branch Admin
-        </a>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('admin.branch-heads.assignments') }}" class="btn btn-outline-primary">
+                <i class="fas fa-code-branch me-1"></i> Multi-Branch Assignments
+            </a>
+            <a href="{{ route('admin.branch-heads.create') }}" class="btn btn-primary branch-admin-create">
+                <i class="fas fa-plus me-1"></i> Create Branch Admin
+            </a>
+        </div>
     </div>
 
     <div class="row g-3 mb-4">

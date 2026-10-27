@@ -579,6 +579,25 @@
             <img src="{{ asset('images/logo.jpg') }}" alt="MTCGS" onerror="this.style.display='none'">
             <h5>MTCGS-EMS</h5>
             <small>v2.0</small>
+            @if(Auth::user()->isBranchAdmin())
+                @php
+                    $accessibleBranchIds = Auth::user()->getAccessibleBranchIds();
+                    $accessibleBranches = \App\Models\Branch::whereIn('id', $accessibleBranchIds)->orderBy('branch_name')->get();
+                @endphp
+                @if($accessibleBranches->count() > 1)
+                    <form method="POST" action="{{ route('active-branch.update') }}" class="mt-3 px-2">
+                        @csrf
+                        <label for="active-branch-select" class="form-label text-white small mb-1">Working Branch</label>
+                        <select id="active-branch-select" name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                            @foreach($accessibleBranches as $branch)
+                                <option value="{{ $branch->id }}" {{ Auth::user()->getEffectiveBranchId() === (int) $branch->id ? 'selected' : '' }}>
+                                    {{ $branch->branch_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
+                @endif
+            @endif
         </div>
         <nav class="sidebar-nav nav flex-column" data-turbo="true">
             <div class="nav-section">

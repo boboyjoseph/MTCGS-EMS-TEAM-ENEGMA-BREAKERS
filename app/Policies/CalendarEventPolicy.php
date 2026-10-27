@@ -13,7 +13,7 @@ class CalendarEventPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'finance_officer', 'finance_head', 'employee']);
+        return in_array($user->role, ['admin', 'branch_head', 'finance_officer', 'finance_head', 'employee']);
     }
 
     /**
@@ -21,8 +21,13 @@ class CalendarEventPolicy
      */
     public function view(User $user, CalendarEvent $calendarEvent): bool
     {
-        if ($user->role === 'admin') {
+        if ($user->isSuperAdmin()) {
             return true;
+        }
+
+        if ($user->isBranchAdmin()) {
+            return $calendarEvent->branch_id === $user->getEffectiveBranchId()
+                || $calendarEvent->branch_id === null;
         }
 
         if (in_array($user->role, ['finance_officer', 'finance_head'], true)) {
@@ -43,7 +48,7 @@ class CalendarEventPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'admin';
+        return $user->isSuperAdmin() || $user->isBranchAdmin();
     }
 
     /**
@@ -51,7 +56,8 @@ class CalendarEventPolicy
      */
     public function update(User $user, CalendarEvent $calendarEvent): bool
     {
-        return $user->role === 'admin';
+        return $user->isSuperAdmin()
+            || ($user->isBranchAdmin() && $calendarEvent->branch_id === $user->getEffectiveBranchId());
     }
 
     /**
@@ -59,7 +65,7 @@ class CalendarEventPolicy
      */
     public function delete(User $user, CalendarEvent $calendarEvent): bool
     {
-        return $user->role === 'admin';
+        return $this->update($user, $calendarEvent);
     }
 
     /**

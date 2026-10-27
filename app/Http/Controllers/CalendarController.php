@@ -22,30 +22,27 @@ class CalendarController extends Controller
         $user = Auth::user();
         $events = collect();
 
-        if ($user->role === 'admin') {
-            if ($user->admin_type === 'branch_admin') {
-                $adminProfile = $user->getAdminProfile();
-                $branchId = $adminProfile->branch_id ?? null;
+        if ($user->isBranchAdmin()) {
+            $branchId = $user->getEffectiveBranchId();
 
-                $events = CalendarEvent::with(['creator', 'branch'])
-                    ->where(function($query) use ($branchId) {
-                        $query->where('branch_id', $branchId)
-                              ->orWhereNull('branch_id');
-                    })
-                    ->where(function ($query) use ($user) {
-                        $query->where('approval_status', 'approved')
-                            ->orWhere(function ($pending) use ($user) {
-                                $pending->where('approval_status', 'pending')
-                                    ->where('created_by', $user->id);
-                            });
-                    })
-                    ->orderBy('event_date', 'desc')
-                    ->get();
-            } else {
-                $events = CalendarEvent::with(['creator', 'branch'])
-                    ->orderBy('event_date', 'desc')
-                    ->get();
-            }
+            $events = CalendarEvent::with(['creator', 'branch'])
+                ->where(function ($query) use ($branchId) {
+                    $query->where('branch_id', $branchId)
+                        ->orWhereNull('branch_id');
+                })
+                ->where(function ($query) use ($user) {
+                    $query->where('approval_status', 'approved')
+                        ->orWhere(function ($pending) use ($user) {
+                            $pending->where('approval_status', 'pending')
+                                ->where('created_by', $user->id);
+                        });
+                })
+                ->orderBy('event_date', 'desc')
+                ->get();
+        } elseif ($user->role === 'admin') {
+            $events = CalendarEvent::with(['creator', 'branch'])
+                ->orderBy('event_date', 'desc')
+                ->get();
         } elseif ($user->role === 'finance_head') {
             $financeProfile = $user->getFinanceProfile();
             if ($financeProfile && $financeProfile->branch_id) {
@@ -100,12 +97,10 @@ class CalendarController extends Controller
         $this->authorize('create', CalendarEvent::class);
 
         $user = Auth::user();
-        $adminProfile = $user->getAdminProfile();
         $isSuperAdmin = $user->isSuperAdmin();
 
-        // For regular admins, automatically set branch_id to their branch
-        if (!$isSuperAdmin && $adminProfile && $adminProfile->branch_id) {
-            $request->merge(['branch_id' => $adminProfile->branch_id]);
+        if ($user->isBranchAdmin()) {
+            $request->merge(['branch_id' => $user->getEffectiveBranchId()]);
         }
 
         $request->validate([
@@ -117,8 +112,7 @@ class CalendarController extends Controller
         ]);
 
         $requiresApproval = !$isSuperAdmin
-            && $user->role === 'admin'
-            && $user->admin_type === 'branch_admin'
+            && $user->isBranchAdmin()
             && in_array($request->event_type, ['holiday', 'suspension'], true);
 
         CalendarEvent::create([
@@ -149,12 +143,10 @@ class CalendarController extends Controller
         $this->authorize('update', $calendar);
 
         $user = Auth::user();
-        $adminProfile = $user->getAdminProfile();
         $isSuperAdmin = $user->isSuperAdmin();
 
-        // For regular admins, automatically set branch_id to their branch
-        if (!$isSuperAdmin && $adminProfile && $adminProfile->branch_id) {
-            $request->merge(['branch_id' => $adminProfile->branch_id]);
+        if ($user->isBranchAdmin()) {
+            $request->merge(['branch_id' => $user->getEffectiveBranchId()]);
         }
 
         $request->validate([
@@ -165,7 +157,9 @@ class CalendarController extends Controller
             'branch_id' => 'nullable|exists:branches,id'
         ]);
 
-        $requiresApproval = in_array($request->event_type, ['holiday', 'suspension'], true) && !$isSuperAdmin;
+        $requiresApproval = in_array($request->event_type, ['holiday', 'suspension'], true)
+            && !$isSuperAdmin
+            && $user->isBranchAdmin();
 
         $calendar->update([
             'title' => $request->title,
@@ -212,29 +206,26 @@ class CalendarController extends Controller
         $leaveRequests = collect();
         $currentUserProfileId = null;
 
-        if ($user->role === 'admin') {
-            if ($user->admin_type === 'branch_admin') {
-                $adminProfile = $user->getAdminProfile();
-                $branchId = $adminProfile->branch_id ?? null;
+        if ($user->isBranchAdmin()) {
+            $branchId = $user->getEffectiveBranchId();
 
-                $events = CalendarEvent::where('approval_status', 'approved')
-                    ->where(function($query) use ($branchId) {
+            $events = CalendarEvent::where('approval_status', 'approved')
+                ->where(function ($query) use ($branchId) {
                     $query->where('branch_id', $branchId)
-                          ->orWhereNull('branch_id');
+                        ->orWhereNull('branch_id');
                 })->get();
 
-                $leaveRequests = LeaveRequest::with('employeeProfile')
-                    ->where('status', 'approved')
-                    ->whereHas('employeeProfile', function ($query) use ($branchId) {
-                        $query->where('branch_id', $branchId);
-                    })->orderBy('start_date')->get();
-            } else {
-                $events = CalendarEvent::where('approval_status', 'approved')->get();
-                $leaveRequests = LeaveRequest::with('employeeProfile')
-                    ->where('status', 'approved')
-                    ->orderBy('start_date')
-                    ->get();
-            }
+            $leaveRequests = LeaveRequest::with('employeeProfile')
+                ->where('status', 'approved')
+                ->whereHas('employeeProfile', function ($query) use ($branchId) {
+                    $query->where('branch_id', $branchId);
+                })->orderBy('start_date')->get();
+        } elseif ($user->role === 'admin') {
+            $events = CalendarEvent::where('approval_status', 'approved')->get();
+            $leaveRequests = LeaveRequest::with('employeeProfile')
+                ->where('status', 'approved')
+                ->orderBy('start_date')
+                ->get();
         } elseif ($user->role === 'finance_head') {
             $financeProfile = $user->getFinanceProfile();
             if ($financeProfile) {
