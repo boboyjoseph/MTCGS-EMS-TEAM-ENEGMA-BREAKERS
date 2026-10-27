@@ -114,7 +114,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Role <span class="text-danger">*</span></label>
-                                <select name="role" class="form-control" required id="role-select">
+                                <select name="role" class="form-select" required id="role-select">
                                     <option value="employee" {{ old('role', 'employee') === 'employee' ? 'selected' : '' }}>Employee</option>
                                     <option value="finance_officer" {{ old('role') === 'finance_officer' ? 'selected' : '' }}>Finance Officer</option>
                                     @if(Auth::user()->admin_type === 'super_admin' || blank(Auth::user()->admin_type))
