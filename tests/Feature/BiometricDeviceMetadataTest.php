@@ -516,7 +516,7 @@ class BiometricDeviceMetadataTest extends TestCase
                 Request::create('/api/biometric/time-clock', 'POST', $staleRetryPayload)
             );
             $this->assertSame(409, $staleRetryResponse->getStatusCode(), $staleRetryResponse->content());
-            $this->assertStringContainsString('Offline attendance is disabled', json_decode($staleRetryResponse->content(), true)['error']);
+            $this->assertStringContainsString('within 24 hours', json_decode($staleRetryResponse->content(), true)['error']);
             $this->assertSame(
                 '2026-10-12 08:00:00',
                 AttendanceLog::where('employee_profile_id', $employee->id)
@@ -592,8 +592,8 @@ class BiometricDeviceMetadataTest extends TestCase
             $offlineTimeOutResponse = (new BiometricController())->processTimeClock(
                 Request::create('/api/biometric/time-clock', 'POST', $offlineTimeOutPayload)
             );
-            $this->assertSame(409, $offlineTimeOutResponse->getStatusCode(), $offlineTimeOutResponse->content());
-            $this->assertStringContainsString('Offline attendance is disabled', json_decode($offlineTimeOutResponse->content(), true)['error']);
+            $this->assertSame(200, $offlineTimeOutResponse->getStatusCode(), $offlineTimeOutResponse->content());
+            $this->assertTrue(json_decode($offlineTimeOutResponse->content(), true)['already_recorded']);
             $this->assertSame(
                 '2026-10-12 10:16:00',
                 AttendanceLog::where('employee_profile_id', $employee->id)
@@ -1461,7 +1461,7 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->assertSame(8.0, $breakdown['total_hours']);
     }
 
-    public function test_time_clock_rejects_stale_offline_attendance(): void
+    public function test_time_clock_accepts_offline_attendance_within_24_hours_and_rejects_expired_scans(): void
     {
         $this->travelTo('2026-10-28 08:00:00');
         $branch = Branch::create([
@@ -1507,9 +1507,32 @@ class BiometricDeviceMetadataTest extends TestCase
             Request::create('/api/biometric/time-clock', 'POST', $payload)
         );
 
-        $this->assertSame(409, $response->getStatusCode(), $response->content());
-        $this->assertStringContainsString('Offline attendance is disabled', json_decode($response->content(), true)['error']);
-        $this->assertDatabaseMissing('attendance_logs', ['employee_profile_id' => $employee->id]);
+        $this->assertSame(200, $response->getStatusCode(), $response->content());
+        $this->assertTrue(json_decode($response->content(), true)['success']);
+        $this->assertDatabaseHas('attendance_logs', [
+            'employee_profile_id' => $employee->id,
+            'attendance_date' => now()->startOfDay()->toDateTimeString(),
+        ]);
+
+        $expiredPayload = $this->signedDevicePayload([
+            'employee_number' => $employee->employee_number,
+            'fingerprint_data' => $employee->fingerprint_template,
+            'action' => 'TIME-IN',
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => (string) $device->id,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'attendance_timestamp' => now()->subHours(24)->subSecond()->toIso8601String(),
+            'nonce' => 'expired-offline-attendance',
+        ], 'POST', '/api/biometric/time-clock');
+
+        $expiredResponse = (new BiometricController())->processTimeClock(
+            Request::create('/api/biometric/time-clock', 'POST', $expiredPayload)
+        );
+
+        $this->assertSame(409, $expiredResponse->getStatusCode(), $expiredResponse->content());
+        $this->assertStringContainsString('within 24 hours', json_decode($expiredResponse->content(), true)['error']);
         \Illuminate\Support\Carbon::setTestNow();
     }
 

@@ -1718,8 +1718,15 @@ class BiometricController extends Controller
 
         $now = \Carbon\Carbon::parse($request->input('attendance_timestamp'))
             ->setTimezone(config('app.timezone'));
-        if (!app(BiometricDeviceAuthenticator::class)->isCurrentAttendanceTimestamp((string) $request->input('attendance_timestamp'))) {
-            return $this->offlineAttendanceDisabledResponse();
+        if (!app(BiometricDeviceAuthenticator::class)->isAttendanceTimestampWithinOfflineWindow((string) $request->input('attendance_timestamp'))) {
+            $message = 'Attendance scans can only be synced within 24 hours of their recorded time. Check the kiosk clock and contact an administrator if this scan is valid.';
+
+            return response()->json([
+                'success' => false,
+                'error' => $message,
+                'message' => $message,
+                'attendance_blocked' => true,
+            ], 409);
         }
 
         $attendanceDate = $now->copy()->toDateString();

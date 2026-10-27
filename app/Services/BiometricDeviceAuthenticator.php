@@ -162,6 +162,23 @@ class BiometricDeviceAuthenticator
         return abs($attendanceTime->diffInSeconds(now(), false)) <= $allowedDriftSeconds;
     }
 
+    public function isAttendanceTimestampWithinOfflineWindow(
+        string $timestamp,
+        int $maxAgeSeconds = 86400,
+        int $futureToleranceSeconds = 60
+    ): bool {
+        try {
+            $attendanceTime = \Carbon\Carbon::parse($timestamp);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $now = now();
+
+        return $attendanceTime->greaterThanOrEqualTo($now->copy()->subSeconds($maxAgeSeconds))
+            && $attendanceTime->lessThanOrEqualTo($now->copy()->addSeconds($futureToleranceSeconds));
+    }
+
     private function normalizeReaderId($readerId): string
     {
         return strtoupper(preg_replace('/[^A-F0-9]/i', '', (string) $readerId));
