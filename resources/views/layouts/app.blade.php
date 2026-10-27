@@ -1009,8 +1009,12 @@
             let attendanceRefreshQueued = false;
             let livePollTimer = null;
 
-            function scheduleSuccessAlertDismissal() {
-                document.querySelectorAll('.alert-success[data-auto-dismiss]').forEach((alert) => {
+            function scheduleSuccessAlertDismissal(root = document) {
+                const selector = '.alert-success[data-auto-dismiss]';
+                const alerts = Array.from(root.querySelectorAll(selector));
+                if (root instanceof Element && root.matches(selector)) alerts.unshift(root);
+
+                alerts.forEach((alert) => {
                     if (alert.dataset.dismissScheduled) return;
                     alert.dataset.dismissScheduled = 'true';
                     const delay = Number(alert.dataset.autoDismiss) || 5000;
@@ -1022,13 +1026,22 @@
                 });
             }
 
+            const successAlertObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node instanceof Element) scheduleSuccessAlertDismissal(node);
+                    });
+                });
+            });
+            successAlertObserver.observe(document.documentElement, { childList: true, subtree: true });
+
             function showLiveArrival(arrival) {
                 const toast = document.createElement('div');
                 toast.className = 'alert alert-success shadow position-fixed';
                 toast.style.cssText = 'right: 1rem; bottom: 1rem; z-index: 1200; max-width: 360px;';
                 toast.innerHTML = `<strong><i class="fas fa-fingerprint me-1"></i> New attendance</strong><br>${arrival.employee} (${arrival.employee_number}) at ${arrival.time || 'now'}`;
                 document.body.appendChild(toast);
-                window.setTimeout(() => toast.remove(), 6000);
+                window.setTimeout(() => toast.remove(), 5000);
             }
 
             function updateNotificationMenu(notifications, unreadCount, markAllReadUrl) {

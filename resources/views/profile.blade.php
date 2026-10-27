@@ -32,7 +32,7 @@
                 </div>
                 <div class="card-body">
                     @if(session('photo_updated'))
-                        <div class="alert alert-success py-2" role="alert">
+                        <div class="alert alert-success py-2" role="alert" data-auto-dismiss="5000">
                             <i class="fas fa-check-circle me-1"></i>{{ session('photo_updated') }}
                         </div>
                     @endif
@@ -409,7 +409,7 @@
                 </div>
                 <div class="card-body">
                     @if(session('signature_updated'))
-                        <div class="alert alert-success py-2" role="alert">
+                        <div class="alert alert-success py-2" role="alert" data-auto-dismiss="5000">
                             <i class="fas fa-check-circle me-1"></i>{{ session('signature_updated') }}
                         </div>
                     @endif
@@ -488,7 +488,7 @@
                 </div>
                 <div class="card-body" id="password-form-container">
                     @if(session('password_updated'))
-                        <div class="alert alert-success py-2" role="alert">
+                        <div class="alert alert-success py-2" role="alert" data-auto-dismiss="5000">
                             <i class="fas fa-check-circle me-1"></i>{{ session('password_updated') }}
                         </div>
                     @endif

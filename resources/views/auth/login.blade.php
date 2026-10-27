@@ -266,11 +266,11 @@
                 @endif
 
                 @if(session('success'))
-                    <div class="alert alert-success py-2">{{ session('success') }}</div>
+                    <div class="alert alert-success py-2" data-auto-dismiss="5000">{{ session('success') }}</div>
                 @endif
 
                 @if(session('status'))
-                    <div class="alert alert-success py-2">{{ session('status') }}</div>
+                    <div class="alert alert-success py-2" data-auto-dismiss="5000">{{ session('status') }}</div>
                 @endif
 
                 @if($errors->any())
@@ -367,6 +367,10 @@
                 });
             }
         })();
+
+        document.querySelectorAll('.alert-success[data-auto-dismiss]').forEach((alert) => {
+            window.setTimeout(() => alert.remove(), Number(alert.dataset.autoDismiss) || 5000);
+        });
     </script>
 </body>
 </html>

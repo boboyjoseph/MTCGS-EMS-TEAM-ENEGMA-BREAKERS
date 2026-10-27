@@ -146,7 +146,7 @@
         <h3>Forgot Password</h3>
 
         @if (session('status'))
-            <div class="alert alert-success">{{ session('status') }}</div>
+            <div class="alert alert-success" data-auto-dismiss="5000">{{ session('status') }}</div>
         @endif
         @if ($errors->any())
             <div class="alert alert-danger">{{ $errors->first() }}</div>
@@ -163,5 +163,10 @@
 
         <a href="{{ route('login') }}" class="back-link">Back to login</a>
     </div>
+    <script>
+        document.querySelectorAll('.alert-success[data-auto-dismiss]').forEach((alert) => {
+            window.setTimeout(() => alert.remove(), Number(alert.dataset.autoDismiss) || 5000);
+        });
+    </script>
 </body>
 </html>
