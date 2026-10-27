@@ -23,7 +23,7 @@
                             </ul>
                         </div>
                     @endif
-                    @if (session('error'))
+                    @if (session('error') && in_array(Auth::user()->role, ['finance_officer', 'finance_head'], true) && session('error') === 'Employee profile not found')
                         <div class="alert alert-danger" role="alert">{{ session('error') }}</div>
                     @endif
 

@@ -12,10 +12,6 @@
         <a href="{{ route('admin.branch-heads.index') }}" class="btn btn-secondary">Back to Branch Admins</a>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
     @if($errors->has('branch_ids'))
         <div class="alert alert-danger">{{ $errors->first('branch_ids') }}</div>
     @endif

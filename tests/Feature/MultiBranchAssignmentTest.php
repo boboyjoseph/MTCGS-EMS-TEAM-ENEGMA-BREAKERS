@@ -100,8 +100,8 @@ class MultiBranchAssignmentTest extends TestCase
         $this->actingAs($branchAdmin)
             ->get(route('admin.employee-create'))
             ->assertOk()
-            ->assertSee('value="'.$buhi->id.'" selected', false)
-            ->assertDontSee('value="'.$iriga->id.'" selected', false);
+            ->assertSee('name="branch_id" value="'.$buhi->id.'"', false)
+            ->assertSee($buhi->branch_name);
 
         $this->actingAs($branchAdmin)
             ->post(route('admin.employee-store'), [
@@ -136,6 +136,21 @@ class MultiBranchAssignmentTest extends TestCase
             ->assertSee('Multi-Branch Assignments')
             ->assertSee('Branch Admin')
             ->assertSee('Branch Head');
+    }
+
+    public function test_assignment_success_flash_is_rendered_only_once(): void
+    {
+        [$iriga] = $this->createBranches();
+        $superAdmin = $this->createUser('admin', 'super_admin', $iriga);
+        $message = 'Branch assistance assignments updated for December Ten.';
+
+        $response = $this->actingAs($superAdmin)
+            ->withSession(['success' => $message])
+            ->get(route('admin.branch-heads.assignments'))
+            ->assertOk()
+            ->assertSee($message);
+
+        $this->assertSame(1, substr_count($response->getContent(), $message));
     }
 
     /**
