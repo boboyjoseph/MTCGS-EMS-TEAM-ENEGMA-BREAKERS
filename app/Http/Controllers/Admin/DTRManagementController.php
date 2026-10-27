@@ -268,7 +268,7 @@ class DTRManagementController
                         return 0;
                     }
 
-                    $scheduledEnd = $log->pm_out->copy()->setTime(17, 0, 0);
+                    $scheduledEnd = \App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out);
 
                     return $log->pm_out->lt($scheduledEnd)
                         ? (int) $log->pm_out->diffInMinutes($scheduledEnd)
@@ -302,7 +302,8 @@ class DTRManagementController
                     $sheet->setCellValue($endColumn . $row, $log->pm_out ? $log->pm_out->format('h:i A') : '--');
 
                     $isLate = str_contains($log->getDtrStatus(), 'Late');
-                    $isEarlyOut = $log->pm_out && $log->pm_out->lt($headerDate->copy()->setTime(17, 0, 0));
+                    $isEarlyOut = $log->pm_out
+                        && $log->pm_out->lt(\App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $headerDate));
 
                     if ($isLate) {
                         $redFontCells[] = $startColumn . $row;
@@ -692,7 +693,7 @@ class DTRManagementController
             }
 
             if ($log->pm_out) {
-                $scheduledEnd = $log->pm_out->copy()->setTime(17, 0, 0);
+                $scheduledEnd = \App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out);
                 if ($log->pm_out->lt($scheduledEnd)) {
                     $totalEarlyOutMinutes += (int) $log->pm_out->diffInMinutes($scheduledEnd);
                 }

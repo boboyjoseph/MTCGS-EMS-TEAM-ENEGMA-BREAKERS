@@ -382,7 +382,7 @@ class BiometricController extends Controller
         // Same logic as employee
         if (!$attendance->am_in && $currentHour >= 6 && $currentHour < 12) {
             $attendance->am_in = $now;
-            $standardIn = $this->scheduledTime($employeeProfile, 'start_time', 8);
+            $standardIn = $this->scheduledTime($employeeProfile, 'start_time');
             $lateMinutes = \App\Services\AttendanceTimeRules::lateMinutes($now, $standardIn);
             $attendance->late_minutes = $lateMinutes;
             if ($lateMinutes > 0) {
@@ -406,7 +406,7 @@ class BiometricController extends Controller
         }
         elseif (($attendance->pm_in || $attendance->am_in) && !$attendance->pm_out && $currentHour >= 16) {
             $attendance->pm_out = $now;
-            $standardOut = $this->scheduledTime($employeeProfile, 'end_time', 17);
+            $standardOut = $this->scheduledTime($employeeProfile, 'end_time');
             $timeoutStatus = $this->evaluateTimeOutStatus($now, $standardOut);
             $attendance->overtime_hours = $timeoutStatus['overtime_hours'];
 
@@ -565,7 +565,7 @@ class BiometricController extends Controller
         
         if (!$attendance->am_in && $currentHour >= 6 && $currentHour < 12) {
             $attendance->am_in = $now;
-            $standardIn = $this->scheduledTime($employeeProfile, 'start_time', 8);
+            $standardIn = $this->scheduledTime($employeeProfile, 'start_time');
             $lateMinutes = \App\Services\AttendanceTimeRules::lateMinutes($now, $standardIn);
             $attendance->late_minutes = $lateMinutes;
             if ($lateMinutes > 0) {
@@ -589,7 +589,7 @@ class BiometricController extends Controller
         }
         elseif (($attendance->pm_in || $attendance->am_in) && !$attendance->pm_out && $currentHour >= 16) {
             $attendance->pm_out = $now;
-            $standardOut = $this->scheduledTime($employeeProfile, 'end_time', 17);
+            $standardOut = $this->scheduledTime($employeeProfile, 'end_time');
             $timeoutStatus = $this->evaluateTimeOutStatus($now, $standardOut);
             $attendance->overtime_hours = $timeoutStatus['overtime_hours'];
 
@@ -914,13 +914,11 @@ class BiometricController extends Controller
         return preg_replace('/\s+/', '', $template) ?? '';
     }
 
-    private function scheduledTime($profile, string $field, int $fallbackHour, ?\Carbon\Carbon $date = null): \Carbon\Carbon
+    private function scheduledTime($profile, string $field, ?\Carbon\Carbon $date = null): \Carbon\Carbon
     {
-        $date = $date?->copy() ?: \Carbon\Carbon::today();
-
-        return $profile->shift
-            ? $date->setTimeFromTimeString($profile->shift->{$field})
-            : $date->setTime($fallbackHour, 0, 0);
+        return $field === 'start_time'
+            ? \App\Services\AttendanceWorkHours::scheduledStart($profile, $date)
+            : \App\Services\AttendanceWorkHours::scheduledEnd($profile, $date);
     }
 
     private function fingerprintBytes($value): string
@@ -1107,7 +1105,7 @@ class BiometricController extends Controller
             }
 
             $attendance->am_in = $now;
-            $standardIn = $this->scheduledTime($employee, 'start_time', 8);
+            $standardIn = $this->scheduledTime($employee, 'start_time');
             $lateMinutes = \App\Services\AttendanceTimeRules::lateMinutes($now, $standardIn);
             $attendance->late_minutes = $lateMinutes;
             if ($lateMinutes > 0) {
@@ -1149,7 +1147,7 @@ class BiometricController extends Controller
             }
 
             $attendance->pm_out = $now;
-            $standardOut = $this->scheduledTime($employee, 'end_time', 17);
+            $standardOut = $this->scheduledTime($employee, 'end_time');
             $timeoutStatus = $this->evaluateTimeOutStatus($now, $standardOut);
             $attendance->overtime_hours = $timeoutStatus['overtime_hours'];
 
@@ -1770,7 +1768,7 @@ class BiometricController extends Controller
         
         if ($requestedAction === 'TIME-IN') {
             $attendance->am_in = $now;
-            $standardIn = $this->scheduledTime($employee, 'start_time', 8, $now);
+            $standardIn = $this->scheduledTime($employee, 'start_time', $now);
             $lateMinutes = \App\Services\AttendanceTimeRules::lateMinutes($now, $standardIn);
             $attendance->late_minutes = $lateMinutes;
             if ($lateMinutes > 0) {
@@ -1783,7 +1781,7 @@ class BiometricController extends Controller
             $action = 'TIME-IN';
         } else {
             $attendance->pm_out = $now;
-            $standardOut = $this->scheduledTime($employee, 'end_time', 17, $now);
+            $standardOut = $this->scheduledTime($employee, 'end_time', $now);
             $timeoutStatus = $this->evaluateTimeOutStatus($now, $standardOut);
             $attendance->overtime_hours = $timeoutStatus['overtime_hours'];
 

@@ -234,6 +234,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/analytics', [App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
     Route::get('/analytics/data', [App\Http\Controllers\AnalyticsController::class, 'data'])->name('analytics.data');
     Route::get('/admin/shifts', [App\Http\Controllers\ShiftController::class, 'index'])->name('admin.shifts.index');
+    Route::put('/admin/shifts/default-work-hours', [App\Http\Controllers\ShiftController::class, 'updateDefaultWorkHours'])->name('admin.shifts.default-work-hours.update');
     Route::post('/admin/shifts', [App\Http\Controllers\ShiftController::class, 'store'])->name('admin.shifts.store');
     Route::put('/admin/shifts/{shift}', [App\Http\Controllers\ShiftController::class, 'update'])->name('admin.shifts.update');
     Route::delete('/admin/shifts/{shift}', [App\Http\Controllers\ShiftController::class, 'destroy'])->name('admin.shifts.destroy');

@@ -205,9 +205,7 @@ class AttendanceController extends Controller
 
             // Calculate late minutes if this is AM time-in
             if ($attendanceType === 'am_in') {
-                $scheduledTime = $employee->shift
-                    ? Carbon::today()->setTimeFromTimeString($employee->shift->start_time)
-                    : Carbon::createFromTime(8, 0, 0);
+                $scheduledTime = \App\Services\AttendanceWorkHours::scheduledStart($employee);
                 $actualTime = Carbon::parse($attendance->am_in);
 
                 $attendance->late_minutes = \App\Services\AttendanceTimeRules::lateMinutes($actualTime, $scheduledTime);
@@ -215,9 +213,7 @@ class AttendanceController extends Controller
 
             // Calculate overtime if this is PM time-out
             if ($attendanceType === 'pm_out') {
-                $scheduledEndTime = $employee->shift
-                    ? Carbon::today()->setTimeFromTimeString($employee->shift->end_time)
-                    : Carbon::createFromTime(17, 0, 0);
+                $scheduledEndTime = \App\Services\AttendanceWorkHours::scheduledEnd($employee);
                 $actualEndTime = Carbon::parse($attendance->pm_out);
 
                 if ($actualEndTime->greaterThan($scheduledEndTime)) {

@@ -236,7 +236,7 @@ class DTRController extends Controller
                 $totalLateMinutes += DTR::normalizeLateMinutesForLog($log);
 
                 if ($log->pm_out) {
-                    $scheduledPmOut = $log->pm_out->copy()->setTime(17, 0, 0);
+                    $scheduledPmOut = \App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out);
                     if ($log->pm_out->lt($scheduledPmOut)) {
                         $totalEarlyOutMinutes += max(0, (int) abs($scheduledPmOut->diffInMinutes($log->pm_out)));
                     }
@@ -703,7 +703,7 @@ class DTRController extends Controller
                 $dayData['late_minutes'] = $lateMinutes;
                 $dayData['overtime'] = $log->overtime_hours ?? 0;
                 $dayData['is_early_out'] = $log->pm_out
-                    && $log->pm_out->lt($log->pm_out->copy()->setTime(17, 0, 0));
+                    && $log->pm_out->lt(\App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out));
             } else {
                 $dayData['status'] = $isSuspension
                     ? 'suspension'

@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmployeeProfile;
+use App\Models\SiteSetting;
 use App\Models\Shift;
+use App\Services\AttendanceWorkHours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ShiftController extends Controller
 {
@@ -26,7 +29,15 @@ class ShiftController extends Controller
     {
         $user = Auth::user();
 
-        return $user?->role === 'admin' && $user->admin_type === 'branch_admin';
+        return $user?->role === 'admin'
+            && in_array($user->admin_type, ['branch_admin', 'hr'], true);
+    }
+
+    private function canManageDefaultWorkHours(): bool
+    {
+        $user = Auth::user();
+
+        return $user?->role === 'admin' && $user->admin_type === 'hr';
     }
 
     public function index()
@@ -49,8 +60,41 @@ class ShiftController extends Controller
             ->get();
 
         $canManageSchedules = $this->canManageSchedules();
+        $canManageWorkHours = $this->canManageDefaultWorkHours();
+        $defaultWorkStartTime = SiteSetting::getValue(
+            AttendanceWorkHours::START_TIME_SETTING,
+            AttendanceWorkHours::DEFAULT_START_TIME
+        );
+        $defaultWorkEndTime = SiteSetting::getValue(
+            AttendanceWorkHours::END_TIME_SETTING,
+            AttendanceWorkHours::DEFAULT_END_TIME
+        );
 
-        return view('admin.shifts.index', compact('shifts', 'employees', 'canManageSchedules'));
+        return view('admin.shifts.index', compact(
+            'shifts',
+            'employees',
+            'canManageSchedules',
+            'canManageWorkHours',
+            'defaultWorkStartTime',
+            'defaultWorkEndTime'
+        ));
+    }
+
+    public function updateDefaultWorkHours(Request $request)
+    {
+        abort_unless($this->canManageDefaultWorkHours(), 403, 'Only HR can change the school-wide default work hours.');
+
+        $validated = $request->validate([
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+        ]);
+
+        DB::transaction(function () use ($validated): void {
+            SiteSetting::setValue(AttendanceWorkHours::START_TIME_SETTING, $validated['start_time'] . ':00');
+            SiteSetting::setValue(AttendanceWorkHours::END_TIME_SETTING, $validated['end_time'] . ':00');
+        });
+
+        return back()->with('success', 'Default work hours updated. Assigned employee shifts remain unchanged.');
     }
 
     public function store(Request $request)
