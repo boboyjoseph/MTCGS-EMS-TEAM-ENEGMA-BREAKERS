@@ -31,6 +31,34 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
 
     private const DEVICE_SECRET = 'test-dtr-device-secret-for-signed-requests';
 
+    private function signedDevicePayload(array $payload, string $method, string $path): array
+    {
+        $values = [
+            strtoupper($method),
+            ltrim($path, '/'),
+            $payload['employee_id'] ?? null,
+            $payload['employee_number'] ?? null,
+            $payload['device_serial'] ?? null,
+            $payload['wifi_mac'] ?? null,
+            $payload['device_id'] ?? null,
+            $payload['mac_address'] ?? null,
+            $payload['timestamp'] ?? null,
+            $payload['nonce'] ?? null,
+            $payload['action'] ?? null,
+            $payload['fingerprint_data'] ?? null,
+        ];
+        $values[] = $payload['branch'] ?? null;
+        $values[] = $payload['attendance_timestamp'] ?? null;
+        $values[] = $payload['reader_id'] ?? null;
+        $payload['signature'] = hash_hmac(
+            'sha256',
+            implode('|', array_map(static fn ($value) => is_scalar($value) ? (string) $value : '', $values)),
+            self::DEVICE_SECRET
+        );
+
+        return $payload;
+    }
+
     public function test_payroll_deducts_full_active_cash_advance_balance_once(): void
     {
         $branch = Branch::create([
@@ -517,6 +545,8 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
 
     public function test_finance_fingerprint_attendance_generates_current_dtr_record(): void
     {
+        \Illuminate\Support\Carbon::setTestNow('2026-10-12 08:15:00');
+
         $branch = Branch::create([
             'branch_code' => 'BR-DTR-FIN',
             'branch_name' => 'Finance DTR Branch',
@@ -576,10 +606,30 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         $financeUser->profile_type = FinanceProfile::class;
         $financeUser->save();
 
-        $request = Request::create('/api/biometric/finance-attendance', 'POST', [
-            'fingerprint_data' => 'sample-fingerprint-template',
-            'timestamp' => now()->setTime(8, 15)->format('m/d/Y h:i:s A'),
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-91',
+            'laptop_mac_address' => 'DTR-FINANCE-DEVICE',
+            'serial_number' => 'SERIAL-DTR-FINANCE-001',
+            'reader_id' => 'reader-dtr-finance-001',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'Finance DTR Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'status' => 'active',
         ]);
+        $payload = $this->signedDevicePayload([
+            'employee_number' => $financeProfile->employee_number,
+            'fingerprint_data' => 'sample-fingerprint-template',
+            'action' => 'TIME-IN',
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:91',
+            'device_id' => $device->laptop_mac_address,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->format('m/d/Y h:i:s A'),
+            'nonce' => 'finance-dtr-attendance',
+        ], 'POST', '/api/biometric/finance-attendance');
+        $request = Request::create('/api/biometric/finance-attendance', 'POST', $payload);
 
         $response = (new BiometricController())->processFinanceAttendance($request);
 
@@ -591,6 +641,8 @@ class FinanceFingerprintDtrGenerationTest extends TestCase
         $this->assertDatabaseHas('dtrs', [
             'employee_profile_id' => $employeeProfile->id,
         ]);
+
+        \Illuminate\Support\Carbon::setTestNow();
     }
 
     public function test_scanner_time_clock_generates_current_dtr_record(): void

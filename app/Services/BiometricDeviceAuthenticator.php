@@ -151,6 +151,17 @@ class BiometricDeviceAuthenticator
         return implode('|', $values);
     }
 
+    public function isCurrentAttendanceTimestamp(string $timestamp, int $allowedDriftSeconds = 60): bool
+    {
+        try {
+            $attendanceTime = \Carbon\Carbon::parse($timestamp);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return abs($attendanceTime->diffInSeconds(now(), false)) <= $allowedDriftSeconds;
+    }
+
     private function normalizeReaderId($readerId): string
     {
         return strtoupper(preg_replace('/[^A-F0-9]/i', '', (string) $readerId));

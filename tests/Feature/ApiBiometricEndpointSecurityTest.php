@@ -32,7 +32,8 @@ class ApiBiometricEndpointSecurityTest extends TestCase
         Branch $branch,
         Device $device,
         string $fingerprint,
-        string $nonce
+        string $nonce,
+        ?string $timestamp = null
     ): array {
         $payload = [
             'branch_id' => $branch->id,
@@ -41,7 +42,7 @@ class ApiBiometricEndpointSecurityTest extends TestCase
             'fingerprint_data' => $fingerprint,
             'device_serial' => $device->serial_number,
             'mac_address' => 'AA:BB:CC:DD:EE:41',
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => $timestamp ?? now()->toIso8601String(),
             'nonce' => $nonce,
         ];
         $request = Request::create('/api/attendance/clock', 'POST', $payload);
@@ -180,6 +181,16 @@ class ApiBiometricEndpointSecurityTest extends TestCase
             'wrong-fingerprint-attempt'
         ))->assertUnauthorized()
             ->assertJson(['message' => 'Fingerprint not recognized']);
+
+        $this->postJson('/api/attendance/clock', $this->makeSignedClockPayload(
+            $employee,
+            $branch,
+            $device,
+            $employee->fingerprint_template,
+            'stale-clock-attempt',
+            now()->subMinutes(2)->toIso8601String()
+        ))->assertStatus(409)
+            ->assertJson(['attendance_blocked' => true]);
 
         $this->assertDatabaseMissing('attendance_logs', [
             'employee_profile_id' => $employee->id,

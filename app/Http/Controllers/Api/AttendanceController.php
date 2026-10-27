@@ -57,6 +57,15 @@ class AttendanceController extends Controller
                 'message' => 'This device is not assigned to the selected branch.',
             ], 403);
         }
+        if (!app(BiometricDeviceAuthenticator::class)->isCurrentAttendanceTimestamp((string) $request->input('timestamp'))) {
+            $message = 'Offline attendance is disabled. Connect to the server and scan again.';
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'attendance_blocked' => true,
+            ], 409);
+        }
 
         try {
             // Normalize employee number and find employee by branch
