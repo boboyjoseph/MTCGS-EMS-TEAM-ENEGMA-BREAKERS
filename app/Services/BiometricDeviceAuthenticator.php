@@ -111,7 +111,13 @@ class BiometricDeviceAuthenticator
         }
 
         $signature = strtolower(trim((string) $request->input('signature')));
-        $expectedSignature = hash_hmac('sha256', $this->signingPayload($request), $secret);
+        $hasGpsData = collect(['gps_latitude', 'gps_longitude', 'gps_accuracy', 'gps_timestamp'])
+            ->contains(fn (string $field) => $request->input($field) !== null);
+        $expectedSignature = hash_hmac(
+            'sha256',
+            $this->signingPayload($request, $device->location_check_enabled && $hasGpsData),
+            $secret
+        );
         if (($signature === '' || !hash_equals($expectedSignature, $signature))
             && !$this->isLocalSuspensionRead($request)) {
             return $this->reject('Invalid device credential signature.');
@@ -133,7 +139,7 @@ class BiometricDeviceAuthenticator
             && strtolower(trim($request->path(), '/')) === 'api/biometric/suspensions';
     }
 
-    public function signingPayload(Request $request): string
+    public function signingPayload(Request $request, bool $includeGpsFields = false): string
     {
         $values = [
             strtoupper($request->method()),
@@ -146,6 +152,14 @@ class BiometricDeviceAuthenticator
                 continue;
             }
             $values[] = is_scalar($value) ? (string) $value : '';
+        }
+
+        if ($includeGpsFields) {
+            $gpsFields = ['gps_latitude', 'gps_longitude', 'gps_accuracy', 'gps_timestamp'];
+            foreach ($gpsFields as $field) {
+                $value = $request->input($field);
+                $values[] = is_scalar($value) ? (string) $value : '';
+            }
         }
 
         return implode('|', $values);

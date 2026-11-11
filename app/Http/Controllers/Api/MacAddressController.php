@@ -119,6 +119,7 @@ class MacAddressController extends Controller
                 'branch_id' => $device->branch_id,
                 'device_name' => $device->device_name,
                 'status' => $device->status,
+                'location_check_enabled' => $device->location_check_enabled,
                 'updated_at' => $device->updated_at?->toIso8601String(),
             ],
         ]);

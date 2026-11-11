@@ -29,6 +29,10 @@ class AttendanceController extends Controller
             'device_id' => 'nullable|string|max:100',
             'wifi_mac' => 'nullable|string|max:100',
             'reader_id' => 'nullable|string|max:100',
+            'gps_latitude' => 'nullable|numeric|between:-90,90',
+            'gps_longitude' => 'nullable|numeric|between:-180,180',
+            'gps_accuracy' => 'nullable|numeric|min:0',
+            'gps_timestamp' => 'nullable|date',
             'timestamp' => 'required|string',
             'nonce' => 'required|string|max:100',
             'signature' => 'required|string|size:64',
@@ -56,6 +60,14 @@ class AttendanceController extends Controller
                 'success' => false,
                 'message' => 'This device is not assigned to the selected branch.',
             ], 403);
+        }
+        $locationValidation = app(\App\Services\AttendanceLocationVerifier::class)->validate($request, $device);
+        if ($locationValidation !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $locationValidation['error'],
+                'attendance_blocked' => true,
+            ], $locationValidation['code']);
         }
         if (!app(BiometricDeviceAuthenticator::class)->isCurrentAttendanceTimestamp((string) $request->input('timestamp'))) {
             $message = 'Offline attendance is disabled. Connect to the server and scan again.';

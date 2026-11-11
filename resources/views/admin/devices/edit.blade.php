@@ -103,6 +103,7 @@
                         <input type="hidden" name="location_check_enabled" value="0">
                         <input type="checkbox" name="location_check_enabled" id="location_check_enabled" class="form-check-input" value="1" {{ old('location_check_enabled', $device->location_check_enabled) ? 'checked' : '' }}>
                         <label for="location_check_enabled" class="form-check-label">Enable school location check</label>
+                        <small class="d-block text-muted">When enabled, the kiosk must send a fresh Windows location fix inside this radius to record attendance.</small>
                     </div>
 
                     <div class="col-12">

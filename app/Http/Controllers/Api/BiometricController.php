@@ -291,6 +291,20 @@ class BiometricController extends Controller
         return app(BiometricDeviceAuthenticator::class)->authenticate($request);
     }
 
+    private function validateAttendanceLocation(Request $request, Device $device)
+    {
+        $validation = app(\App\Services\AttendanceLocationVerifier::class)->validate($request, $device);
+        if ($validation === null) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'error' => $validation['error'],
+            'attendance_blocked' => true,
+        ], $validation['code']);
+    }
+
     private function resolveDeviceFromRequest(Request $request): ?Device
     {
         $serial = Device::normalizeSerialNumber($request->input('device_serial'));
@@ -348,6 +362,9 @@ class BiometricController extends Controller
         $device = $deviceValidation['device'];
         if ($device->branch_id === null) {
             return response()->json(['success' => false, 'error' => 'This device is not assigned to a branch.'], 403);
+        }
+        if ($locationError = $this->validateAttendanceLocation($request, $device)) {
+            return $locationError;
         }
         if (!app(BiometricDeviceAuthenticator::class)->isCurrentAttendanceTimestamp((string) $request->input('timestamp'))) {
             return $this->offlineAttendanceDisabledResponse();
@@ -521,6 +538,9 @@ class BiometricController extends Controller
         $device = $deviceValidation['device'];
         if ($device->branch_id === null) {
             return response()->json(['success' => false, 'error' => 'This device is not assigned to a branch.'], 403);
+        }
+        if ($locationError = $this->validateAttendanceLocation($request, $device)) {
+            return $locationError;
         }
         if (!app(BiometricDeviceAuthenticator::class)->isCurrentAttendanceTimestamp((string) $request->input('timestamp'))) {
             return $this->offlineAttendanceDisabledResponse();
@@ -1069,6 +1089,9 @@ class BiometricController extends Controller
         $device = $deviceValidation['device'];
         if ($device->branch_id === null) {
             return response()->json(['success' => false, 'error' => 'This device is not assigned to a branch.'], 403);
+        }
+        if ($locationError = $this->validateAttendanceLocation($request, $device)) {
+            return $locationError;
         }
         if (!app(BiometricDeviceAuthenticator::class)->isCurrentAttendanceTimestamp((string) $request->input('timestamp'))) {
             return $this->offlineAttendanceDisabledResponse();
@@ -1678,6 +1701,9 @@ class BiometricController extends Controller
                 'error' => 'This device is not assigned to a branch and cannot record attendance.',
                 'message' => 'This device is not assigned to a branch and cannot record attendance.',
             ], 403);
+        }
+        if ($locationError = $this->validateAttendanceLocation($request, $device)) {
+            return $locationError;
         }
 
         // Find employee by fingerprint

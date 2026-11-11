@@ -248,6 +248,80 @@ class ApiBiometricEndpointSecurityTest extends TestCase
         $this->assertDatabaseCount('attendance_logs', 0);
     }
 
+    public function test_attendance_clock_rejects_a_registered_device_outside_its_gps_radius(): void
+    {
+        $branch = $this->makeBranch('BR-GPS-CLOCK-SEC', 'GPS Clock Security Branch');
+        $employeeUser = User::create([
+            'name' => 'GPS Clock Employee',
+            'email' => 'gps.clock.employee@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employee = EmployeeProfile::create([
+            'user_id' => $employeeUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-GPS-CLOCK-SEC',
+            'first_name' => 'GPS Clock',
+            'last_name' => 'Employee',
+            'position' => 'Staff',
+            'date_hired' => today()->toDateString(),
+            'fingerprint_template' => base64_encode(str_repeat('gps-clock-fingerprint-template', 5)),
+            'is_fingerprint_registered' => true,
+        ]);
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-41',
+            'serial_number' => 'GPS-CLOCK-SERIAL-01',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'GPS Clock Test Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'latitude' => 14.5995,
+            'longitude' => 120.9842,
+            'radius_meters' => 100,
+            'location_check_enabled' => true,
+            'status' => 'active',
+        ]);
+
+        $payload = $this->makeSignedClockPayload(
+            $employee,
+            $branch,
+            $device,
+            $employee->fingerprint_template,
+            'outside-campus-gps-attempt'
+        );
+        $payload['gps_latitude'] = '14.61';
+        $payload['gps_longitude'] = '120.9842';
+        $payload['gps_accuracy'] = '5';
+        $payload['gps_timestamp'] = now()->toIso8601String();
+        $request = Request::create('/api/attendance/clock', 'POST', $payload);
+        $payload['signature'] = hash_hmac(
+            'sha256',
+            app(BiometricDeviceAuthenticator::class)->signingPayload($request, true),
+            self::DEVICE_SECRET
+        );
+
+        $tamperedPayload = $payload;
+        $tamperedPayload['gps_latitude'] = '14.5995';
+        $this->postJson('/api/attendance/clock', $tamperedPayload)
+            ->assertUnauthorized()
+            ->assertJson(['message' => 'Invalid device credential signature.']);
+
+        $response = $this->postJson('/api/attendance/clock', $payload);
+        $this->assertSame(403, $response->getStatusCode(), $response->getContent());
+        $response
+            ->assertJsonPath('attendance_blocked', true)
+            ->assertJsonPath('message', 'The kiosk is outside the school attendance area. Attendance was not recorded.');
+
+        $this->assertDatabaseMissing('attendance_logs', [
+            'employee_profile_id' => $employee->id,
+            'attendance_date' => now()->toDateString(),
+        ]);
+    }
+
     public function test_fingerprint_temp_requires_admin_access_and_limits_branch_admins_to_their_branch(): void
     {
         $branch = $this->makeBranch('BR-TEMP-SEC', 'Temporary Data Branch');
