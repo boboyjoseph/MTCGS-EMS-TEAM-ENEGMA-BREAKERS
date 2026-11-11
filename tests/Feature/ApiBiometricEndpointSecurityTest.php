@@ -213,6 +213,41 @@ class ApiBiometricEndpointSecurityTest extends TestCase
         ]);
     }
 
+    public function test_browser_users_cannot_clock_attendance_without_a_registered_kiosk(): void
+    {
+        $branch = $this->makeBranch('BR-BROWSER-CLOCK-SEC', 'Browser Clock Security Branch');
+        $employee = User::create([
+            'name' => 'Browser Clock Employee',
+            'email' => 'browser.clock.employee@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $payload = [
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-BROWSER-CLOCK-SEC',
+            'attendance_type' => 'am_in',
+            'fingerprint_data' => base64_encode('browser-fingerprint-data'),
+            'device_serial' => 'UNREGISTERED-BROWSER-DEVICE',
+            'mac_address' => 'AA:BB:CC:DD:EE:50',
+            'device_id' => 'browser-device',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'browser-clock-attempt',
+            'signature' => str_repeat('0', 64),
+        ];
+
+        foreach (['/attendance/clock', '/api/attendance/clock'] as $endpoint) {
+            $this->actingAs($employee)
+                ->postJson($endpoint, $payload)
+                ->assertUnauthorized();
+        }
+
+        $this->assertDatabaseCount('attendance_logs', 0);
+    }
+
     public function test_fingerprint_temp_requires_admin_access_and_limits_branch_admins_to_their_branch(): void
     {
         $branch = $this->makeBranch('BR-TEMP-SEC', 'Temporary Data Branch');
