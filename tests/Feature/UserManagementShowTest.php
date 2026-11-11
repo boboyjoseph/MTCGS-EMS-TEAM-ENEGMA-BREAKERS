@@ -83,7 +83,7 @@ class UserManagementShowTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_employee_profile_shows_registered_finger_names_without_exposing_templates(): void
+    public function test_employee_profile_separates_hands_and_shows_finger_status_without_exposing_templates(): void
     {
         $branch = Branch::create([
             'branch_code' => 'BR-FINGER-PROFILE',
@@ -124,6 +124,7 @@ class UserManagementShowTest extends TestCase
                 'templates' => [
                     ['finger_name' => 'Left Thumb', 'fingerprint_data' => base64_encode('private-template-data')],
                     base64_encode('legacy-template-data'),
+                    ['finger_name' => 'Right Thumb', 'fingerprint_data' => base64_encode('private-right-template-data')],
                 ],
             ]),
             'is_fingerprint_registered' => true,
@@ -135,10 +136,16 @@ class UserManagementShowTest extends TestCase
         ]));
 
         $response->assertOk()
-            ->assertSeeText('Registered Fingers')
-            ->assertSeeText('Left Thumb')
+            ->assertSeeText('Fingerprint Status')
+            ->assertSeeText('Left Hand')
+            ->assertSeeText('Right Hand')
+            ->assertSeeText('Index Finger')
+            ->assertSeeText('Not Registered')
             ->assertSeeText('Finger 2 (name not recorded)')
+            ->assertSee('aria-label="Left Thumb: Registered"', false)
+            ->assertSee('aria-label="Right Thumb: Registered"', false)
             ->assertDontSee(base64_encode('private-template-data'))
-            ->assertDontSee(base64_encode('legacy-template-data'));
+            ->assertDontSee(base64_encode('legacy-template-data'))
+            ->assertDontSee(base64_encode('private-right-template-data'));
     }
 }
