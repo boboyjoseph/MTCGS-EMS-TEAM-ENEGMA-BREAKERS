@@ -131,12 +131,12 @@
         </div>
     </div>
 
-    <!-- Admin / Branch Head's Own DTR Card -->
     @php
         $user = Auth::user();
         $adminProfile = $user ? $user->getAdminProfile() : null;
         $isHrAdmin = $user && $user->role === 'admin'
             && (($user->admin_type ?? '') === 'hr' || strtolower((string) ($adminProfile?->admin_level ?? '')) === 'hr');
+        $canDownloadBiometricApp = $user && ($user->isSuperAdmin() || $isHrAdmin);
         $branchHeadProfile = $user ? $user->getBranchHeadProfile() : null;
         $employeeProfile = $adminProfile ? App\Models\EmployeeProfile::find($adminProfile->employee_profile_id) : ($branchHeadProfile ? App\Models\EmployeeProfile::find($branchHeadProfile->employee_profile_id) : null);
         $todayAttendance = $employeeProfile ? App\Models\AttendanceLog::where('employee_profile_id', $employeeProfile->id)->whereDate('attendance_date', today())->first() : null;
@@ -144,6 +144,30 @@
         $isBranchHeadSelfAttendance = $user && $user->role === 'branch_head';
     @endphp
 
+    @if($canDownloadBiometricApp)
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-download text-primary me-2"></i> Biometric Desktop App</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-3">Download the installer for the branch where the kiosk is assigned. It includes the Attendance and Enrollment desktop apps.</p>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary"
+                   href="{{ url('/updates/MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe') }}"
+                   download>
+                    <i class="fas fa-download me-1"></i> Download Buhi App
+                </a>
+                <a class="btn btn-primary"
+                   href="{{ url('/updates/MTCGS-Biometric-Setup-iriga-1.0.3-J62OE23640.exe') }}"
+                   download>
+                    <i class="fas fa-download me-1"></i> Download Iriga App
+                </a>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Admin / Branch Head's Own DTR Card -->
     @if($adminProfile && $canSelfRegisterAdminFingerprint && !$isHrAdmin)
     <div class="row mb-4">
         <div class="col-md-6 mx-auto">
@@ -162,7 +186,7 @@
                         </div>
                     @else
                         <div id="adminFingerprintStatus" class="alert alert-info d-none" role="status"></div>
-                        <button id="registerAdminFingerprintButton" onclick="registerAdminFingerprint()" class="btn btn-primary">
+                        <button id="registerAdminFingerprintButton" onclick="window.registerAdminFingerprint()" class="btn btn-primary">
                             <i class="fas fa-fingerprint"></i> Register My Fingerprint
                         </button>
                     @endif
@@ -185,7 +209,7 @@
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle"></i> Please register your fingerprint first.
                             </div>
-                            <button onclick="registerAdminFingerprint()" class="btn btn-primary">
+                            <button onclick="window.registerAdminFingerprint()" class="btn btn-primary">
                                 <i class="fas fa-fingerprint"></i> Register My Fingerprint
                             </button>
                         @elseif(!$todayAttendance || !$todayAttendance->am_in || !$todayAttendance->am_out || !$todayAttendance->pm_in || !$todayAttendance->pm_out)
@@ -199,7 +223,7 @@
                                     $adminAttendanceButtonClass = 'danger';
                                 }
                             @endphp
-                            <button onclick="processAdminAttendance()" class="btn btn-{{ $adminAttendanceButtonClass }} btn-lg px-5 py-3">
+                            <button onclick="window.processAdminAttendance()" class="btn btn-{{ $adminAttendanceButtonClass }} btn-lg px-5 py-3">
                                 <i class="fas fa-fingerprint fa-2x d-block mb-2"></i>
                                 FINGERPRINT ATTENDANCE
                             </button>
@@ -267,6 +291,7 @@
     ] : null;
 @endphp
 <script>
+(function biometricPage() {
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 const appBaseUrl = @json(request()->getBaseUrl());
 const apiUrl = (path) => `${appBaseUrl}/api/${path}`;
@@ -274,6 +299,35 @@ const jsonHeaders = {
     'Accept': 'application/json',
     'X-CSRF-TOKEN': csrfToken
 };
+
+async function fetchBiometricList(path) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+        const response = await fetch(apiUrl(path), {
+            credentials: 'same-origin',
+            headers: jsonHeaders,
+            signal: controller.signal
+        });
+
+        let result;
+        try {
+            result = await response.json();
+        } catch {
+            throw new Error(`The server returned an invalid response (HTTP ${response.status}).`);
+        }
+
+        return { response, result };
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('The request timed out. Refresh the page or contact IT if this continues.');
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
 
 function getOrCreateFingerprint(key, seed) {
     const stored = localStorage.getItem(key);
@@ -429,10 +483,7 @@ async function loadUnregisteredEmployees() {
     }
 
     try {
-        const response = await fetch(apiUrl('biometric/unregistered-employees'), {
-            headers: jsonHeaders
-        });
-        const result = await response.json();
+        const { response, result } = await fetchBiometricList('biometric/unregistered-employees');
         if (!response.ok || !result.success || !Array.isArray(result.data)) {
             throw new Error(result.error || 'The employee list could not be loaded.');
         }
@@ -594,10 +645,7 @@ async function loadUnregisteredFinanceOfficers() {
     }
 
     try {
-        const response = await fetch(apiUrl('biometric/unregistered-finance-officers'), {
-            headers: jsonHeaders
-        });
-        const result = await response.json();
+        const { response, result } = await fetchBiometricList('biometric/unregistered-finance-officers');
         if (!response.ok || !result.success || !Array.isArray(result.data)) {
             throw new Error(result.error || 'The finance officer list could not be loaded.');
         }
@@ -722,6 +770,9 @@ async function registerAdminOfficerFingerprint(adminId, adminName) {
     }
 }
 
+window.registerAdminFingerprint = registerAdminFingerprint;
+window.processAdminAttendance = processAdminAttendance;
+
 // Load all sections
 loadUnregisteredEmployees();
 if (document.getElementById('unregisteredFinanceHeadList') || document.getElementById('unregisteredFinanceOfficerList') || document.getElementById('unregisteredFinanceList')) {
@@ -730,5 +781,6 @@ if (document.getElementById('unregisteredFinanceHeadList') || document.getElemen
 if (document.getElementById('unregisteredHrList') || document.getElementById('unregisteredBranchAdminList') || document.getElementById('unregisteredAdminsList')) {
     loadUnregisteredAdmins();
 }
+})();
 </script>
 @endsection

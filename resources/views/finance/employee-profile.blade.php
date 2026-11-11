@@ -3,6 +3,36 @@
 @section('title', 'User Profile')
 
 @section('content')
+@php
+    $storedFingerprint = trim((string) ($profile->fingerprint_template ?? ''));
+    $decodedFingerprint = json_decode($storedFingerprint, true);
+    $registeredFingers = [];
+
+    if (is_array($decodedFingerprint) && isset($decodedFingerprint['templates']) && is_array($decodedFingerprint['templates'])) {
+        foreach (array_values($decodedFingerprint['templates']) as $index => $template) {
+            $hasTemplateData = is_string($template) && $template !== '';
+            $hasTemplateData = $hasTemplateData
+                || (is_array($template) && is_string($template['fingerprint_data'] ?? null) && $template['fingerprint_data'] !== '');
+
+            if (!$hasTemplateData) {
+                continue;
+            }
+
+            $fingerName = is_array($template) && is_string($template['finger_name'] ?? null)
+                ? trim($template['finger_name'])
+                : '';
+
+            $registeredFingers[] = [
+                'number' => $index + 1,
+                'name' => $fingerName !== '' ? $fingerName : null,
+            ];
+        }
+    } elseif ($storedFingerprint !== '' && strtolower($storedFingerprint) !== 'null') {
+        $registeredFingers[] = ['number' => 1, 'name' => null];
+    }
+
+    $hasRegisteredFingerprints = (bool) ($profile->is_fingerprint_registered ?? false) || $registeredFingers !== [];
+@endphp
 <div class="container-fluid profile-page">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -52,6 +82,22 @@
                         <div class="col-md-6"><div class="text-muted small">Pag-IBIG Number</div><div class="fw-semibold">{{ $profile->pagibig_number ?? 'Not specified' }}</div></div>
                         <div class="col-md-6"><div class="text-muted small">TIN Number</div><div class="fw-semibold">{{ $profile->tin_number ?? 'Not specified' }}</div></div>
                     </div>
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="fas fa-fingerprint me-2"></i>Registered Fingers</h6>
+                    @if(count($registeredFingers) > 0)
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($registeredFingers as $finger)
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    {{ $finger['name'] ?? 'Finger ' . $finger['number'] . ' (name not recorded)' }}
+                                </span>
+                            @endforeach
+                        </div>
+                    @elseif($hasRegisteredFingerprints)
+                        <p class="text-muted mb-0">Fingerprint is registered, but the finger name is not available in this record.</p>
+                    @else
+                        <p class="text-muted mb-0">No registered fingerprints.</p>
+                    @endif
                 </div>
             </div>
         </div>

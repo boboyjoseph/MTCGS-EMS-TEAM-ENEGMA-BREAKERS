@@ -165,7 +165,58 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.biometric'))
             ->assertOk()
-            ->assertSeeText('Biometric Management');
+            ->assertSeeText('Biometric Management')
+            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe')
+            ->assertSee('MTCGS-Biometric-Setup-iriga-1.0.3-J62OE23640.exe')
+            ->assertSee('fetchBiometricList')
+            ->assertSee('(function biometricPage() {')
+            ->assertSee('window.registerAdminFingerprint = registerAdminFingerprint;');
+    }
+
+    public function test_biometric_app_downloads_are_visible_to_hr_but_not_branch_admins(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-BIOMETRIC-DOWNLOAD-ACCESS',
+            'branch_name' => 'Biometric Download Access Branch',
+            'address' => 'Biometric Download Access Address',
+        ]);
+        $hrAdmin = User::create([
+            'name' => 'Biometric HR Admin',
+            'email' => 'biometric-hr-download@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $branchAdmin = User::create([
+            'name' => 'Biometric Branch Admin',
+            'email' => 'biometric-branch-download@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+
+        $this->actingAs($hrAdmin)
+            ->get(route('admin.biometric'))
+            ->assertOk()
+            ->assertSee('Biometric Desktop App')
+            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe');
+
+        auth()->logout();
+
+        $this->actingAs($branchAdmin)
+            ->get(route('admin.biometric'))
+            ->assertOk()
+            ->assertDontSee('Biometric Desktop App')
+            ->assertDontSee('MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe')
+            ->assertDontSee('MTCGS-Biometric-Setup-iriga-1.0.3-J62OE23640.exe');
     }
 
     public function test_super_admin_cannot_register_own_fingerprint_and_card_is_hidden(): void
