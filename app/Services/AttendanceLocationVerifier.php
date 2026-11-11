@@ -17,6 +17,31 @@ class AttendanceLocationVerifier
      */
     public function validate(Request $request, Device $device): ?array
     {
+        return $this->validateLocation(
+            $request,
+            $device,
+            'Live location is required to record attendance at this kiosk.',
+            'The kiosk is outside the school attendance area. Attendance was not recorded.'
+        );
+    }
+
+    public function validateEnrollment(Request $request, Device $device): ?array
+    {
+        return $this->validateLocation(
+            $request,
+            $device,
+            'Live location is required to enroll fingerprints at this kiosk.',
+            'The kiosk is outside the configured school area. Fingerprint enrollment was not completed.'
+        );
+    }
+
+    private function validateLocation(
+        Request $request,
+        Device $device,
+        string $missingLocationMessage,
+        string $outsideAreaMessage
+    ): ?array
+    {
         if (! $device->location_check_enabled) {
             return null;
         }
@@ -37,7 +62,7 @@ class AttendanceLocationVerifier
         if (! is_numeric($latitude) || ! is_numeric($longitude) || ! is_numeric($accuracy)
             || ! is_string($gpsTimestamp) || ! is_string($attendanceTimestamp)) {
             return [
-                'error' => 'Live location is required to record attendance at this kiosk.',
+                'error' => $missingLocationMessage,
                 'code' => 403,
             ];
         }
@@ -81,7 +106,7 @@ class AttendanceLocationVerifier
 
         if ($distance + $accuracy > (int) $device->radius_meters) {
             return [
-                'error' => 'The kiosk is outside the school attendance area. Attendance was not recorded.',
+                'error' => $outsideAreaMessage,
                 'code' => 403,
             ];
         }

@@ -102,8 +102,8 @@
                         <div class="col-12 form-check ms-2">
                             <input type="hidden" name="location_check_enabled" value="0">
                             <input type="checkbox" name="location_check_enabled" id="location_check_enabled" class="form-check-input" value="1" {{ old('location_check_enabled', true) ? 'checked' : '' }}>
-                            <label for="location_check_enabled" class="form-check-label">Check attendance against this location</label>
-                            <small class="d-block text-muted">When enabled, the kiosk must send a fresh Windows location fix inside this radius to record attendance.</small>
+                            <label for="location_check_enabled" class="form-check-label">Require GPS for attendance and fingerprint enrollment</label>
+                            <small class="d-block text-muted">When enabled, the Attendance and Enrollment apps must send a fresh Windows location fix inside this radius.</small>
                         </div>
                         <div class="col-12">
                             <label for="notes" class="form-label">Notes</label>

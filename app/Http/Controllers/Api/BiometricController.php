@@ -2054,6 +2054,10 @@ class BiometricController extends Controller
             'timestamp' => 'required|string',
             'nonce' => 'required|string|max:100',
             'signature' => 'required|string|size:64',
+            'gps_latitude' => 'nullable|numeric|between:-90,90',
+            'gps_longitude' => 'nullable|numeric|between:-180,180',
+            'gps_accuracy' => 'nullable|numeric|min:0',
+            'gps_timestamp' => 'nullable|date',
         ]);
 
         $deviceValidation = $this->validateDeviceIdentity($request);
@@ -2064,6 +2068,16 @@ class BiometricController extends Controller
             ], $deviceValidation['code']);
         }
         $device = $deviceValidation['device'];
+
+        $locationValidation = app(\App\Services\AttendanceLocationVerifier::class)
+            ->validateEnrollment($request, $device);
+        if ($locationValidation !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $locationValidation['error'],
+                'enrollment_blocked' => true,
+            ], $locationValidation['code']);
+        }
 
         if ($device->branch_id === null) {
             $this->clearFingerprintTempCache($request);

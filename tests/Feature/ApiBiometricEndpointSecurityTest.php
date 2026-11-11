@@ -322,6 +322,54 @@ class ApiBiometricEndpointSecurityTest extends TestCase
         ]);
     }
 
+    public function test_fingerprint_enrollment_rejects_a_registered_device_outside_its_gps_radius(): void
+    {
+        $branch = $this->makeBranch('BR-GPS-ENROLL-SEC', 'GPS Enrollment Security Branch');
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-43',
+            'serial_number' => 'GPS-ENROLL-SERIAL-01',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'GPS Enrollment Test Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'latitude' => 14.5995,
+            'longitude' => 120.9842,
+            'radius_meters' => 100,
+            'location_check_enabled' => true,
+            'status' => 'active',
+        ]);
+        $payload = [
+            'employee_number' => 'EMP-GPS-ENROLL-01',
+            'fingerprint_data' => base64_encode(str_repeat('enrollment-fingerprint-template', 5)),
+            'first_name' => 'GPS',
+            'last_name' => 'Enrollment',
+            'branch' => $branch->branch_name,
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:43',
+            'device_id' => '',
+            'mac_address' => 'AA:BB:CC:DD:EE:43',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'outside-campus-gps-enrollment-attempt',
+            'gps_latitude' => '14.61',
+            'gps_longitude' => '120.9842',
+            'gps_accuracy' => '5',
+            'gps_timestamp' => now()->toIso8601String(),
+        ];
+        $request = Request::create('/api/fingerprint-register-temp', 'POST', $payload);
+        $payload['signature'] = hash_hmac(
+            'sha256',
+            app(BiometricDeviceAuthenticator::class)->signingPayload($request, true),
+            self::DEVICE_SECRET
+        );
+
+        $this->postJson('/api/fingerprint-register-temp', $payload)
+            ->assertForbidden()
+            ->assertJsonPath('enrollment_blocked', true)
+            ->assertJsonPath('message', 'The kiosk is outside the configured school area. Fingerprint enrollment was not completed.');
+
+        $this->assertNull(cache()->get('fingerprint_temp_EMP-GPS-ENROLL-01'));
+    }
+
     public function test_fingerprint_temp_requires_admin_access_and_limits_branch_admins_to_their_branch(): void
     {
         $branch = $this->makeBranch('BR-TEMP-SEC', 'Temporary Data Branch');
