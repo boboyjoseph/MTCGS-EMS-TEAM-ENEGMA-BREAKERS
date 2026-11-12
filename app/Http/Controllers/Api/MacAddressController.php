@@ -120,6 +120,9 @@ class MacAddressController extends Controller
                 'device_name' => $device->device_name,
                 'status' => $device->status,
                 'location_check_enabled' => $device->location_check_enabled,
+                'latitude' => $device->latitude !== null ? (float) $device->latitude : null,
+                'longitude' => $device->longitude !== null ? (float) $device->longitude : null,
+                'radius_meters' => $device->radius_meters !== null ? (int) $device->radius_meters : null,
                 'updated_at' => $device->updated_at?->toIso8601String(),
             ],
         ]);

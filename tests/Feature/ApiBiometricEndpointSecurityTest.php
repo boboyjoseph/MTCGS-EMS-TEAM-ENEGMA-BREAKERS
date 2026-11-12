@@ -437,4 +437,30 @@ class ApiBiometricEndpointSecurityTest extends TestCase
             ->assertOk()
             ->assertJsonPath('enrollment_exe', 'C:\\enrollment\\MTCGS_Enroll.exe');
     }
+
+    public function test_signed_device_status_returns_the_registered_geofence_settings(): void
+    {
+        $branch = $this->makeBranch('BR-GPS-STATUS', 'GPS Status Branch');
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-42',
+            'serial_number' => 'GPS-STATUS-SERIAL-01',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'GPS Status Test Device',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'latitude' => 14.5995,
+            'longitude' => 120.9842,
+            'radius_meters' => 391,
+            'location_check_enabled' => true,
+            'status' => 'active',
+        ]);
+        $query = $this->makeSignedDeviceQuery($device, 'api/device-status');
+
+        $this->getJson('/api/device-status?' . http_build_query($query))
+            ->assertOk()
+            ->assertJsonPath('device.location_check_enabled', true)
+            ->assertJsonPath('device.latitude', 14.5995)
+            ->assertJsonPath('device.longitude', 120.9842)
+            ->assertJsonPath('device.radius_meters', 391);
+    }
 }
