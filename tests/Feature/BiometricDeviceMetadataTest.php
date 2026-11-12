@@ -166,8 +166,8 @@ class BiometricDeviceMetadataTest extends TestCase
             ->get(route('admin.biometric'))
             ->assertOk()
             ->assertSeeText('Biometric Management')
-            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe')
-            ->assertSee('MTCGS-Biometric-Setup-iriga-1.0.3-J62OE23640.exe')
+            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.5-J320E01822.exe')
+            ->assertSee('MTCGS-Biometric-Setup-iriga-1.0.5-J62OE23640.exe')
             ->assertSee('fetchBiometricList')
             ->assertSee('(function biometricPage() {')
             ->assertSee('window.registerAdminFingerprint = registerAdminFingerprint;');
@@ -207,7 +207,7 @@ class BiometricDeviceMetadataTest extends TestCase
             ->get(route('admin.biometric'))
             ->assertOk()
             ->assertSee('Biometric Desktop App')
-            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe');
+            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.5-J320E01822.exe');
 
         auth()->logout();
 
@@ -215,8 +215,8 @@ class BiometricDeviceMetadataTest extends TestCase
             ->get(route('admin.biometric'))
             ->assertOk()
             ->assertDontSee('Biometric Desktop App')
-            ->assertDontSee('MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe')
-            ->assertDontSee('MTCGS-Biometric-Setup-iriga-1.0.3-J62OE23640.exe');
+            ->assertDontSee('MTCGS-Biometric-Setup-buhi-1.0.5-J320E01822.exe')
+            ->assertDontSee('MTCGS-Biometric-Setup-iriga-1.0.5-J62OE23640.exe');
     }
 
     public function test_super_admin_cannot_register_own_fingerprint_and_card_is_hidden(): void

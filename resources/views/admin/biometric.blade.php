@@ -153,12 +153,12 @@
             <p class="mb-3">Download the installer for the branch where the kiosk is assigned. It includes the Attendance and Enrollment desktop apps.</p>
             <div class="d-flex flex-wrap gap-2">
                 <a class="btn btn-primary"
-                   href="{{ url('/updates/MTCGS-Biometric-Setup-buhi-1.0.3-J320E01822.exe') }}"
+                   href="{{ url('/updates/MTCGS-Biometric-Setup-buhi-1.0.5-J320E01822.exe') }}"
                    download>
                     <i class="fas fa-download me-1"></i> Download Buhi App
                 </a>
                 <a class="btn btn-primary"
-                   href="{{ url('/updates/MTCGS-Biometric-Setup-iriga-1.0.3-J62OE23640.exe') }}"
+                   href="{{ url('/updates/MTCGS-Biometric-Setup-iriga-1.0.5-J62OE23640.exe') }}"
                    download>
                     <i class="fas fa-download me-1"></i> Download Iriga App
                 </a>
