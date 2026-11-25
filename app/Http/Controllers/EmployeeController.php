@@ -33,6 +33,29 @@ class EmployeeController extends Controller
         
         return null;
     }
+
+    private function generateEmployeeNumber(Branch $branch): string
+    {
+        $prefix = preg_replace('/[^A-Z0-9]/', '', strtoupper($branch->branch_code));
+        $prefix = $prefix !== '' ? $prefix : 'BRANCH' . $branch->id;
+        $pattern = '/^' . preg_quote($prefix, '/') . '-([0-9]+)$/i';
+
+        $existingNumbers = EmployeeProfile::where('employee_number', 'like', $prefix . '-%')
+            ->pluck('employee_number')
+            ->merge(FinanceProfile::where('employee_number', 'like', $prefix . '-%')->pluck('employee_number'));
+        $nextSequence = (int) $existingNumbers->map(function ($number) use ($pattern) {
+            return preg_match($pattern, (string) $number, $matches) ? (int) $matches[1] : null;
+        })->filter(fn ($sequence) => $sequence !== null)->max() + 1;
+
+        do {
+            $employeeNumber = sprintf('%s-%03d', $prefix, $nextSequence++);
+        } while (
+            EmployeeProfile::where('employee_number', $employeeNumber)->exists()
+            || FinanceProfile::where('employee_number', $employeeNumber)->exists()
+        );
+
+        return $employeeNumber;
+    }
     
     public function index()
     {
@@ -449,7 +472,7 @@ class EmployeeController extends Controller
             'first_name' => 'required',
             'last_name' => 'required',
             'email' => 'required|email|unique:users',
-            'employee_number' => ['required', 'string', 'min:5', 'max:30', 'regex:/^[A-Za-z0-9][A-Za-z0-9_-]*$/'],
+            'employee_number' => ['nullable', 'required_without:branch_id', 'string', 'min:5', 'max:30', 'regex:/^[A-Za-z0-9][A-Za-z0-9_-]*$/'],
             'branch_id' => $isFinanceHead ? 'nullable|exists:branches,id' : 'required|exists:branches,id',
             'position' => 'required',
             'date_of_birth' => 'nullable|date|before_or_equal:today',
@@ -461,7 +484,8 @@ class EmployeeController extends Controller
             'fingerprint_data' => 'nullable|string',
         ]);
         
-        if (EmployeeProfile::where('employee_number', $request->employee_number)->exists() || FinanceProfile::where('employee_number', $request->employee_number)->exists()) {
+        $employeeNumber = trim((string) $request->input('employee_number', ''));
+        if ($employeeNumber !== '' && (EmployeeProfile::where('employee_number', $employeeNumber)->exists() || FinanceProfile::where('employee_number', $employeeNumber)->exists())) {
             return back()->withErrors(['employee_number' => 'This employee number is already in use.'])->withInput();
         }
         
@@ -474,6 +498,12 @@ class EmployeeController extends Controller
                     return back()->with('error', 'You can only add employees to your branch.');
                 }
             }
+
+            $branchId = $request->branch_id;
+            if ($employeeNumber === '') {
+                $branch = Branch::whereKey($branchId)->lockForUpdate()->firstOrFail();
+                $employeeNumber = $this->generateEmployeeNumber($branch);
+            }
             
             $isActive = $request->has('is_active');
             $fingerprintTemplate = $request->input('fingerprint_data');
@@ -484,7 +514,6 @@ class EmployeeController extends Controller
                 ? (base64_decode($fingerprintTemplate, true) ?: $fingerprintTemplate)
                 : null;
             $isFingerprintRegistered = !empty($fingerprintTemplate) && $fingerprintTemplate !== 'null';
-            $branchId = $request->branch_id;
             $basicSalary = $isFinanceHead ? 0 : ($request->basic_salary ?? 0);
             
             // Generate a temporary password that will only be emailed after system admin approval.
@@ -507,7 +536,7 @@ class EmployeeController extends Controller
                 $profile = FinanceProfile::create([
                     'user_id' => $user->id,
                     'branch_id' => $branchId,
-                    'employee_number' => $request->employee_number,
+                    'employee_number' => $employeeNumber,
                     'first_name' => $request->first_name,
                     'last_name' => $request->last_name,
                     'position' => $request->position,
@@ -526,7 +555,7 @@ class EmployeeController extends Controller
                 $profile = EmployeeProfile::create([
                     'user_id' => $user->id,
                     'branch_id' => $request->branch_id,
-                    'employee_number' => $request->employee_number,
+                    'employee_number' => $employeeNumber,
                     'first_name' => $request->first_name,
                     'last_name' => $request->last_name,
                     'position' => $request->position,

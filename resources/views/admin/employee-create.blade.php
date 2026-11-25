@@ -47,8 +47,9 @@
                                 <input type="email" name="email" class="form-control" value="{{ old('email') }}" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Employee ID <span class="text-danger">*</span></label>
-                                <input type="text" name="employee_number" class="form-control" value="{{ old('employee_number') }}" required>
+                                <label class="form-label">Employee ID</label>
+                                <input type="text" name="employee_number" class="form-control" value="{{ old('employee_number') }}" placeholder="Auto-generated from branch">
+                                <small class="form-text text-muted">Leave blank to generate an ID for the selected branch, such as MTCIRIGA-001.</small>
                             </div>
                         </div>
                         

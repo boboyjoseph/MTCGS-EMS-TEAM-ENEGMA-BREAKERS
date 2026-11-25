@@ -76,6 +76,49 @@ class EmployeeApprovalFlowTest extends TestCase
         ]);
     }
 
+    public function test_blank_employee_id_is_generated_from_branch_code_and_incremented(): void
+    {
+        $iriga = Branch::where('branch_code', 'MTC-IRIGA')->firstOrFail();
+        $buhi = Branch::where('branch_code', 'MTC-BUHI')->firstOrFail();
+
+        $admin = User::create([
+            'name' => 'System Admin',
+            'email' => 'auto-id-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'branch_id' => $iriga->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+
+        $this->withoutMiddleware()->actingAs($admin);
+
+        foreach ([
+            [$iriga, 'auto-id-iriga-1@example.com', 'MTCIRIGA-001'],
+            [$iriga, 'auto-id-iriga-2@example.com', 'MTCIRIGA-002'],
+            [$buhi, 'auto-id-buhi@example.com', 'MTCBUHI-001'],
+        ] as [$branch, $email, $employeeNumber]) {
+            $this->post(route('admin.employee-store'), [
+                'first_name' => 'Auto',
+                'last_name' => 'Generated',
+                'email' => $email,
+                'branch_id' => $branch->id,
+                'position' => 'Teacher',
+                'date_hired' => now()->format('Y-m-d'),
+                'status' => 'Regular',
+                'role' => 'employee',
+                'basic_salary' => '25000',
+            ])->assertRedirect(route('admin.employees', absolute: false));
+
+            $this->assertDatabaseHas('employee_profiles', [
+                'employee_number' => $employeeNumber,
+                'branch_id' => $branch->id,
+            ]);
+        }
+    }
+
     public function test_super_admin_can_create_branch_specific_admin_account(): void
     {
         $branch = Branch::create([
