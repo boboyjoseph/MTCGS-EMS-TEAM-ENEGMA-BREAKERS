@@ -36,8 +36,13 @@ class EmployeeController extends Controller
 
     private function generateEmployeeNumber(Branch $branch): string
     {
-        $prefix = preg_replace('/[^A-Z0-9]/', '', strtoupper($branch->branch_code));
-        $prefix = $prefix !== '' ? $prefix : 'BRANCH' . $branch->id;
+        $branchName = strtoupper(trim((string) $branch->branch_name));
+        $branchName = preg_replace('/^MOTHER\s+THERESA\s+COLEGIO\s+(?:DE|OF)\s+/i', '', $branchName);
+        $branchName = preg_replace('/^MTC[\s-]*/i', '', $branchName);
+        $branchName = preg_replace('/\s+BRANCH$/i', '', $branchName);
+        $branchName = preg_replace('/[^A-Z0-9]/', '', $branchName);
+        $prefix = 'MTC' . ($branchName !== '' ? $branchName : 'BRANCH' . $branch->id);
+        $prefix = substr($prefix, 0, 25);
         $pattern = '/^' . preg_quote($prefix, '/') . '-([0-9]+)$/i';
 
         $existingNumbers = EmployeeProfile::where('employee_number', 'like', $prefix . '-%')

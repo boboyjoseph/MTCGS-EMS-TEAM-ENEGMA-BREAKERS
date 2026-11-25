@@ -76,10 +76,17 @@ class EmployeeApprovalFlowTest extends TestCase
         ]);
     }
 
-    public function test_blank_employee_id_is_generated_from_branch_code_and_incremented(): void
+    public function test_blank_employee_id_is_generated_from_branch_name_and_incremented(): void
     {
         $iriga = Branch::where('branch_code', 'MTC-IRIGA')->firstOrFail();
         $buhi = Branch::where('branch_code', 'MTC-BUHI')->firstOrFail();
+        $iriga->update(['branch_code' => '409810']);
+        $buhi->update(['branch_code' => '409811']);
+        $otherBranch = Branch::create([
+            'branch_code' => '409812',
+            'branch_name' => 'Mother Theresa Colegio de San Nicolas',
+            'address' => 'San Nicolas',
+        ]);
 
         $admin = User::create([
             'name' => 'System Admin',
@@ -99,6 +106,7 @@ class EmployeeApprovalFlowTest extends TestCase
             [$iriga, 'auto-id-iriga-1@example.com', 'MTCIRIGA-001'],
             [$iriga, 'auto-id-iriga-2@example.com', 'MTCIRIGA-002'],
             [$buhi, 'auto-id-buhi@example.com', 'MTCBUHI-001'],
+            [$otherBranch, 'auto-id-other-branch@example.com', 'MTCSANNICOLAS-001'],
         ] as [$branch, $email, $employeeNumber]) {
             $this->post(route('admin.employee-store'), [
                 'first_name' => 'Auto',
