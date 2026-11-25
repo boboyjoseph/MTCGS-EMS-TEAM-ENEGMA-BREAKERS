@@ -17,7 +17,7 @@
 
     <!-- SIMPLE BUTTON TABS - GARANTISADONG HIWALAY -->
     <div class="mb-3">
-        <a href="?tab=pending" class="btn {{ in_array(request('tab'), ['rejected', 'deactivated', 'credentials', 'status_changes']) ? 'btn-secondary' : 'btn-primary' }}">
+        <a href="?tab=pending" class="btn {{ in_array(request('tab'), ['rejected', 'deactivated', 'credentials', 'status_changes', 'employee_id_changes']) ? 'btn-secondary' : 'btn-primary' }}">
             <i class="fas fa-clock"></i> Pending ({{ $pendingUsers->count() }})
         </a>
         <a href="?tab=rejected" class="btn {{ request('tab') == 'rejected' ? 'btn-primary' : 'btn-secondary' }}">
@@ -32,6 +32,9 @@
         @if(Auth::user()->isSuperAdmin())
             <a href="?tab=status_changes" class="btn {{ request('tab') == 'status_changes' ? 'btn-primary' : 'btn-secondary' }}">
                 <i class="fas fa-user-edit"></i> Status Changes ({{ $pendingStatusChanges->count() }})
+            </a>
+            <a href="?tab=employee_id_changes" class="btn {{ request('tab') == 'employee_id_changes' ? 'btn-primary' : 'btn-secondary' }}">
+                <i class="fas fa-id-card"></i> Employee ID Changes ({{ $pendingEmployeeNumberChanges->count() }})
             </a>
         @endif
     </div>
@@ -70,6 +73,48 @@
                     </tr>
                     @empty
                         <tr><td colspan="7" class="text-center py-5">No pending status changes</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    @if(request('tab') == 'employee_id_changes' && Auth::user()->isSuperAdmin())
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-id-card text-warning me-2"></i>Pending Employee ID Changes</h5>
+            <small class="text-muted">The current Employee ID stays active until HR approves the requested change.</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr><th>Requested</th><th>Employee</th><th>Email</th><th>Branch</th><th>Current ID</th><th>Requested ID</th><th>Submitted By</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    @forelse($pendingEmployeeNumberChanges as $employee)
+                    <tr>
+                        <td>{{ optional($employee->employee_number_change_requested_at)->format('Y-m-d H:i') }}</td>
+                        <td><strong>{{ $employee->first_name }} {{ $employee->last_name }}</strong></td>
+                        <td>{{ $employee->user->email ?? 'N/A' }}</td>
+                        <td>{{ $employee->branch->branch_name ?? 'N/A' }}</td>
+                        <td><span class="badge bg-secondary">{{ $employee->employee_number }}</span></td>
+                        <td><span class="badge bg-warning text-dark">{{ $employee->pending_employee_number }}</span></td>
+                        <td>{{ $employee->employeeNumberChangeRequester->name ?? 'N/A' }}</td>
+                        <td class="text-nowrap">
+                            <form action="{{ route('admin.verify.employee-number.approve', $employee->id) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button class="btn btn-sm btn-success" onclick="return confirm('Approve this Employee ID change?')">Approve</button>
+                            </form>
+                            <form action="{{ route('admin.verify.employee-number.reject', $employee->id) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="reason" value="Rejected by HR">
+                                <button class="btn btn-sm btn-danger" onclick="return confirm('Reject this Employee ID change?')">Reject</button>
+                            </form>
+                        </td>
+                    </tr>
+                    @empty
+                        <tr><td colspan="8" class="text-center py-5">No pending Employee ID changes</td></tr>
                     @endforelse
                 </tbody>
             </table>

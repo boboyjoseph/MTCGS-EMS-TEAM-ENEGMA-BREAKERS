@@ -710,6 +710,7 @@ class EmployeeController extends Controller
         $request->validate([
             'first_name' => 'required',
             'last_name' => 'required',
+            'employee_number' => ['required', 'string', 'min:5', 'max:100', 'regex:/^[A-Za-z0-9][A-Za-z0-9_-]*$/'],
             'position' => 'required',
             'branch_id' => $isFinanceHead ? 'nullable|exists:branches,id' : 'required|exists:branches,id',
             'date_of_birth' => 'nullable|date|before_or_equal:today',
@@ -722,6 +723,21 @@ class EmployeeController extends Controller
             'clear_fingerprint' => 'nullable|boolean',
             'remove_fingerprint_index' => 'nullable|integer|min:0',
         ]);
+
+        $requestedEmployeeNumber = trim((string) $request->employee_number);
+        $employeeNumberChanged = $requestedEmployeeNumber !== (string) $employee->employee_number;
+        if ($employeeNumberChanged) {
+            $employeeNumberInUse = EmployeeProfile::where('employee_number', $requestedEmployeeNumber)
+                ->where('id', '!=', $employee->id)
+                ->exists()
+                || FinanceProfile::where('employee_number', $requestedEmployeeNumber)
+                    ->where('user_id', '!=', $employee->user_id)
+                    ->exists();
+
+            if ($employeeNumberInUse) {
+                return back()->withErrors(['employee_number' => 'This employee number is already in use.'])->withInput();
+            }
+        }
 
         $clearFingerprint = $request->boolean('clear_fingerprint');
         $fingerprintTemplate = $request->input('fingerprint_data');
@@ -779,6 +795,32 @@ class EmployeeController extends Controller
                 $employeeUpdates['is_fingerprint_registered'] = $isFingerprintRegistered;
             }
 
+            if ($isBranchAdmin && $employeeNumberChanged) {
+                $employeeUpdates += [
+                    'pending_employee_number' => $requestedEmployeeNumber,
+                    'employee_number_change_requested_by' => Auth::id(),
+                    'employee_number_change_requested_at' => now(),
+                    'employee_number_change_approved_by' => null,
+                    'employee_number_change_approved_at' => null,
+                    'employee_number_change_rejection_reason' => null,
+                ];
+            } elseif ($isBranchAdmin && $employee->pending_employee_number && !$employeeNumberChanged) {
+                $employeeUpdates += [
+                    'pending_employee_number' => null,
+                    'employee_number_change_requested_by' => null,
+                    'employee_number_change_requested_at' => null,
+                    'employee_number_change_rejection_reason' => null,
+                ];
+            } elseif (!$isBranchAdmin && $employeeNumberChanged) {
+                $employeeUpdates += [
+                    'employee_number' => $requestedEmployeeNumber,
+                    'pending_employee_number' => null,
+                    'employee_number_change_approved_by' => null,
+                    'employee_number_change_approved_at' => null,
+                    'employee_number_change_rejection_reason' => null,
+                ];
+            }
+
             if ($isBranchAdmin && $statusChanged) {
                 $employeeUpdates += [
                     'pending_status' => $request->status,
@@ -795,6 +837,11 @@ class EmployeeController extends Controller
             }
 
             $employee->update($employeeUpdates);
+
+            if (!$isBranchAdmin && $employeeNumberChanged) {
+                FinanceProfile::where('employee_profile_id', $employee->id)
+                    ->update(['employee_number' => $requestedEmployeeNumber]);
+            }
 
             if ($isBranchAdmin && $statusChanged) {
                 $superAdmins = collect(User::where('role', 'admin')
@@ -857,9 +904,13 @@ class EmployeeController extends Controller
             return back()->with('error', 'Failed to update employee: ' . $e->getMessage());
         }
         
-        $message = $isBranchAdmin && $statusChanged
-            ? 'Employee updated. The status change was submitted to the System Administrator for approval.'
-            : 'Employee updated';
+        $message = 'Employee updated.';
+        if ($isBranchAdmin && $statusChanged) {
+            $message .= ' The status change was submitted to the System Administrator for approval.';
+        }
+        if ($isBranchAdmin && $employeeNumberChanged) {
+            $message .= ' The Employee ID change was submitted to HR for final approval.';
+        }
 
         return redirect()->route('admin.employees')->with('success', $message);
     }

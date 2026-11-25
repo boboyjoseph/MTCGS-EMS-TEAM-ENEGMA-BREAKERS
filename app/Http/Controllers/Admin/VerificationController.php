@@ -110,6 +110,18 @@ class VerificationController extends Controller
             })
             ->latest('status_change_requested_at')
             ->get();
+
+        $pendingEmployeeNumberChanges = EmployeeProfile::with(['user', 'branch', 'employeeNumberChangeRequester'])
+            ->whereNotNull('pending_employee_number')
+            ->whereHas('user', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->when(!$currentUser->isSuperAdmin(), function ($q) use ($currentUser) {
+                $branchId = $currentUser->getEffectiveBranchId();
+                $q->where('branch_id', $branchId);
+            })
+            ->latest('employee_number_change_requested_at')
+            ->get();
         
         // Load profiles
         foreach ($pendingUsers as $user) {
@@ -127,7 +139,8 @@ class VerificationController extends Controller
             'rejectedUsers',
             'deactivatedUsers',
             'pendingCredentials',
-            'pendingStatusChanges'
+            'pendingStatusChanges',
+            'pendingEmployeeNumberChanges'
         ));
     }
     
@@ -299,6 +312,59 @@ class VerificationController extends Controller
         ]);
 
         return back()->with('success', 'The employee status change request was rejected.');
+    }
+
+    public function approveEmployeeNumberChange($employeeId)
+    {
+        $this->checkSuperAdmin();
+
+        $employee = EmployeeProfile::findOrFail($employeeId);
+        $newEmployeeNumber = trim((string) $employee->pending_employee_number);
+        if ($newEmployeeNumber === '') {
+            return back()->with('error', 'There is no pending Employee ID change for this employee.');
+        }
+
+        $employeeNumberInUse = EmployeeProfile::where('employee_number', $newEmployeeNumber)
+            ->where('id', '!=', $employee->id)
+            ->exists()
+            || FinanceProfile::where('employee_number', $newEmployeeNumber)
+                ->where('user_id', '!=', $employee->user_id)
+                ->exists();
+
+        if ($employeeNumberInUse) {
+            return back()->with('error', 'This Employee ID is now in use. Reject the request and ask the branch head to submit another ID.');
+        }
+
+        $employee->update([
+            'employee_number' => $newEmployeeNumber,
+            'pending_employee_number' => null,
+            'employee_number_change_approved_by' => Auth::id(),
+            'employee_number_change_approved_at' => now(),
+            'employee_number_change_rejection_reason' => null,
+        ]);
+
+        FinanceProfile::where('employee_profile_id', $employee->id)
+            ->update(['employee_number' => $newEmployeeNumber]);
+
+        return back()->with('success', 'Employee ID change approved for ' . $employee->first_name . ' ' . $employee->last_name . '.');
+    }
+
+    public function rejectEmployeeNumberChange(Request $request, $employeeId)
+    {
+        $this->checkSuperAdmin();
+        $request->validate(['reason' => 'required|string|min:5']);
+
+        $employee = EmployeeProfile::findOrFail($employeeId);
+        if (!$employee->pending_employee_number) {
+            return back()->with('error', 'There is no pending Employee ID change for this employee.');
+        }
+
+        $employee->update([
+            'pending_employee_number' => null,
+            'employee_number_change_rejection_reason' => $request->reason,
+        ]);
+
+        return back()->with('success', 'The Employee ID change request was rejected.');
     }
 
     private function generatePassword()

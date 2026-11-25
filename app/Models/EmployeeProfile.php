@@ -19,7 +19,10 @@ class EmployeeProfile extends Model
     protected $fillable = [
         'user_id', 'branch_id', 'shift_id', 'employee_number', 'first_name', 'last_name', 'middle_name',
         'suffix', 'date_of_birth', 'gender', 'civil_status', 'position', 'department',
-        'employment_type', 'date_hired', 'status', 'pending_status', 'status_change_requested_by',
+        'employment_type', 'date_hired', 'status', 'pending_status', 'pending_employee_number',
+        'employee_number_change_requested_by', 'employee_number_change_requested_at',
+        'employee_number_change_approved_by', 'employee_number_change_approved_at',
+        'employee_number_change_rejection_reason', 'status_change_requested_by',
         'status_change_requested_at', 'status_change_approved_by', 'status_change_approved_at',
         'status_change_rejection_reason', 'date_resigned', 'basic_salary', 'hourly_rate',
         'contact_number', 'emergency_contact_name', 'emergency_contact_number',
@@ -33,6 +36,8 @@ class EmployeeProfile extends Model
         'date_resigned' => 'date',
         'status_change_requested_at' => 'datetime',
         'status_change_approved_at' => 'datetime',
+        'employee_number_change_requested_at' => 'datetime',
+        'employee_number_change_approved_at' => 'datetime',
         'basic_salary' => 'decimal:2',
         'hourly_rate' => 'decimal:2',
         'is_fingerprint_registered' => 'boolean',
@@ -48,6 +53,12 @@ class EmployeeProfile extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function employeeNumberChangeRequester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'employee_number_change_requested_by');
     }
 
     /** @return BelongsTo<Shift, $this> */

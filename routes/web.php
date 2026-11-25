@@ -416,6 +416,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
     Route::post('/verify/{userId}/reject', [App\Http\Controllers\Admin\VerificationController::class, 'reject'])->name('verify.reject');
     Route::post('/verify/status-change/{employeeId}/approve', [App\Http\Controllers\Admin\VerificationController::class, 'approveStatusChange'])->name('verify.status-change.approve');
     Route::post('/verify/status-change/{employeeId}/reject', [App\Http\Controllers\Admin\VerificationController::class, 'rejectStatusChange'])->name('verify.status-change.reject');
+    Route::post('/verify/employee-number/{employeeId}/approve', [App\Http\Controllers\Admin\VerificationController::class, 'approveEmployeeNumberChange'])->name('verify.employee-number.approve');
+    Route::post('/verify/employee-number/{employeeId}/reject', [App\Http\Controllers\Admin\VerificationController::class, 'rejectEmployeeNumberChange'])->name('verify.employee-number.reject');
     
     // Admin Permission Management (Super Admin Only)
     Route::get('/permissions', [App\Http\Controllers\Admin\PermissionController::class, 'index'])->name('permissions');

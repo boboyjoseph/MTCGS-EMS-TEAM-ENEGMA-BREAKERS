@@ -83,6 +83,20 @@
                                 <input type="text" id="last-name" name="last_name" class="form-control" value="{{ old('last_name', $employee->last_name) }}" autocomplete="family-name" required>
                             </div>
                         </div>
+
+                        @unless($employee->is_admin_profile ?? false)
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="employee-number" class="form-label">Employee ID <span class="text-danger">*</span></label>
+                                    <input type="text" id="employee-number" name="employee_number" class="form-control" value="{{ old('employee_number', $employee->employee_number) }}" maxlength="100" required>
+                                    @if($employee->pending_employee_number ?? null)
+                                        <small class="form-text text-warning">Pending HR approval: {{ $employee->employee_number }} &rarr; {{ $employee->pending_employee_number }}</small>
+                                    @elseif($employee->employee_number_change_rejection_reason ?? null)
+                                        <small class="form-text text-danger">Previous ID change was rejected: {{ $employee->employee_number_change_rejection_reason }}</small>
+                                    @endif
+                                </div>
+                            </div>
+                        @endunless
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">

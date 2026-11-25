@@ -127,6 +127,97 @@ class EmployeeApprovalFlowTest extends TestCase
         }
     }
 
+    public function test_branch_head_employee_id_change_requires_hr_approval(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-ID-APPROVAL',
+            'branch_name' => 'Employee ID Approval Branch',
+            'address' => 'Approval Address',
+        ]);
+        $branchHead = User::create([
+            'name' => 'Branch Head',
+            'email' => 'id-approval-bh@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'branch_head',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employeeUser = User::create([
+            'name' => 'ID Change Employee',
+            'email' => 'id-change-employee@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $employee = \App\Models\EmployeeProfile::create([
+            'user_id' => $employeeUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'OLD-ID-001',
+            'first_name' => 'ID Change',
+            'last_name' => 'Employee',
+            'position' => 'Teacher',
+            'date_hired' => now(),
+            'status' => 'Regular',
+            'basic_salary' => 25000,
+        ]);
+        $hr = User::create([
+            'name' => 'HR Approver',
+            'email' => 'id-approval-hr@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+
+        $this->withoutMiddleware()->actingAs($branchHead)
+            ->put(route('admin.employee-update', $employee->id), [
+                'first_name' => $employee->first_name,
+                'last_name' => $employee->last_name,
+                'employee_number' => 'NEW-ID-001',
+                'position' => $employee->position,
+                'branch_id' => $branch->id,
+                'date_hired' => now()->format('Y-m-d'),
+                'status' => $employee->status,
+                'role' => 'employee',
+                'basic_salary' => '25000',
+                'is_active' => '1',
+            ])->assertRedirect(route('admin.employees', absolute: false));
+
+        $this->assertDatabaseHas('employee_profiles', [
+            'id' => $employee->id,
+            'employee_number' => 'OLD-ID-001',
+            'pending_employee_number' => 'NEW-ID-001',
+            'employee_number_change_requested_by' => $branchHead->id,
+        ]);
+
+        $this->actingAs($hr)
+            ->get(route('admin.verifications', ['tab' => 'employee_id_changes']))
+            ->assertOk()
+            ->assertSee('OLD-ID-001')
+            ->assertSee('NEW-ID-001')
+            ->assertSee('Branch Head');
+
+        $this->actingAs($hr)
+            ->from(route('admin.verifications', ['tab' => 'employee_id_changes']))
+            ->post(route('admin.verify.employee-number.approve', $employee->id))
+            ->assertRedirect(route('admin.verifications', ['tab' => 'employee_id_changes']))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('employee_profiles', [
+            'id' => $employee->id,
+            'employee_number' => 'NEW-ID-001',
+            'pending_employee_number' => null,
+            'employee_number_change_approved_by' => $hr->id,
+        ]);
+    }
+
     public function test_super_admin_can_create_branch_specific_admin_account(): void
     {
         $branch = Branch::create([
