@@ -99,7 +99,7 @@
                         @php($status = $attendanceStatus)
                     @endif
                     @if (in_array($attendanceStatus, ['Early Out', 'Late / Early Out'], true) && $log->pm_out)
-                        @php($scheduledEnd = $log->pm_out->copy()->setTime(17, 0, 0))
+                        @php($scheduledEnd = \App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out))
                         @php($lateEarlyOutMinutes += max(0, (int) abs($scheduledEnd->diffInMinutes($log->pm_out))))
                     @endif
                 @endif

@@ -11,6 +11,8 @@ class CalendarEvent extends Model
         'title',
         'description',
         'event_date',
+        'start_time',
+        'end_time',
         'event_type',
         'created_by',
         'branch_id',

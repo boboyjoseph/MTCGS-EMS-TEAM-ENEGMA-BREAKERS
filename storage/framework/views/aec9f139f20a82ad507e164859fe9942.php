@@ -317,7 +317,7 @@ function demoFpRegisterFingerprint() {
     updateDemoStatus('fingerprint', 'completed');
 
     setTimeout(() => {
-        alert('Fingerprint registration completed! The employee can now use fingerprint for attendance.');
+        window.showAppToast('Fingerprint registration completed! The employee can now use fingerprint for attendance.', 'success');
     }, 500);
 }
 

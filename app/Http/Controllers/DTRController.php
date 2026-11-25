@@ -236,7 +236,7 @@ class DTRController extends Controller
                 $totalLateMinutes += DTR::normalizeLateMinutesForLog($log);
 
                 if ($log->pm_out) {
-                    $scheduledPmOut = $log->pm_out->copy()->setTime(17, 0, 0);
+                    $scheduledPmOut = \App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out);
                     if ($log->pm_out->lt($scheduledPmOut)) {
                         $totalEarlyOutMinutes += max(0, (int) abs($scheduledPmOut->diffInMinutes($log->pm_out)));
                     }
@@ -440,15 +440,24 @@ class DTRController extends Controller
     private function notifyAttendanceBranchReviewers(AttendanceLog $attendance): void
     {
         $profile = $attendance->employeeProfile;
+        if (!$profile?->branch_id) {
+            return;
+        }
+
         User::where(function ($query) use ($profile) {
             $query->where(function ($branchQuery) use ($profile) {
                 $branchQuery->where('role', 'branch_head')
-                    ->whereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id));
+                    ->where(function ($userQuery) use ($profile) {
+                        $userQuery->where('branch_id', $profile->branch_id)
+                            ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id))
+                            ->orWhereHas('assignedBranches', fn ($branchQuery) => $branchQuery->whereKey($profile->branch_id));
+                    });
             })->orWhere(function ($branchQuery) use ($profile) {
                 $branchQuery->where('role', 'admin')->where('admin_type', 'branch_admin')
                     ->where(function ($userQuery) use ($profile) {
                         $userQuery->where('branch_id', $profile->branch_id)
-                            ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id));
+                            ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id))
+                            ->orWhereHas('assignedBranches', fn ($branchQuery) => $branchQuery->whereKey($profile->branch_id));
                     });
             });
         })->where('is_active', true)->get()->each(fn ($recipient) => $recipient->notify(new SystemNotification(
@@ -477,16 +486,25 @@ class DTRController extends Controller
 
     private function notifyDTRBranchReviewers(EmployeeProfile $profile, DTR $dtr): void
     {
+        if (!$profile->branch_id) {
+            return;
+        }
+
         User::where(function ($query) use ($profile) {
                 $query->where(function ($branchQuery) use ($profile) {
                     $branchQuery->where('role', 'branch_head')
-                        ->whereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id));
+                        ->where(function ($userQuery) use ($profile) {
+                            $userQuery->where('branch_id', $profile->branch_id)
+                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id))
+                                ->orWhereHas('assignedBranches', fn ($branchQuery) => $branchQuery->whereKey($profile->branch_id));
+                        });
                 })->orWhere(function ($branchQuery) use ($profile) {
                     $branchQuery->where('role', 'admin')
                         ->where('admin_type', 'branch_admin')
                         ->where(function ($userQuery) use ($profile) {
                             $userQuery->where('branch_id', $profile->branch_id)
-                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id));
+                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id))
+                                ->orWhereHas('assignedBranches', fn ($branchQuery) => $branchQuery->whereKey($profile->branch_id));
                         });
                 });
             })
@@ -685,7 +703,7 @@ class DTRController extends Controller
                 $dayData['late_minutes'] = $lateMinutes;
                 $dayData['overtime'] = $log->overtime_hours ?? 0;
                 $dayData['is_early_out'] = $log->pm_out
-                    && $log->pm_out->lt($log->pm_out->copy()->setTime(17, 0, 0));
+                    && $log->pm_out->lt(\App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out));
             } else {
                 $dayData['status'] = $isSuspension
                     ? 'suspension'

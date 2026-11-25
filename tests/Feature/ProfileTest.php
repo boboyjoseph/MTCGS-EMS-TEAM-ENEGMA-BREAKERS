@@ -21,6 +21,18 @@ class ProfileTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_profile_success_notice_is_set_to_auto_dismiss(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->withSession(['photo_updated' => 'Profile photo updated successfully.'])
+            ->get('/profile')
+            ->assertOk()
+            ->assertSee('Profile photo updated successfully.')
+            ->assertSee('data-auto-dismiss="5000"', false);
+    }
+
     public function test_profile_information_can_be_updated(): void
     {
         $user = User::factory()->create();

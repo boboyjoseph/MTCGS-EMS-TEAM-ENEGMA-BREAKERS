@@ -97,6 +97,54 @@ endif;
 unset($__errorArgs, $__bag); ?>
                         </div>
 
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                            <label for="start_time" class="form-label fw-bold">Start Time <span class="text-danger" id="start-time-required">*</span></label>
+                            <input type="time" class="form-control <?php $__errorArgs = ['start_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>"
+                                   id="start_time" name="start_time" value="<?php echo e(old('start_time')); ?>">
+                            <?php $__errorArgs = ['start_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                            </div>
+                            <div class="col-md-6">
+                            <label for="end_time" class="form-label fw-bold">End Time <span class="text-danger" id="end-time-required">*</span></label>
+                            <input type="time" class="form-control <?php $__errorArgs = ['end_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>"
+                                   id="end_time" name="end_time" value="<?php echo e(old('end_time')); ?>">
+                            <?php $__errorArgs = ['end_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                            </div>
+                            <div class="col-12 form-text" id="event-time-help">Required for activities. Leave both blank for all-day holidays or suspensions.</div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="branch_id" class="form-label fw-bold">Branch</label>
                             <?php
@@ -218,6 +266,11 @@ document.addEventListener('turbo:load', function() {
         document.getElementById('event-title-label').textContent = labels[0];
         document.getElementById('event-type-label').textContent = labels[1];
         document.getElementById('event-date-label').textContent = labels[2];
+        const timesRequired = typeInput.value === 'activity';
+        document.getElementById('start_time').required = timesRequired;
+        document.getElementById('end_time').required = timesRequired;
+        document.getElementById('start-time-required').classList.toggle('d-none', !timesRequired);
+        document.getElementById('end-time-required').classList.toggle('d-none', !timesRequired);
     }
 
     typeInput.addEventListener('change', updateEventLabels);

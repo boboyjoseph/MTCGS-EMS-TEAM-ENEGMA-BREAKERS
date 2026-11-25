@@ -84,18 +84,9 @@
             <?php
                 $profileForSummary = Auth::user()->getEmployeeProfile() ?? Auth::user()->getAdminProfile()?->employeeProfile ?? null;
                 $balanceForSummary = $profileForSummary
-                    ? \App\Models\LeaveBalance::firstOrCreate([
-                        'employee_profile_id' => $profileForSummary->id,
-                        'year' => now()->year,
-                    ], [
-                        'sick_leave_used' => 0,
-                        'vacation_leave_used' => 0,
-                        'emergency_leave_used' => 0,
-                        'birthday_leave_used' => 0,
-                        'cash_charge_used' => 0,
-                        'maternity_leave_used' => 0,
-                        'paternity_leave_used' => 0,
-                    ])
+                    ? \App\Models\LeaveBalance::where('employee_profile_id', $profileForSummary->id)
+                        ->where('year', now()->year)
+                        ->first()
                     : null;
                 $pendingChargeRequest = $myCharges
                     ->whereIn('status', ['pending_branch_admin', 'pending_super_admin'])
@@ -380,8 +371,22 @@
                                 <label class="form-label">Employee</label>
                                 <select name="employee_id" class="form-select" required>
                                     <option value="">Select employee</option>
-                                    <?php $__currentLoopData = $employees; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $employee): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                        <option value="<?php echo e($employee->id); ?>"><?php echo e($employee->first_name); ?> <?php echo e($employee->last_name); ?> - <?php echo e($employee->branch?->branch_name ?? 'N/A'); ?></option>
+                                    <?php $__currentLoopData = $groupedEmployees; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branchEmployees): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <?php $branchName = $branchEmployees->first()?->first()?->branch?->branch_name ?? 'Unassigned Branch'; ?>
+                                        <?php $__currentLoopData = $branchEmployees; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $role => $roleEmployees): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <optgroup label="<?php echo e($branchName); ?> - <?php echo e($role); ?>">
+                                                <?php $__currentLoopData = $roleEmployees; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $employee): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <option value="<?php echo e($employee->id); ?>" <?php if(old('employee_id') == $employee->id): echo 'selected'; endif; ?>>
+                                                        <?php echo e($employee->last_name); ?>, <?php echo e($employee->first_name); ?>
+
+                                                        <?php if($employee->employee_number): ?>
+                                                            - <?php echo e($employee->employee_number); ?>
+
+                                                        <?php endif; ?>
+                                                    </option>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                            </optgroup>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </select>
                             </div>

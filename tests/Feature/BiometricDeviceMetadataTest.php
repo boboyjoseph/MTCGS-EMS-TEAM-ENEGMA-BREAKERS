@@ -165,7 +165,58 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.biometric'))
             ->assertOk()
-            ->assertSeeText('Biometric Management');
+            ->assertSeeText('Biometric Management')
+            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.5-J320E01822.exe')
+            ->assertSee('MTCGS-Biometric-Setup-iriga-1.0.5-J62OE23640.exe')
+            ->assertSee('fetchBiometricList')
+            ->assertSee('(function biometricPage() {')
+            ->assertSee('window.registerAdminFingerprint = registerAdminFingerprint;');
+    }
+
+    public function test_biometric_app_downloads_are_visible_to_hr_but_not_branch_admins(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-BIOMETRIC-DOWNLOAD-ACCESS',
+            'branch_name' => 'Biometric Download Access Branch',
+            'address' => 'Biometric Download Access Address',
+        ]);
+        $hrAdmin = User::create([
+            'name' => 'Biometric HR Admin',
+            'email' => 'biometric-hr-download@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'hr',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $branchAdmin = User::create([
+            'name' => 'Biometric Branch Admin',
+            'email' => 'biometric-branch-download@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+
+        $this->actingAs($hrAdmin)
+            ->get(route('admin.biometric'))
+            ->assertOk()
+            ->assertSee('Biometric Desktop App')
+            ->assertSee('MTCGS-Biometric-Setup-buhi-1.0.5-J320E01822.exe');
+
+        auth()->logout();
+
+        $this->actingAs($branchAdmin)
+            ->get(route('admin.biometric'))
+            ->assertOk()
+            ->assertDontSee('Biometric Desktop App')
+            ->assertDontSee('MTCGS-Biometric-Setup-buhi-1.0.5-J320E01822.exe')
+            ->assertDontSee('MTCGS-Biometric-Setup-iriga-1.0.5-J62OE23640.exe');
     }
 
     public function test_super_admin_cannot_register_own_fingerprint_and_card_is_hidden(): void
@@ -480,7 +531,7 @@ class BiometricDeviceMetadataTest extends TestCase
                 'device_id' => $device->laptop_mac_address,
                 'mac_address' => 'AA:BB:CC:DD:EE:61',
                 'timestamp' => now()->toIso8601String(),
-                'attendance_timestamp' => now()->addMinutes(9)->toIso8601String(),
+                'attendance_timestamp' => now()->toIso8601String(),
                 'nonce' => 'offline-sync-time-in-retry',
             ], 'POST', '/api/biometric/time-clock');
             $retryResponse = (new BiometricController())->processTimeClock(
@@ -488,10 +539,10 @@ class BiometricDeviceMetadataTest extends TestCase
             );
 
             $this->assertSame(200, $retryResponse->getStatusCode(), $retryResponse->content());
-            $this->assertFalse(json_decode($retryResponse->content(), true)['already_recorded'] ?? false);
-            $this->assertSame('08:09 AM', json_decode($retryResponse->content(), true)['data']['action_time']);
+            $this->assertTrue(json_decode($retryResponse->content(), true)['already_recorded']);
+            $this->assertSame('08:00 AM', json_decode($retryResponse->content(), true)['data']['action_time']);
             $this->assertSame(
-                '2026-10-12 08:09:00',
+                '2026-10-12 08:00:00',
                 AttendanceLog::where('employee_profile_id', $employee->id)
                     ->whereDate('attendance_date', now()->toDateString())
                     ->firstOrFail()
@@ -515,10 +566,10 @@ class BiometricDeviceMetadataTest extends TestCase
             $staleRetryResponse = (new BiometricController())->processTimeClock(
                 Request::create('/api/biometric/time-clock', 'POST', $staleRetryPayload)
             );
-            $this->assertSame(200, $staleRetryResponse->getStatusCode(), $staleRetryResponse->content());
-            $this->assertTrue(json_decode($staleRetryResponse->content(), true)['already_recorded']);
+            $this->assertSame(409, $staleRetryResponse->getStatusCode(), $staleRetryResponse->content());
+            $this->assertStringContainsString('within 24 hours', json_decode($staleRetryResponse->content(), true)['error']);
             $this->assertSame(
-                '2026-10-12 08:09:00',
+                '2026-10-12 08:00:00',
                 AttendanceLog::where('employee_profile_id', $employee->id)
                     ->whereDate('attendance_date', now()->toDateString())
                     ->firstOrFail()
@@ -537,6 +588,7 @@ class BiometricDeviceMetadataTest extends TestCase
                 'device_id' => $device->laptop_mac_address,
                 'mac_address' => 'AA:BB:CC:DD:EE:61',
                 'timestamp' => now()->toIso8601String(),
+                'attendance_timestamp' => now()->toIso8601String(),
                 'nonce' => 'online-time-in-updates-saved-time',
             ], 'POST', '/api/biometric/time-clock');
             $onlineUpdateResponse = (new BiometricController())->processTimeClock(
@@ -556,6 +608,7 @@ class BiometricDeviceMetadataTest extends TestCase
                     ->toDateTimeString()
             );
 
+            \Illuminate\Support\Carbon::setTestNow(now()->setTime(10, 16));
             $serverTimeOutPayload = $this->signedDevicePayload([
                     'employee_number' => $employee->employee_number,
                     'fingerprint_data' => $fingerprint,
@@ -566,7 +619,7 @@ class BiometricDeviceMetadataTest extends TestCase
                     'device_id' => $device->laptop_mac_address,
                     'mac_address' => 'AA:BB:CC:DD:EE:61',
                     'timestamp' => now()->toIso8601String(),
-                    'attendance_timestamp' => now()->setTime(10, 16)->toIso8601String(),
+                    'attendance_timestamp' => now()->toIso8601String(),
                     'nonce' => 'offline-sync-server-timeout',
                 ], 'POST', '/api/biometric/time-clock');
             $serverTimeOutResponse = (new BiometricController())->processTimeClock(
@@ -612,6 +665,7 @@ class BiometricDeviceMetadataTest extends TestCase
                 'device_id' => $device->laptop_mac_address,
                 'mac_address' => 'AA:BB:CC:DD:EE:61',
                 'timestamp' => now()->toIso8601String(),
+                'attendance_timestamp' => now()->toIso8601String(),
                 'nonce' => 'online-time-out-updates-saved-time',
             ], 'POST', '/api/biometric/time-clock');
             $onlineTimeOutResponse = (new BiometricController())->processTimeClock(
@@ -1216,6 +1270,14 @@ class BiometricDeviceMetadataTest extends TestCase
             $irigaEmployee->employee_number,
             $buhiEmployee->employee_number,
         ], $duplicateCheckNumbers);
+        $duplicateCheckTemplate = json_decode($duplicateCheckResponse->content(), true)['templates'][0];
+        $this->assertEqualsCanonicalizing([
+            'employee_number',
+            'first_name',
+            'last_name',
+            'branch_name',
+            'fingerprint_template',
+        ], array_keys($duplicateCheckTemplate));
 
         $duplicateEnrollment = $this->signedDevicePayload([
             'employee_number' => $irigaEmployee->employee_number,
@@ -1312,6 +1374,46 @@ class BiometricDeviceMetadataTest extends TestCase
         ]);
     }
 
+    public function test_templates_endpoint_returns_service_unavailable_when_device_credential_cannot_be_decrypted(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-UNREADABLE-CREDENTIAL',
+            'branch_name' => 'Unreadable Credential Branch',
+            'address' => 'Unreadable Credential Address',
+        ]);
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-71',
+            'serial_number' => 'SERIAL-UNREADABLE-CREDENTIAL',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'Unreadable Credential Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+        \Illuminate\Support\Facades\DB::table('devices')
+            ->where('id', $device->id)
+            ->update(['api_secret' => 'not-a-valid-encrypted-credential']);
+
+        $payload = $this->signedDevicePayload([
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => 'AA:BB:CC:DD:EE:71',
+            'device_id' => (string) $device->id,
+            'mac_address' => 'AA:BB:CC:DD:EE:71',
+            'timestamp' => now()->toIso8601String(),
+            'nonce' => 'unreadable-device-credential',
+            'fingerprint_scope' => 'duplicate-check',
+        ], 'GET', '/api/biometric/templates');
+        $response = (new BiometricController())->getFingerprintTemplates(
+            Request::create('/api/biometric/templates', 'GET', $payload)
+        );
+
+        $this->assertSame(503, $response->getStatusCode());
+        $this->assertSame(
+            'The server cannot decrypt this device credential. Restore the original APP_KEY or re-provision this device credential.',
+            json_decode($response->content(), true)['error']
+        );
+    }
+
     public function test_time_out_requires_time_in_and_a_valid_pair_is_reflected_in_dtr(): void
     {
         $this->travelTo(now()->nextWeekday()->startOfDay()->setTime(7, 0));
@@ -1371,7 +1473,7 @@ class BiometricDeviceMetadataTest extends TestCase
         $clockOutWithoutClockIn = (new BiometricController())->processTimeClock(
             Request::create('/api/biometric/time-clock', 'POST', $createPayload(
                 'TIME-OUT',
-                now()->setTime(17, 0),
+                now(),
                 'dtr-clock-pair-timeout-without-in'
             ))
         );
@@ -1385,16 +1487,17 @@ class BiometricDeviceMetadataTest extends TestCase
         $clockIn = (new BiometricController())->processTimeClock(
             Request::create('/api/biometric/time-clock', 'POST', $createPayload(
                 'TIME-IN',
-                now()->setTime(8, 0),
+                now(),
                 'dtr-clock-pair-timein'
             ))
         );
         $this->assertSame(200, $clockIn->getStatusCode(), $clockIn->content());
 
+        $this->travelTo(now()->setTime(16, 0));
         $clockOut = (new BiometricController())->processTimeClock(
             Request::create('/api/biometric/time-clock', 'POST', $createPayload(
                 'TIME-OUT',
-                now()->setTime(17, 0),
+                now(),
                 'dtr-clock-pair-timeout'
             ))
         );
@@ -1409,7 +1512,82 @@ class BiometricDeviceMetadataTest extends TestCase
         $this->assertSame(8.0, $breakdown['total_hours']);
     }
 
-    public function test_laptop_mac_is_ignored_for_device_authorization_and_location_is_saved_from_device(): void
+    public function test_time_clock_accepts_offline_attendance_within_24_hours_and_rejects_expired_scans(): void
+    {
+        $this->travelTo('2026-10-28 08:00:00');
+        $branch = Branch::create([
+            'branch_code' => 'BR-OFFLINE-DENIED',
+            'branch_name' => 'Offline Denied Branch',
+            'address' => 'Offline Denied Address',
+        ]);
+        $user = User::factory()->create(['branch_id' => $branch->id]);
+        $employee = EmployeeProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'EMP-OFFLINE-DENIED',
+            'first_name' => 'Offline',
+            'last_name' => 'Denied',
+            'position' => 'Staff',
+            'date_hired' => now()->toDateString(),
+            'fingerprint_template' => 'offline-denied-template',
+            'is_fingerprint_registered' => true,
+        ]);
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-43',
+            'serial_number' => 'SERIAL-OFFLINE-DENIED',
+            'api_secret' => self::DEVICE_SECRET,
+            'device_name' => 'Offline Denied Scanner',
+            'device_type' => 'computer',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+        $payload = $this->signedDevicePayload([
+            'employee_number' => $employee->employee_number,
+            'fingerprint_data' => $employee->fingerprint_template,
+            'action' => 'TIME-IN',
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => (string) $device->id,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'attendance_timestamp' => now()->subMinutes(2)->toIso8601String(),
+            'nonce' => 'stale-offline-attendance',
+        ], 'POST', '/api/biometric/time-clock');
+
+        $response = (new BiometricController())->processTimeClock(
+            Request::create('/api/biometric/time-clock', 'POST', $payload)
+        );
+
+        $this->assertSame(200, $response->getStatusCode(), $response->content());
+        $this->assertTrue(json_decode($response->content(), true)['success']);
+        $this->assertDatabaseHas('attendance_logs', [
+            'employee_profile_id' => $employee->id,
+            'attendance_date' => now()->startOfDay()->toDateTimeString(),
+        ]);
+
+        $expiredPayload = $this->signedDevicePayload([
+            'employee_number' => $employee->employee_number,
+            'fingerprint_data' => $employee->fingerprint_template,
+            'action' => 'TIME-IN',
+            'device_serial' => $device->serial_number,
+            'wifi_mac' => $device->mac_address,
+            'device_id' => (string) $device->id,
+            'mac_address' => $device->mac_address,
+            'timestamp' => now()->toIso8601String(),
+            'attendance_timestamp' => now()->subHours(24)->subSecond()->toIso8601String(),
+            'nonce' => 'expired-offline-attendance',
+        ], 'POST', '/api/biometric/time-clock');
+
+        $expiredResponse = (new BiometricController())->processTimeClock(
+            Request::create('/api/biometric/time-clock', 'POST', $expiredPayload)
+        );
+
+        $this->assertSame(409, $expiredResponse->getStatusCode(), $expiredResponse->content());
+        $this->assertStringContainsString('within 24 hours', json_decode($expiredResponse->content(), true)['error']);
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
+    public function test_legacy_browser_attendance_requires_a_signed_registered_device(): void
     {
         $branch = Branch::create([
             'branch_code' => 'BR-LAPTOP-001',
@@ -1441,11 +1619,13 @@ class BiometricDeviceMetadataTest extends TestCase
             'is_fingerprint_registered' => true,
         ]);
 
-        Device::create([
+        $device = Device::create([
             'mac_address' => 'AA-BB-CC-DD-EE-FF',
             'wifi_mac_address' => null,
             'laptop_mac_address' => 'AA-BB-CC-DD-EE-11',
             'serial_number' => 'SERIAL-LAPTOP-001',
+            'reader_id' => 'reader-laptop-001',
+            'api_secret' => self::DEVICE_SECRET,
             'device_name' => 'Laptop Terminal',
             'device_type' => 'computer',
             'branch_id' => $branch->id,
@@ -1462,37 +1642,26 @@ class BiometricDeviceMetadataTest extends TestCase
             'nonce' => 'invalid-device-test',
         ];
         $invalidPayload['signature'] = $this->legacySignature($invalidPayload);
-        $request = Request::create('/api/biometric/attendance', 'POST', $invalidPayload);
+        $this->actingAs($user)->postJson('/api/biometric/attendance', $invalidPayload)
+            ->assertUnprocessable();
 
-        $response = (new BiometricController())->processAttendance($request);
-
-        $this->assertSame(401, $response->getStatusCode());
-        $this->assertSame('Device not authorized. MAC address not registered.', json_decode($response->content(), true)['error']);
-
-        $validPayload = [
-            'fingerprint_data' => 'sample-fingerprint-template',
-            'employee_number' => 'EMP-LAPTOP-001',
-            'device_serial' => 'SERIAL-LAPTOP-001',
+        $stalePayload = $this->signedDevicePayload([
+            'employee_number' => $employeeProfile->employee_number,
+            'fingerprint_data' => $employeeProfile->fingerprint_template,
+            'device_serial' => $device->serial_number,
+            'reader_id' => $device->reader_id,
             'wifi_mac' => 'AA:BB:CC:DD:EE:FF',
-            'device_id' => '1',
+            'device_id' => $device->laptop_mac_address,
             'mac_address' => 'AA:BB:CC:DD:EE:FF',
-            'timestamp' => now()->setTime(8, 15)->format('m/d/Y h:i:s A'),
-            'nonce' => 'valid-device-test',
-        ];
-        $validPayload['signature'] = $this->legacySignature($validPayload);
-        $validRequest = Request::create('/api/biometric/attendance', 'POST', $validPayload);
+            'timestamp' => now()->subMinutes(2)->toIso8601String(),
+            'nonce' => 'stale-legacy-attendance',
+        ], 'POST', '/api/biometric/attendance');
+        $this->actingAs($user)->postJson('/api/biometric/attendance', $stalePayload)
+            ->assertStatus(409)
+            ->assertJson(['attendance_blocked' => true]);
 
-        $validResponse = (new BiometricController())->processAttendance($validRequest);
-
-        $this->assertSame(200, $validResponse->getStatusCode());
-        $this->assertDatabaseHas('attendance_logs', [
+        $this->assertDatabaseMissing('attendance_logs', [
             'employee_profile_id' => $employeeProfile->id,
-            'late_minutes' => 15,
-        ]);
-        $this->assertDatabaseHas('attendance_logs', [
-            'employee_profile_id' => $employeeProfile->id,
-            'location' => 'Ground Floor',
-            'device_id' => 1,
         ]);
     }
 
@@ -1641,17 +1810,10 @@ class BiometricDeviceMetadataTest extends TestCase
 
         $this->assertSame(200, $clockOutResponse->getStatusCode(), $clockOutResponse->getContent());
 
-        $legacyResponse = (new BiometricController())->processAttendance(Request::create(
-            '/api/biometric/process',
-            'POST',
-            [
-                'fingerprint_data' => 'suspension-test-template',
-                'timestamp' => now()->format('m/d/Y h:i:s A'),
-            ]
-        ));
-
-        $this->assertSame(403, $legacyResponse->getStatusCode());
-        $this->assertTrue(json_decode($legacyResponse->content(), true)['attendance_blocked']);
+        $this->actingAs($user)->postJson('/api/biometric/process', [
+            'fingerprint_data' => 'suspension-test-template',
+            'timestamp' => now()->format('m/d/Y h:i:s A'),
+        ])->assertUnprocessable();
 
         $clockPayload = $this->signedDevicePayload([
             'branch_id' => $branch->id,
@@ -1712,17 +1874,10 @@ class BiometricDeviceMetadataTest extends TestCase
             'is_absent' => false,
         ]);
 
-        $biometricResponse = (new BiometricController())->processAttendance(Request::create(
-            '/api/biometric/process',
-            'POST',
-            [
-                'fingerprint_data' => 'approved-leave-test-template',
-                'timestamp' => now()->format('m/d/Y h:i:s A'),
-            ]
-        ));
-
-        $this->assertSame(403, $biometricResponse->getStatusCode());
-        $this->assertTrue(json_decode($biometricResponse->content(), true)['attendance_blocked']);
+        $this->actingAs($user)->postJson('/api/biometric/process', [
+            'fingerprint_data' => 'approved-leave-test-template',
+            'timestamp' => now()->format('m/d/Y h:i:s A'),
+        ])->assertUnprocessable();
         $this->assertDatabaseMissing('attendance_logs', [
             'employee_profile_id' => $employee->id,
             'attendance_date' => '2026-09-29',
@@ -1809,6 +1964,15 @@ class BiometricDeviceMetadataTest extends TestCase
             'timestamp' => now()->toIso8601String(),
             'nonce' => 'approved-leave-admin-attendance',
         ], 'POST', '/api/biometric/admin-attendance');
+        $staleAdminPayload = $this->signedDevicePayload(array_merge($adminPayload, [
+            'timestamp' => now()->subMinutes(2)->toIso8601String(),
+            'nonce' => 'stale-admin-attendance',
+        ]), 'POST', '/api/biometric/admin-attendance');
+        $staleAdminResponse = (new BiometricController())->processAdminAttendance(
+            Request::create('/api/biometric/admin-attendance', 'POST', $staleAdminPayload)
+        );
+        $this->assertSame(409, $staleAdminResponse->getStatusCode(), $staleAdminResponse->getContent());
+
         $adminResponse = (new BiometricController())->processAdminAttendance(
             Request::create('/api/biometric/admin-attendance', 'POST', $adminPayload)
         );
@@ -1837,6 +2001,15 @@ class BiometricDeviceMetadataTest extends TestCase
             'timestamp' => now()->toIso8601String(),
             'nonce' => 'approved-leave-finance-attendance',
         ], 'POST', '/api/biometric/finance-attendance');
+        $staleFinancePayload = $this->signedDevicePayload(array_merge($financePayload, [
+            'timestamp' => now()->subMinutes(2)->toIso8601String(),
+            'nonce' => 'stale-finance-attendance',
+        ]), 'POST', '/api/biometric/finance-attendance');
+        $staleFinanceResponse = (new BiometricController())->processFinanceAttendance(
+            Request::create('/api/biometric/finance-attendance', 'POST', $staleFinancePayload)
+        );
+        $this->assertSame(409, $staleFinanceResponse->getStatusCode(), $staleFinanceResponse->getContent());
+
         $financeResponse = (new BiometricController())->processFinanceAttendance(
             Request::create('/api/biometric/finance-attendance', 'POST', $financePayload)
         );

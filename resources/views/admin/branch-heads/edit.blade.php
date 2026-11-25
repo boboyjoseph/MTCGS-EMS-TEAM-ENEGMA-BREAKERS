@@ -278,7 +278,7 @@
         const position = document.getElementById('position').value.trim();
 
         if (!firstName || !lastName) {
-            alert('Please fill in First Name and Last Name before launching fingerprint enrollment.');
+            window.showAppToast('Please fill in First Name and Last Name before launching fingerprint enrollment.', 'warning');
             return;
         }
 
@@ -324,7 +324,7 @@
             console.error('Fingerprint launch error:', error);
             const fallbackPath = '{{ env("MTCGS_ENROLL_EXE") ?: "" }}';
             const fallbackText = fallbackPath ? '\n\nFallback local executable: ' + fallbackPath : '';
-            alert('Unable to launch the fingerprint enrollment app.' + fallbackText);
+            window.showAppToast('Unable to launch the fingerprint enrollment app.' + fallbackText, 'error');
         }
     }
 

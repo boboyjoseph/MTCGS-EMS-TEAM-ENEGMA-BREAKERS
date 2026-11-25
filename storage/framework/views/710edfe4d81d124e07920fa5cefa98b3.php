@@ -266,11 +266,11 @@
                 <?php endif; ?>
 
                 <?php if(session('success')): ?>
-                    <div class="alert alert-success py-2"><?php echo e(session('success')); ?></div>
+                    <div class="alert alert-success py-2" data-auto-dismiss="5000"><?php echo e(session('success')); ?></div>
                 <?php endif; ?>
 
                 <?php if(session('status')): ?>
-                    <div class="alert alert-success py-2"><?php echo e(session('status')); ?></div>
+                    <div class="alert alert-success py-2" data-auto-dismiss="5000"><?php echo e(session('status')); ?></div>
                 <?php endif; ?>
 
                 <?php if($errors->any()): ?>
@@ -367,6 +367,10 @@
                 });
             }
         })();
+
+        document.querySelectorAll('.alert-success[data-auto-dismiss]').forEach((alert) => {
+            window.setTimeout(() => alert.remove(), Number(alert.dataset.autoDismiss) || 5000);
+        });
     </script>
 </body>
 </html>

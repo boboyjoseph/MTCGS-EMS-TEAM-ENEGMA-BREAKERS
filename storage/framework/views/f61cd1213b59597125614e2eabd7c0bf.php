@@ -288,7 +288,7 @@
             const selected = Array.from(selectors).filter((checkbox) => checkbox.checked);
             if (!selected.length) {
                 event.preventDefault();
-                alert('Select at least one payroll entry first.');
+                window.showAppToast('Select at least one payroll entry first.', 'warning');
                 return;
             }
             form.action = button.dataset.correctionAction;

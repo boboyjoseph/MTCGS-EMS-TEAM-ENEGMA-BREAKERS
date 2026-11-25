@@ -11,8 +11,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Mail\AccountCredentials;
 use App\Mail\EmployeeStatusChangePendingApproval;
+use App\Support\EmployeeApprovalNotifier;
 use Illuminate\Support\Facades\Mail;
 
 class EmployeeController extends Controller
@@ -423,7 +425,7 @@ class EmployeeController extends Controller
             if ($user->role === 'admin' && ($user->admin_type === 'super_admin' || !$user->admin_type || $user->admin_type === 'admin')) {
                 $hasAuthority = true;
             } else if (($user->role === 'admin' && $user->admin_type === 'branch_admin' && $user->getEffectiveBranchId()) || ($user->role === 'branch_head' && $user->getEffectiveBranchId())) {
-                // Branch heads can submit accounts; System Administrator approval is still required.
+                // Branch heads can submit accounts; HR approval is still required.
                 $hasAuthority = true;
             }
         } else if ($user->role === 'finance' && ($user->profile->can_create_employees ?? false)) {
@@ -543,33 +545,17 @@ class EmployeeController extends Controller
             
             $user->save();
 
-            $approvers = User::query()
-                ->where('role', 'admin')
-                ->where('is_active', true)
-                ->where(function ($query) {
-                    $query->where('admin_type', 'super_admin')
-                        ->orWhereHas('profile', function ($profileQuery) {
-                            $profileQuery->where('can_verify_ids', true);
-                        });
-                })
-                ->get();
-
-            $approvers->each(function (User $approver) use ($user) {
-                $approver->notify(new \App\Notifications\SystemNotification(
-                    'Employee account pending approval',
-                    'A new employee account for ' . $user->name . ' is waiting for System Administrator approval.',
-                    'employee_account_pending_approval',
-                    route('admin.verifications')
-                ));
-            });
+            app(EmployeeApprovalNotifier::class)->notify($user);
             
             DB::commit();
             
-            return redirect()->route('admin.employees')->with('success', 'Employee submitted successfully for System Administrator approval. Login credentials will be sent after approval.');
+            return redirect()->route('admin.employees')->with('success', 'Employee submitted successfully for HR approval. Login credentials will be sent after approval.');
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to create employee: ' . $e->getMessage());
+            Log::error('Failed to create employee account.', ['exception' => $e]);
+
+            return back()->with('error', 'Failed to create employee. Please try again or contact the system administrator.');
         }
     }
     

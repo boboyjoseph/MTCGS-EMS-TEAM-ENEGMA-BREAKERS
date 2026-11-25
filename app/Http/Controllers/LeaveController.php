@@ -38,8 +38,7 @@ class LeaveController extends Controller
                     ->paginate(20);
             } elseif (($user->role === 'admin' && $user->admin_type === 'branch_admin') || $user->role === 'branch_head') {
                 // Branch admin/Branch Head only sees leave requests from their branch ACTIVE employees
-                $adminProfile = $user->role === 'branch_head' ? $user->getBranchHeadProfile() : $user->getAdminProfile();
-                $branchId = $adminProfile->branch_id ?? null;
+                $branchId = $user->getEffectiveBranchId();
                 $leaves = LeaveRequest::with('employeeProfile')
                     ->whereHas('employeeProfile', function($q) use ($branchId) {
                         $q->where('branch_id', $branchId);
@@ -568,8 +567,7 @@ class LeaveController extends Controller
                 $userQuery->where('is_active', true);
             })
             ->when($user->role === 'branch_head', function ($query) use ($user) {
-                $branch = $user->getBranchHeadProfile();
-                return $query->where('branch_id', $branch?->branch_id ?? 0);
+                return $query->where('branch_id', $user->getEffectiveBranchId() ?? 0);
             })
             ->when($user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin', function ($query) use ($user) {
                 $adminProfile = $user->getAdminProfile();
@@ -624,7 +622,7 @@ class LeaveController extends Controller
         })->values();
 
         $allowedBranchId = match (true) {
-            $user->role === 'branch_head' => $user->getBranchHeadProfile()?->branch_id,
+            $user->role === 'branch_head' => $user->getEffectiveBranchId(),
             $user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin' => $user->getEffectiveBranchId(),
             $user->role === 'finance_head' => $user->getFinanceProfile()?->branch_id,
             default => null,
@@ -669,8 +667,7 @@ class LeaveController extends Controller
                 }
             })
             ->when($user->role === 'branch_head', function ($query) use ($user) {
-                $branch = $user->getBranchHeadProfile();
-                return $query->where('branch_id', $branch?->branch_id ?? 0);
+                return $query->where('branch_id', $user->getEffectiveBranchId() ?? 0);
             })
             ->when($user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin', function ($query) use ($user) {
                 $adminProfile = $user->getAdminProfile();
@@ -733,8 +730,7 @@ class LeaveController extends Controller
                 });
             })
             ->when($user->role === 'branch_head', function ($query) use ($user) {
-                $branch = $user->getBranchHeadProfile();
-                return $query->where('branch_id', $branch?->branch_id ?? 0);
+                return $query->where('branch_id', $user->getEffectiveBranchId() ?? 0);
             })
             ->when($user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin', function ($query) use ($user) {
                 $adminProfile = $user->getAdminProfile();
@@ -875,8 +871,7 @@ class LeaveController extends Controller
         }
 
         if ($user->role === 'branch_head') {
-            $requesterProfile = $user->getBranchHeadProfile();
-            abort_if((int) $chargeBranchId !== (int) ($requesterProfile?->branch_id ?? 0), 403, 'You can only add charges for your branch employees.');
+            abort_if((int) $chargeBranchId !== (int) ($user->getEffectiveBranchId() ?? 0), 403, 'You can only add charges for your branch employees.');
         }
 
         $evidencePath = $request->file('evidence')?->store('cash-charge-evidence', 'local');
@@ -903,9 +898,9 @@ class LeaveController extends Controller
 
         $canView = ($user->role === 'admin' && ($user->admin_type ?? '') === 'super_admin')
             || ($user->role === 'admin' && ($user->admin_type ?? '') === 'branch_admin'
-                && $cashCharge->branch_id === ($user->getAdminProfile()?->branch_id ?? 0))
+                && $cashCharge->branch_id === ($user->getEffectiveBranchId() ?? 0))
             || ($user->role === 'branch_head'
-                && $cashCharge->branch_id === ($user->getBranchHeadProfile()?->branch_id ?? 0))
+                && $cashCharge->branch_id === ($user->getEffectiveBranchId() ?? 0))
             || ($user->role === 'finance_head'
                 && $cashCharge->branch_id === ($user->getFinanceProfile()?->branch_id ?? 0))
             || ($user->role === 'finance_officer'
@@ -931,8 +926,8 @@ class LeaveController extends Controller
             'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        if ($user->role === 'admin' && $user->admin_type === 'branch_admin') {
-            abort_unless($cashCharge->branch_id === ($user->getAdminProfile()?->branch_id ?? 0), 403, 'You can only review charges for your branch.');
+        if ($user->isBranchAdmin() && !$user->isSuperAdmin()) {
+            abort_unless($cashCharge->branch_id === ($user->getEffectiveBranchId() ?? 0), 403, 'You can only review charges for your branch.');
             abort_unless(in_array($cashCharge->status, ['pending', 'pending_branch_admin'], true), 403, 'This request is not pending branch approval.');
 
             if ($validated['decision'] === 'approve') {
@@ -950,7 +945,7 @@ class LeaveController extends Controller
             $cashCharge->reason = $validated['reason'] ?? $cashCharge->reason;
             $cashCharge->save();
 
-            return back()->with('success', 'Cash charge adjustment request was rejected by the Branch Admin.');
+            return back()->with('success', 'Cash charge adjustment request was rejected by the Branch Head.');
         }
 
         abort_unless($user->role === 'admin' && $user->admin_type === 'super_admin', 403, 'Only the Super Admin can final approve cash charges.');
@@ -1326,8 +1321,7 @@ class LeaveController extends Controller
         
         // Check if branch admin can only approve leaves from their branch
         if ($user->isBranchAdmin()) {
-            $adminProfile = $user->isBranchHead() ? $user->getBranchHeadProfile() : $user->getAdminProfile();
-            if (!$adminProfile || $leave->employeeProfile->branch_id !== $adminProfile->branch_id) {
+            if ($leave->employeeProfile->branch_id !== $user->getEffectiveBranchId()) {
                 abort(403, 'You can only approve leave requests from your branch.');
             }
         }
@@ -1417,8 +1411,7 @@ class LeaveController extends Controller
         
         // Check if branch admin can only reject leaves from their branch
         if ($user->isBranchAdmin()) {
-            $adminProfile = $user->isBranchHead() ? $user->getBranchHeadProfile() : $user->getAdminProfile();
-            if (!$adminProfile || $leave->employeeProfile->branch_id !== $adminProfile->branch_id) {
+            if ($leave->employeeProfile->branch_id !== $user->getEffectiveBranchId()) {
                 abort(403, 'You can only reject leave requests from your branch.');
             }
         }
@@ -1444,16 +1437,25 @@ class LeaveController extends Controller
 
     private function notifyBranchReviewers(EmployeeProfile $profile, string $leaveType): void
     {
+        if (!$profile->branch_id) {
+            return;
+        }
+
         $recipients = User::where(function ($query) use ($profile) {
                 $query->where(function ($branchQuery) use ($profile) {
                     $branchQuery->where('role', 'branch_head')
-                        ->whereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id));
+                        ->where(function ($userQuery) use ($profile) {
+                            $userQuery->where('branch_id', $profile->branch_id)
+                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id))
+                                ->orWhereHas('assignedBranches', fn ($branchQuery) => $branchQuery->whereKey($profile->branch_id));
+                        });
                 })->orWhere(function ($branchQuery) use ($profile) {
                     $branchQuery->where('role', 'admin')
                         ->where('admin_type', 'branch_admin')
                         ->where(function ($userQuery) use ($profile) {
                             $userQuery->where('branch_id', $profile->branch_id)
-                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id));
+                                ->orWhereHas('profile', fn ($profileQuery) => $profileQuery->where('branch_id', $profile->branch_id))
+                                ->orWhereHas('assignedBranches', fn ($branchQuery) => $branchQuery->whereKey($profile->branch_id));
                         });
                 });
             })

@@ -3,6 +3,87 @@
 @section('title', 'User Profile')
 
 @section('content')
+@php
+    $storedFingerprint = trim((string) ($profile->fingerprint_template ?? ''));
+    $decodedFingerprint = json_decode($storedFingerprint, true);
+    $handFingerStatus = [
+        'Left' => [
+            'Thumb' => false,
+            'Index Finger' => false,
+            'Middle Finger' => false,
+            'Ring Finger' => false,
+            'Pinky' => false,
+        ],
+        'Right' => [
+            'Thumb' => false,
+            'Index Finger' => false,
+            'Middle Finger' => false,
+            'Ring Finger' => false,
+            'Pinky' => false,
+        ],
+    ];
+    $fingerEntries = [];
+
+    if (is_array($decodedFingerprint) && isset($decodedFingerprint['templates']) && is_array($decodedFingerprint['templates'])) {
+        foreach (array_values($decodedFingerprint['templates']) as $index => $template) {
+            $hasTemplateData = is_string($template) && $template !== '';
+            $hasTemplateData = $hasTemplateData
+                || (is_array($template) && is_string($template['fingerprint_data'] ?? null) && $template['fingerprint_data'] !== '');
+
+            if (!$hasTemplateData) {
+                continue;
+            }
+
+            $fingerEntries[] = [
+                'number' => $index + 1,
+                'name' => is_array($template) && is_string($template['finger_name'] ?? null)
+                    ? trim($template['finger_name'])
+                    : '',
+            ];
+        }
+    } elseif ($storedFingerprint !== '' && strtolower($storedFingerprint) !== 'null') {
+        $fingerEntries[] = ['number' => 1, 'name' => ''];
+    }
+
+    $unidentifiedFingers = [];
+    $fingerMatchers = [
+        'Thumb' => ['thumb'],
+        'Index Finger' => ['index'],
+        'Middle Finger' => ['middle'],
+        'Ring Finger' => ['ring'],
+        'Pinky' => ['pinky', 'pinkie', 'little'],
+    ];
+
+    foreach ($fingerEntries as $fingerEntry) {
+        $normalizedName = preg_replace('/[^a-z]/', '', strtolower($fingerEntry['name']));
+        $hand = strpos($normalizedName, 'left') !== false
+            ? 'Left'
+            : (strpos($normalizedName, 'right') !== false ? 'Right' : null);
+        $finger = null;
+
+        foreach ($fingerMatchers as $fingerLabel => $matchers) {
+            foreach ($matchers as $matcher) {
+                if (strpos($normalizedName, $matcher) !== false) {
+                    $finger = $fingerLabel;
+                    break 2;
+                }
+            }
+        }
+
+        if ($hand !== null && $finger !== null) {
+            $handFingerStatus[$hand][$finger] = true;
+            continue;
+        }
+
+        $unidentifiedFingers[] = [
+            'name' => $fingerEntry['name'] !== ''
+                ? $fingerEntry['name']
+                : 'Finger ' . $fingerEntry['number'] . ' (name not recorded)',
+        ];
+    }
+
+    $hasRegisteredFingerprints = (bool) ($profile->is_fingerprint_registered ?? false) || $fingerEntries !== [];
+@endphp
 <div class="container-fluid profile-page">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -52,6 +133,45 @@
                         <div class="col-md-6"><div class="text-muted small">Pag-IBIG Number</div><div class="fw-semibold">{{ $profile->pagibig_number ?? 'Not specified' }}</div></div>
                         <div class="col-md-6"><div class="text-muted small">TIN Number</div><div class="fw-semibold">{{ $profile->tin_number ?? 'Not specified' }}</div></div>
                     </div>
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="fas fa-fingerprint me-2"></i>Fingerprint Status</h6>
+                    <div class="row g-3">
+                        @foreach($handFingerStatus as $hand => $fingers)
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">{{ $hand }} Hand</h6>
+                                    </div>
+                                    <div class="list-group list-group-flush">
+                                        @foreach($fingers as $fingerName => $isRegistered)
+                                            <div class="list-group-item d-flex justify-content-between align-items-center"
+                                                 aria-label="{{ $hand }} {{ $fingerName }}: {{ $isRegistered ? 'Registered' : 'Not Registered' }}">
+                                                <span>{{ $fingerName }}</span>
+                                                <span class="badge {{ $isRegistered ? 'bg-success' : 'bg-secondary' }}">
+                                                    {{ $isRegistered ? 'Registered' : 'Not Registered' }}
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    @if(count($unidentifiedFingers) > 0)
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <div class="fw-semibold mb-2">Registered fingerprint with unknown finger</div>
+                            @foreach($unidentifiedFingers as $finger)
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>{{ $finger['name'] }}</span>
+                                    <span class="badge bg-success">Registered</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @elseif($hasRegisteredFingerprints && !in_array(true, array_merge(...array_values($handFingerStatus)), true))
+                        <p class="text-muted mt-3 mb-0">Fingerprint is registered, but the finger name is not available in this record.</p>
+                    @elseif(!$hasRegisteredFingerprints)
+                        <p class="text-muted mt-3 mb-0">No registered fingerprints.</p>
+                    @endif
                 </div>
             </div>
         </div>

@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
 use App\Models\Branch;
 use App\Models\Device;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class DeviceController extends Controller
@@ -34,9 +35,9 @@ class DeviceController extends Controller
     private function authorizeDeviceManagement(): void
     {
         $user = Auth::user();
-        
+
         // Only super admins can manage biometric devices
-        if (!$user || $user->role !== 'admin' || $user->admin_type !== 'super_admin') {
+        if (! $user || $user->role !== 'admin' || $user->admin_type !== 'super_admin') {
             abort(403, 'Only super administrators can manage biometric devices.');
         }
     }
@@ -96,8 +97,8 @@ class DeviceController extends Controller
             'branch_id' => 'required|exists:branches,id',
             'location' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_if:location_check_enabled,1'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_if:location_check_enabled,1'],
             'radius_meters' => 'nullable|integer|min:1|max:10000',
             'location_check_enabled' => 'sometimes|boolean',
             'status' => 'required|in:active,inactive,maintenance',
@@ -213,8 +214,8 @@ class DeviceController extends Controller
             'allowed_mac_addresses' => ['nullable', 'array'],
             'location' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_if:location_check_enabled,1'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_if:location_check_enabled,1'],
             'radius_meters' => 'nullable|integer|min:1|max:10000',
             'location_check_enabled' => 'sometimes|boolean',
             'status' => 'required|in:active,inactive,maintenance',
@@ -297,15 +298,60 @@ class DeviceController extends Controller
     {
         $this->authorizeDeviceManagement();
 
-        $device->delete();
+        $branchId = $device->branch_id;
+        $branchName = $device->branch?->branch_name;
+        $resetProfiles = DB::transaction(function () use ($device, $branchId) {
+            $resetProfiles = $this->clearBranchFingerprints($branchId);
+            $device->delete();
+
+            return $resetProfiles;
+        });
+
+        $message = $branchId
+            ? "Device removed. {$resetProfiles} fingerprint profile(s) in {$branchName} were cleared and must be enrolled again."
+            : 'Device removed. No branch was assigned, so no fingerprint profiles were cleared.';
 
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Device removed successfully.',
+                'message' => $message,
+                'fingerprint_profiles_cleared' => $resetProfiles,
             ]);
         }
 
-        return redirect()->route('admin.devices.index')->with('success', 'Device removed successfully.');
+        return redirect()->route('admin.devices.index')->with('success', $message);
+    }
+
+    private function clearBranchFingerprints(?int $branchId): int
+    {
+        if (! $branchId) {
+            return 0;
+        }
+
+        $clearedProfiles = 0;
+        foreach (['employee_profiles', 'admin_profiles', 'finance_profiles', 'branch_heads', 'employees'] as $table) {
+            if (! Schema::hasTable($table)
+                || ! Schema::hasColumn($table, 'branch_id')
+                || ! Schema::hasColumn($table, 'fingerprint_template')
+                || ! Schema::hasColumn($table, 'is_fingerprint_registered')) {
+                continue;
+            }
+
+            $profilesWithFingerprints = DB::table($table)
+                ->where('branch_id', $branchId)
+                ->where(function ($query) use ($table) {
+                    $query->whereNotNull("{$table}.fingerprint_template")
+                        ->orWhere("{$table}.is_fingerprint_registered", true);
+                });
+            $clearedProfiles += (clone $profilesWithFingerprints)->count();
+
+            $profilesWithFingerprints->update([
+                'fingerprint_template' => null,
+                'is_fingerprint_registered' => false,
+                'updated_at' => now(),
+            ]);
+        }
+
+        return $clearedProfiles;
     }
 }

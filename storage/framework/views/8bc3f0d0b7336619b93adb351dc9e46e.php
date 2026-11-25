@@ -181,14 +181,14 @@
                                         $dateStr = $current->format('Y-m-d');
                                         $log = $logsByDate->get($dateStr);
                                         $isWeekend = in_array($current->dayOfWeek, [0, 6]);
-                                        $approvedLeave = !$isWeekend ? $approvedLeaves->first(function ($leave) use ($current) {
+                                        $isWorkingDay = $workingDayService->isWorkingDay($current, $branchId);
+                                        $approvedLeave = $isWorkingDay ? $approvedLeaves->first(function ($leave) use ($current) {
                                             return $current->betweenIncluded($leave->start_date, $leave->end_date);
                                         }) : null;
                                         $isApprovedLeave = (bool) $approvedLeave;
                                         $isLWOP = $isApprovedLeave && (bool) $approvedLeave->is_absent;
                                         $isNoRecordYet = false;
                                         $hasAnyAttendanceTime = (bool) ($log && ($log->am_in || $log->am_out || $log->pm_in || $log->pm_out));
-                                        $hasLeaveAttendanceConflict = $isApprovedLeave && $hasAnyAttendanceTime;
                                         $isSuspension = false;
                                         $isHoliday = false;
                                         if (!$isWeekend && !$isApprovedLeave && !$hasAnyAttendanceTime) {
@@ -234,8 +234,8 @@
                                     ?>
                                     <tr class="<?php echo e($isWeekend ? 'table-light' : ''); ?>">
                                         <td><?php echo e($current->format('M d (l)')); ?></td>
-                                        <td class="text-center <?php echo e($isLateTimeIn && !$isApprovedLeave ? 'text-danger fw-bold' : ''); ?>"><?php echo e($log && $log->am_in ? $log->am_in->format('h:i A') : '--'); ?></td>
-                                        <td class="text-center <?php echo e($isEarlyOut && !$isApprovedLeave ? 'text-danger fw-bold' : ''); ?>"><?php echo e($log && $log->pm_out ? $log->pm_out->format('h:i A') : '--'); ?></td>
+                                        <td class="text-center <?php echo e($isLateTimeIn && !$isApprovedLeave ? 'text-danger fw-bold' : ''); ?>"><?php echo e(!$isApprovedLeave && $log && $log->am_in ? $log->am_in->format('h:i A') : '--'); ?></td>
+                                        <td class="text-center <?php echo e($isEarlyOut && !$isApprovedLeave ? 'text-danger fw-bold' : ''); ?>"><?php echo e(!$isApprovedLeave && $log && $log->pm_out ? $log->pm_out->format('h:i A') : '--'); ?></td>
                                         <td class="text-center">
                                             <?php if($log && !$isWeekend && !$isApprovedLeave): ?>
                                                 <?php echo e(number_format($hours, 1)); ?> hrs
@@ -250,10 +250,7 @@
 
                                                 <?php endif; ?>
                                             </span>
-                                            <?php if($hasLeaveAttendanceConflict): ?>
-                                                <small class="d-block text-danger mt-1">Attendance recorded during approved leave — review required</small>
-                                            <?php endif; ?>
-                                            <?php if($log && in_array($log->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
+                                            <?php if(!$isApprovedLeave && $log && in_array($log->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
                                                 <div class="mt-2">
                                                     <small class="d-block text-muted"><?php echo e(ucfirst(str_replace('_', ' ', $log->override_status))); ?></small>
                                                     <small class="d-block">AM in: <?php echo e($log->am_in?->format('h:i A') ?? '--'); ?> -> <?php echo e($log->corrected_time_in?->format('h:i A') ?? '--'); ?></small>

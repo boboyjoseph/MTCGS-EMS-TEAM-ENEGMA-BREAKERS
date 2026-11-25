@@ -27,14 +27,14 @@
         <a href="?tab=credentials" class="btn <?php echo e(request('tab') == 'credentials' ? 'btn-primary' : 'btn-secondary'); ?>">
             <i class="fas fa-envelope"></i> Credentials Not Sent (<?php echo e($pendingCredentials->count()); ?>)
         </a>
-        <?php if(Auth::user()->admin_type === 'super_admin'): ?>
+        <?php if(Auth::user()->isSuperAdmin()): ?>
             <a href="?tab=status_changes" class="btn <?php echo e(request('tab') == 'status_changes' ? 'btn-primary' : 'btn-secondary'); ?>">
                 <i class="fas fa-user-edit"></i> Status Changes (<?php echo e($pendingStatusChanges->count()); ?>)
             </a>
         <?php endif; ?>
     </div>
 
-    <?php if(request('tab') == 'status_changes' && Auth::user()->admin_type === 'super_admin'): ?>
+    <?php if(request('tab') == 'status_changes' && Auth::user()->isSuperAdmin()): ?>
     <div class="card">
         <div class="card-header bg-white">
             <h5 class="mb-0"><i class="fas fa-user-edit text-warning me-2"></i>Pending Employee Status Changes</h5>

@@ -239,6 +239,8 @@ class DashboardDataController extends Controller
             ? AttendanceLog::where('employee_profile_id', $employeeProfileId)->whereDate('attendance_date', today())->first()
             : null;
 
+        $notifications = $user->notifications()->latest()->limit(5)->get();
+
         return response()->json([
             'success' => true,
             'role' => $user->role,
@@ -250,6 +252,16 @@ class DashboardDataController extends Controller
                 'payroll' => $latestPayrollUpdate ? $latestPayrollUpdate->updated_at->toIso8601String() . ':' . $latestPayrollUpdate->id : null,
             ],
             'unread_notifications' => $user->unreadNotifications()->count(),
+            'mark_all_read_url' => route('notifications.read-all'),
+            'notifications' => $notifications->map(fn ($notification) => [
+                'id' => $notification->id,
+                'title' => $notification->data['title'] ?? 'Notification',
+                'message' => $notification->data['message'] ?? '',
+                'created_at' => $notification->created_at?->diffForHumans(),
+                'is_read' => $notification->read_at !== null,
+                'read_url' => route('notifications.read', $notification->id),
+                'delete_url' => route('notifications.destroy', $notification->id),
+            ])->values(),
             'own_attendance' => $ownAttendance ? [
                 'am_in' => $ownAttendance->am_in?->format('h:i A'),
                 'am_out' => $ownAttendance->am_out?->format('h:i A'),
@@ -269,7 +281,7 @@ class DashboardDataController extends Controller
                 ];
             })->values(),
             'server_time' => now()->toIso8601String(),
-        ]);
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     private function allowedBranchIds(User $user): ?array

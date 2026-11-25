@@ -248,7 +248,9 @@ document.addEventListener('turbo:load', function() {
             {
                 id: <?php echo json_encode((string) $event->id, 15, 512) ?>,
                 title: <?php echo json_encode($event->title, 15, 512) ?>,
-                start: <?php echo json_encode($event->event_date->format('Y-m-d'), 15, 512) ?>,
+                start: <?php echo json_encode($event->start_time ? $event->event_date->format('Y-m-d') . 'T' . $event->start_time : $event->event_date->format('Y-m-d'), 15, 512) ?>,
+                end: <?php echo json_encode($event->end_time ? $event->event_date->format('Y-m-d') . 'T' . $event->end_time : null, 15, 512) ?>,
+                allDay: <?php echo json_encode(!$event->start_time, 15, 512) ?>,
                 backgroundColor: <?php echo json_encode($event->event_type === 'activity' ? '#0d6efd' : ($event->event_type === 'suspension' ? '#dc3545' : '#fd7e14'), 15, 512) ?>,
                 borderColor: <?php echo json_encode($event->event_type === 'activity' ? '#0d6efd' : ($event->event_type === 'suspension' ? '#dc3545' : '#fd7e14'), 15, 512) ?>,
                 textColor: '#ffffff',
@@ -372,6 +374,9 @@ document.addEventListener('turbo:load', function() {
                     `}
                 `;
             } else {
+                const timeRange = !event.allDay && event.start
+                    ? `${event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${event.end ? ` - ${event.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`
+                    : null;
                 detailHtml = `
                     <div class="row mb-3">
                         <div class="col-6">
@@ -401,6 +406,17 @@ document.addEventListener('turbo:load', function() {
                             </div>
                         </div>
                     </div>
+
+                    ${timeRange ? `
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <strong class="d-block text-muted" style="font-size: 0.85rem;">Time</strong>
+                                    <span class="text-dark"><i class="far fa-clock me-1"></i>${timeRange}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
 
                     <div class="row mb-3">
                         <div class="col-12">
@@ -494,7 +510,7 @@ document.addEventListener('turbo:load', function() {
                 window.location.reload();
             })
             .catch(() => {
-                alert('Unable to process the leave action. Please refresh and try again.');
+                window.showAppToast('Unable to process the leave action. Please refresh and try again.', 'error');
             });
     }
 

@@ -9,6 +9,7 @@ use App\Models\DTR;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DashboardPendingLeaveTest extends TestCase
@@ -54,6 +55,7 @@ class DashboardPendingLeaveTest extends TestCase
 
     public function test_employee_dashboard_shows_registered_when_a_template_exists_but_flag_is_stale(): void
     {
+        Storage::fake('public');
         $user = User::factory()->create([
             'role' => 'employee',
             'profile_type' => EmployeeProfile::class,
@@ -68,9 +70,11 @@ class DashboardPendingLeaveTest extends TestCase
             'employment_type' => 'Regular',
             'status' => 'Regular',
             'date_hired' => now()->toDateString(),
+            'profile_photo' => 'profile-photos/employeeprofile-avatar-test.jpg',
             'fingerprint_template' => 'saved-fingerprint-template',
             'is_fingerprint_registered' => false,
         ]);
+        Storage::disk('public')->put($profile->profile_photo, 'fake-image');
         $user->forceFill([
             'profile_id' => $profile->id,
             'profile_type' => EmployeeProfile::class,
@@ -80,7 +84,58 @@ class DashboardPendingLeaveTest extends TestCase
             ->get('/dashboard')
             ->assertOk()
             ->assertSee('Registered')
-            ->assertDontSee('Not Registered');
+            ->assertDontSee('Not Registered')
+            ->assertSee(route('profile.photo', ['employeeprofile', $profile->id]), false)
+            ->assertSee('alt="Profile photo"', false)
+            ->assertSee('body.dark-mode .employee-dashboard-theme .employee-schedule-title', false)
+            ->assertSee('<h5 class="fw-bold employee-schedule-title mb-2">No schedule assigned</h5>', false);
+
+        $photoResponse = $this->get(route('profile.photo', ['employeeprofile', $profile->id]));
+        $photoResponse->assertOk();
+    }
+
+    public function test_branch_admin_header_uses_the_uploaded_admin_profile_photo(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create([
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'profile_type' => AdminProfile::class,
+        ]);
+        $profile = AdminProfile::create([
+            'user_id' => $user->id,
+            'branch_id' => 1,
+            'employee_number' => 'ADMIN-AVATAR-001',
+            'first_name' => 'Branch',
+            'last_name' => 'Admin',
+            'position' => 'Branch Administrator',
+            'date_hired' => now()->toDateString(),
+            'profile_photo' => 'profile-photos/adminprofile-avatar-test.jpg',
+        ]);
+        Storage::disk('public')->put($profile->profile_photo, 'fake-image');
+        $user->forceFill([
+            'profile_id' => $profile->id,
+            'profile_type' => AdminProfile::class,
+        ])->save();
+
+        $photoUrl = route('profile.photo', ['adminprofile', $profile->id]);
+        $response = $this->actingAs($user)->get('/profile');
+        $response->assertOk();
+        $html = $response->getContent();
+        $menuStart = strpos($html, '<button id="profileMenuToggle"');
+        $this->assertNotFalse($menuStart, 'The account menu button should be rendered.');
+        $menuEnd = strpos($html, '</button>', $menuStart);
+        $this->assertNotFalse($menuEnd, 'The account menu button should be closed.');
+        $menuHtml = substr($html, $menuStart, $menuEnd - $menuStart);
+        $this->assertStringContainsString($photoUrl, $menuHtml);
+        $this->assertStringNotContainsString('/storage/', $menuHtml);
+        $this->assertStringContainsString('alt="Profile photo"', $menuHtml);
+        $this->assertStringContainsString('onerror="this.onerror=null;this.src=', $menuHtml);
+        $this->assertStringContainsString(asset('images/default-avatar.svg'), $menuHtml);
+
+        $this->actingAs($user)
+            ->get($photoUrl)
+            ->assertOk();
     }
 
     public function test_branch_admin_dtr_badge_only_counts_submitted_dtrs_in_their_branch(): void

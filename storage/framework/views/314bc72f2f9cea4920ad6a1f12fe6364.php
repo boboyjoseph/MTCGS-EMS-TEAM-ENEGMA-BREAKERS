@@ -112,6 +112,10 @@
                                                 <strong><?php echo e($event->event_date->format('M d, Y')); ?></strong>
                                                 <br>
                                                 <small class="text-muted"><?php echo e($event->event_date->format('l')); ?></small>
+                                                <?php if($event->start_time && $event->end_time): ?>
+                                                    <br>
+                                                    <small class="text-primary"><i class="far fa-clock me-1"></i><?php echo e(\Carbon\Carbon::parse($event->start_time)->format('g:i A')); ?> - <?php echo e(\Carbon\Carbon::parse($event->end_time)->format('g:i A')); ?></small>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                         <td>

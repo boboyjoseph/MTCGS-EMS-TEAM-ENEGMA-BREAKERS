@@ -91,30 +91,24 @@
             <?php $__currentLoopData = $daysInPeriod; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <?php ($log = $day['log'] ?? null); ?>
                 <?php ($status = $day['status'] ?? 'N/A'); ?>
-                <?php ($hasLeaveAttendanceConflict = $day['has_leave_attendance_conflict'] ?? false); ?>
+                <?php ($isLeaveDay = in_array($status, ['leave', 'lwop'], true)); ?>
                 <?php ($lateEarlyOutMinutes = \App\Models\DTR::normalizeLateMinutesForLog($log)); ?>
-                <?php if($log && in_array($status, ['present', 'late'], true)): ?>
+                <?php if($log && !$isLeaveDay && in_array($status, ['present', 'late'], true)): ?>
                     <?php ($attendanceStatus = $log->getDtrStatus()); ?>
                     <?php if(in_array($attendanceStatus, ['Half Day', 'Early Out', 'Late', 'Late / Early Out'], true)): ?>
                         <?php ($status = $attendanceStatus); ?>
                     <?php endif; ?>
                     <?php if(in_array($attendanceStatus, ['Early Out', 'Late / Early Out'], true) && $log->pm_out): ?>
-                        <?php ($scheduledEnd = $log->pm_out->copy()->setTime(17, 0, 0)); ?>
+                        <?php ($scheduledEnd = \App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out)); ?>
                         <?php ($lateEarlyOutMinutes += max(0, (int) abs($scheduledEnd->diffInMinutes($log->pm_out)))); ?>
                     <?php endif; ?>
                 <?php endif; ?>
                 <tr>
                     <td class="center"><?php echo e($day['date']->format('M d, Y')); ?></td>
-                    <td class="center"><?php echo e(($log?->am_in ?? $log?->pm_in)?->format('h:i A') ?? '--'); ?></td>
-                    <td class="center"><?php echo e(($log?->pm_out ?? $log?->am_out)?->format('h:i A') ?? '--'); ?></td>
-                    <td class="center"><?php echo e($lateEarlyOutMinutes); ?></td>
-                    <td class="status">
-                        <?php echo e(is_string($status) && $status === 'Half Day' ? $status : ucfirst($status)); ?>
-
-                        <?php if($hasLeaveAttendanceConflict): ?>
-                            <br><small>Attendance recorded during approved leave — review required</small>
-                        <?php endif; ?>
-                    </td>
+                    <td class="center"><?php echo e(!$isLeaveDay ? (($log?->am_in ?? $log?->pm_in)?->format('h:i A') ?? '--') : '--'); ?></td>
+                    <td class="center"><?php echo e(!$isLeaveDay ? (($log?->pm_out ?? $log?->am_out)?->format('h:i A') ?? '--') : '--'); ?></td>
+                    <td class="center"><?php echo e($isLeaveDay ? 0 : $lateEarlyOutMinutes); ?></td>
+                    <td class="status"><?php echo e($status === 'leave' ? 'Paid Leave' : ($status === 'lwop' ? 'Leave Without Pay' : (is_string($status) && $status === 'Half Day' ? $status : ucfirst($status)))); ?></td>
                 </tr>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>

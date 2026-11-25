@@ -331,11 +331,8 @@
                                                                         $statusClass = $hasAnyAttendanceTime ? 'text-success fw-bold' : $noAttendanceClass;
 
                                                                         if ($hasAnyAttendanceTime) {
-                                                                            $shift = $log->employeeProfile?->shift;
-                                                                            $scheduledStart = $shift?->start_time ?: '08:00:00';
-
                                                                             if ($log->am_in) {
-                                                                                $scheduledStartTime = $log->am_in->copy()->setTimeFromTimeString($scheduledStart);
+                                                                                $scheduledStartTime = \App\Services\AttendanceWorkHours::scheduledStart($log->employeeProfile, $log->am_in);
                                                                                 $isLateTimeIn = \App\Services\AttendanceTimeRules::lateMinutes($log->am_in, $scheduledStartTime) > 0;
                                                                                 $inTimeClass = $isLateTimeIn ? 'small fw-bold text-danger' : 'small fw-bold text-success';
                                                                             }

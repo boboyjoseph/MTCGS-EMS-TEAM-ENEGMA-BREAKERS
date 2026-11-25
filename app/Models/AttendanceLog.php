@@ -147,10 +147,9 @@ class AttendanceLog extends Model
             return 'Half Day';
         }
 
-        $shift = $this->employeeProfile?->shift;
-        $start = $shift?->start_time ?: '08:00:00';
-        $scheduledStart = $this->am_in->copy()->setTimeFromTimeString($start);
-        $scheduledEnd = ($this->pm_out ?: $this->pm_in)->copy()->setTime(17, 0, 0);
+        $profile = $this->employeeProfile;
+        $scheduledStart = \App\Services\AttendanceWorkHours::scheduledStart($profile, $this->am_in);
+        $scheduledEnd = \App\Services\AttendanceWorkHours::scheduledEnd($profile, $this->pm_out ?: $this->pm_in);
         $isLate = \App\Services\AttendanceTimeRules::lateMinutes($this->am_in, $scheduledStart) > 0;
         $isEarlyOut = (bool) $this->pm_out && $this->pm_out->lt($scheduledEnd);
 

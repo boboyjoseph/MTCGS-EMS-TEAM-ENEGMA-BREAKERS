@@ -399,7 +399,7 @@
 
         // Show success message
         setTimeout(() => {
-            alert('Demo completed! In real implementation, the employee account would be created with fingerprint data stored.');
+            window.showAppToast('Demo completed! In real implementation, the employee account would be created with fingerprint data stored.', 'success');
         }, 500);
     }
 

@@ -40,10 +40,6 @@
         </a>
     </div>
 
-    <?php if(session('success')): ?>
-        <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i><?php echo e(session('success')); ?></div>
-    <?php endif; ?>
-
     <?php if($errors->any()): ?>
         <div class="alert alert-danger">
             <strong>Please check the form.</strong>
@@ -179,7 +175,7 @@
                 if (!button) return;
                 const cards = container.querySelectorAll('.slide-card');
                 if (cards.length === 1) {
-                    alert('Keep at least one homepage carousel slide.');
+                    window.showAppToast('Keep at least one homepage carousel slide.', 'warning');
                     return;
                 }
                 const card = button.closest('.slide-card');
@@ -211,7 +207,7 @@
                     })
                     .catch((error) => {
                         button.disabled = false;
-                        alert(error.message);
+                        window.showAppToast(error.message, 'error');
                     });
             });
         })();

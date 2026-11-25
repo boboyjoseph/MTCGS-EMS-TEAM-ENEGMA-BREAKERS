@@ -102,7 +102,8 @@
                     <div class="col-12 form-check ms-2 mt-2">
                         <input type="hidden" name="location_check_enabled" value="0">
                         <input type="checkbox" name="location_check_enabled" id="location_check_enabled" class="form-check-input" value="1" {{ old('location_check_enabled', $device->location_check_enabled) ? 'checked' : '' }}>
-                        <label for="location_check_enabled" class="form-check-label">Enable school location check</label>
+                        <label for="location_check_enabled" class="form-check-label">Require GPS for attendance and fingerprint enrollment</label>
+                        <small class="d-block text-muted">When enabled, the Attendance and Enrollment apps must send a fresh Windows location fix inside this radius.</small>
                     </div>
 
                     <div class="col-12">
@@ -132,9 +133,9 @@ document.querySelector('[data-device-form]')?.addEventListener('submit', async (
         const response = await fetch(form.action, { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: new FormData(form) });
         const payload = await response.json();
         if (!response.ok) throw new Error(Object.values(payload.errors || {}).flat()[0] || payload.message || 'Unable to update device.');
-        alert(payload.message);
+        window.showAppToast(payload.message, 'success');
         window.location.href = '{{ route('admin.devices.index') }}';
-    } catch (error) { alert(error.message); } finally { submitButton.disabled = false; }
+    } catch (error) { window.showAppToast(error.message, 'error'); } finally { submitButton.disabled = false; }
 });
 document.querySelector('#branch_id')?.addEventListener('change', async (event) => {
     if (!event.target.value) return;

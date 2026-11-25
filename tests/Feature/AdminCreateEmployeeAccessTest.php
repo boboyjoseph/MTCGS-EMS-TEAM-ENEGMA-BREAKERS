@@ -62,5 +62,9 @@ class AdminCreateEmployeeAccessTest extends TestCase
         $response->assertOk();
         $response->assertSee('name="position"', false);
         $response->assertSee('Employee ID', false);
+        $response->assertSee('<select name="role" class="form-select" required id="role-select">', false);
+        $response->assertSee('<option value="employee"', false);
+        $response->assertSee('<option value="finance_officer"', false);
+        $response->assertSee('<option value="finance_head"', false);
     }
 }

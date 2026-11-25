@@ -109,14 +109,12 @@ class DashboardController extends Controller
         
         // BRANCH ADMIN
         if ($user->isBranchAdmin()) {
-            $adminProfile = $user->getAdminProfile();
-            
-            // Get branch info with fallback
-            $branchId = $adminProfile ? ($adminProfile->branch_id ?? 1) : 1;
+            $branchId = $user->getEffectiveBranchId() ?? 1;
             $branchName = 'System Default';
-            
-            if ($adminProfile && $adminProfile->branch && $adminProfile->branch->branch_name) {
-                $branchName = $adminProfile->branch->branch_name;
+
+            $branch = \App\Models\Branch::find($branchId);
+            if ($branch?->branch_name) {
+                $branchName = $branch->branch_name;
             }
             
             // Get branch employees - ACTIVE only

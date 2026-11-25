@@ -460,7 +460,6 @@
                                             $isWeekend = $day['is_weekend'];
                                             $isHoliday = ($day['status'] ?? null) === 'holiday' || ($day['is_holiday'] ?? false);
                                             $isSuspension = ($day['status'] ?? null) === 'suspension' || ($day['is_suspension'] ?? false);
-                                            $hasLeaveAttendanceConflict = $day['has_leave_attendance_conflict'] ?? false;
                                             $attendanceStatus = $day['log'] ? $day['log']->getDtrStatus() : null;
                                             $isNoRecordYet = false;
                                             $dayStatus = $day['status'] ?? null;
@@ -481,6 +480,7 @@
                                                 && $day['log']->am_in
                                                 && $day['log']->am_in->format('H:i:s') > '07:00:00';
                                             $canRequestCorrection = !$isSuspension && $day['log']
+                                                && !$isLeave && !$isLWOP
                                                 && (in_array($attendanceStatus, ['Late', 'Late / Early Out', 'Early Out', 'Half Day'], true) || $legacyApprovedWithoutCorrection)
                                                 && (!in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin', 'approved'], true) || $legacyApprovedWithoutCorrection);
                                             $correctionFormId = 'attendance-correction-' . ($day['log']->id ?? $day['date']->format('Ymd'));
@@ -494,7 +494,7 @@
                                                 <?php if($canRequestCorrection): ?>
                                                     <input type="time" name="corrected_time_in" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-in" value="<?php echo e($day['log']->corrected_time_in?->format('H:i') ?? $day['log']->am_in?->format('H:i')); ?>">
                                                 <?php else: ?>
-                                                    <?php echo e($day['am_in'] ?? ''); ?>
+                                                    <?php echo e(!$isLeave && !$isLWOP ? ($day['am_in'] ?? '') : '--'); ?>
 
                                                 <?php endif; ?>
                                             </td>
@@ -502,7 +502,7 @@
                                                 <?php if($canRequestCorrection): ?>
                                                     <input type="time" name="corrected_time_out" form="<?php echo e($correctionFormId); ?>" class="form-control form-control-sm dtr-inline-time" aria-label="Requested time-out" value="<?php echo e($day['log']->corrected_time_out?->format('H:i') ?? $day['log']->pm_out?->format('H:i')); ?>">
                                                 <?php else: ?>
-                                                    <?php echo e($day['pm_out'] ?? ''); ?>
+                                                    <?php echo e(!$isLeave && !$isLWOP ? ($day['pm_out'] ?? '') : '--'); ?>
 
                                                 <?php endif; ?>
                                             </td>
@@ -552,12 +552,9 @@
                                                 <?php else: ?>
                                                     Present
                                                 <?php endif; ?>
-                                                <?php if($hasLeaveAttendanceConflict): ?>
-                                                    <small class="d-block text-danger mt-1">Attendance recorded during approved leave — review required</small>
-                                                <?php endif; ?>
-                                                <?php if($day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
+                                                <?php if(!$isLeave && !$isLWOP && $day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
                                                     <small class="d-block text-muted mt-1">Adjustment pending approval</small>
-                                                <?php elseif($day['log'] && $day['log']->override_status === 'approved'): ?>
+                                                <?php elseif(!$isLeave && !$isLWOP && $day['log'] && $day['log']->override_status === 'approved'): ?>
                                                     <small class="d-block text-success mt-1">Adjusted to Present</small>
                                                 <?php endif; ?>
                                             </td>
@@ -568,9 +565,9 @@
                                                         <input type="text" name="reason" class="form-control form-control-sm mb-1" placeholder="Reason" required minlength="5">
                                                         <button type="submit" class="btn btn-sm btn-outline-dark">Request Attendance Correction</button>
                                                     </form>
-                                                <?php elseif($day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
+                                                <?php elseif(!$isLeave && !$isLWOP && $day['log'] && in_array($day['log']->override_status, ['pending_branch', 'pending_system_admin'], true)): ?>
                                                     <small class="d-block text-muted">Adjustment pending approval</small>
-                                                <?php elseif($day['log'] && $day['log']->override_status === 'approved'): ?>
+                                                <?php elseif(!$isLeave && !$isLWOP && $day['log'] && $day['log']->override_status === 'approved'): ?>
                                                     <small class="d-block text-success">Adjusted to Present</small>
                                                 <?php else: ?>
                                                     --

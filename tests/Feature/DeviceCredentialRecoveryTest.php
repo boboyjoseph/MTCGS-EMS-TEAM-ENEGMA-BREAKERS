@@ -54,6 +54,10 @@ class DeviceCredentialRecoveryTest extends TestCase
             ->get(route('admin.devices.show', $device))
             ->assertOk()
             ->assertSee('Save this device credential now.')
+            ->assertSee('Download setup package')
+            ->assertSee('mtcgs-biometric-device-setup')
+            ->assertSee('ScannerSerialNumber')
+            ->assertSee('windowsCredentialFile')
             ->assertSee($device->api_secret);
 
         $this->get(route('admin.devices.show', $device))
@@ -68,6 +72,145 @@ class DeviceCredentialRecoveryTest extends TestCase
             ->assertDontSee('San Nicolas, Iriga City, Camarines Sur')
             ->assertDontSee('13.433153')
             ->assertDontSee('123.411049');
+    }
+
+    public function test_deleting_a_device_clears_only_its_branch_fingerprint_templates(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-DEVICE-RESET',
+            'branch_name' => 'Device Reset Branch',
+            'address' => 'Device Reset Address',
+        ]);
+        $otherBranch = Branch::create([
+            'branch_code' => 'BR-DEVICE-RESET-OTHER',
+            'branch_name' => 'Other Branch',
+            'address' => 'Other Branch Address',
+        ]);
+        $admin = User::create([
+            'name' => 'Device Reset Admin',
+            'email' => 'device.reset.admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $device = Device::create([
+            'mac_address' => 'AA-BB-CC-DD-EE-32',
+            'serial_number' => 'SERIAL-DEVICE-RESET',
+            'api_secret' => str_repeat('device-reset-', 5),
+            'device_name' => 'Device Reset Kiosk',
+            'device_type' => 'biometric_scanner',
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ]);
+
+        $makeUser = function (string $suffix) use ($branch): User {
+            return User::create([
+                'name' => "Fingerprint {$suffix}",
+                'email' => "fingerprint.{$suffix}@example.com",
+                'password' => bcrypt('password'),
+                'role' => 'employee',
+                'branch_id' => $branch->id,
+                'is_active' => true,
+                'is_verified' => true,
+                'id_verification_status' => 'approved',
+            ]);
+        };
+        $now = now();
+
+        DB::table('employee_profiles')->insert([
+            'user_id' => $makeUser('employee')->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'RESET-EMPLOYEE',
+            'first_name' => 'Employee',
+            'last_name' => 'Fingerprint',
+            'position' => 'Teacher',
+            'date_hired' => $now->toDateString(),
+            'fingerprint_template' => 'saved-template',
+            'is_fingerprint_registered' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('admin_profiles')->insert([
+            'user_id' => $makeUser('admin-profile')->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'RESET-ADMIN',
+            'first_name' => 'Admin',
+            'last_name' => 'Fingerprint',
+            'fingerprint_template' => 'saved-template',
+            'is_fingerprint_registered' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('finance_profiles')->insert([
+            'user_id' => $makeUser('finance')->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'RESET-FINANCE',
+            'first_name' => 'Finance',
+            'last_name' => 'Fingerprint',
+            'fingerprint_template' => 'saved-template',
+            'is_fingerprint_registered' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('branch_heads')->insert([
+            'user_id' => $makeUser('branch-head')->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'RESET-BRANCH-HEAD',
+            'first_name' => 'Branch',
+            'last_name' => 'Head',
+            'fingerprint_template' => 'saved-template',
+            'is_fingerprint_registered' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('employees')->insert([
+            'user_id' => $makeUser('legacy-employee')->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'RESET-LEGACY',
+            'first_name' => 'Legacy',
+            'last_name' => 'Employee',
+            'fingerprint_template' => 'saved-template',
+            'is_fingerprint_registered' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('employee_profiles')->insert([
+            'user_id' => $makeUser('other-branch')->id,
+            'branch_id' => $otherBranch->id,
+            'employee_number' => 'OTHER-BRANCH-EMPLOYEE',
+            'first_name' => 'Other',
+            'last_name' => 'Branch',
+            'position' => 'Teacher',
+            'date_hired' => $now->toDateString(),
+            'fingerprint_template' => 'keep-this-template',
+            'is_fingerprint_registered' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson(route('admin.devices.destroy', $device))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('fingerprint_profiles_cleared', 5);
+
+        $this->assertDatabaseMissing('devices', ['id' => $device->id]);
+        foreach (['employee_profiles', 'admin_profiles', 'finance_profiles', 'branch_heads', 'employees'] as $table) {
+            $this->assertDatabaseHas($table, [
+                'branch_id' => $branch->id,
+                'fingerprint_template' => null,
+                'is_fingerprint_registered' => false,
+            ]);
+        }
+        $this->assertDatabaseHas('employee_profiles', [
+            'branch_id' => $otherBranch->id,
+            'fingerprint_template' => 'keep-this-template',
+            'is_fingerprint_registered' => true,
+        ]);
     }
 
     public function test_device_details_can_recover_when_stored_credential_cannot_be_decrypted(): void

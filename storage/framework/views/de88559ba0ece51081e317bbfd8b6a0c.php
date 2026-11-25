@@ -30,7 +30,7 @@
                 </div>
                 <div class="card-body">
                     <?php if(session('photo_updated')): ?>
-                        <div class="alert alert-success py-2" role="alert">
+                        <div class="alert alert-success py-2" role="alert" data-auto-dismiss="5000">
                             <i class="fas fa-check-circle me-1"></i><?php echo e(session('photo_updated')); ?>
 
                         </div>
@@ -40,11 +40,9 @@
                         <div class="text-center">
                             <label for="profile_photo" class="d-inline-block position-relative" title="Click to upload a profile picture" style="cursor: pointer;">
                                 <?php if($profile && $profile->profile_photo): ?>
-                                    <img src="<?php echo e(route('profile.photo', [strtolower(class_basename($profile)), $profile->id]) . '?v=' . $profile->updated_at?->timestamp); ?>" alt="Profile photo" class="rounded-circle border shadow-sm" style="width: 140px; height: 140px; object-fit: cover;">
+                                    <img src="<?php echo e(route('profile.photo', [strtolower(class_basename($profile)), $profile->id]) . '?v=' . $profile->updated_at?->timestamp); ?>" onerror="this.onerror=null;this.src='<?php echo e(asset('images/default-avatar.svg')); ?>';" alt="Profile photo" class="rounded-circle border shadow-sm" style="width: 140px; height: 140px; object-fit: cover;">
                                 <?php else: ?>
-                                    <span class="rounded-circle border bg-light text-primary shadow-sm d-flex align-items-center justify-content-center" style="width: 140px; height: 140px; font-size: 4rem;">
-                                        <i class="fas fa-user-circle"></i>
-                                    </span>
+                                    <img src="<?php echo e(asset('images/default-avatar.svg')); ?>" alt="Default profile avatar" class="rounded-circle border shadow-sm" style="width: 140px; height: 140px; object-fit: cover;">
                                 <?php endif; ?>
                                 <span class="position-absolute bottom-0 end-0 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center border border-white" style="width: 38px; height: 38px;" aria-hidden="true">
                                     <i class="fas fa-camera"></i>
@@ -429,7 +427,7 @@ unset($__errorArgs, $__bag); ?>
                 </div>
                 <div class="card-body">
                     <?php if(session('signature_updated')): ?>
-                        <div class="alert alert-success py-2" role="alert">
+                        <div class="alert alert-success py-2" role="alert" data-auto-dismiss="5000">
                             <i class="fas fa-check-circle me-1"></i><?php echo e(session('signature_updated')); ?>
 
                         </div>
@@ -509,7 +507,7 @@ unset($__errorArgs, $__bag); ?>
                 </div>
                 <div class="card-body" id="password-form-container">
                     <?php if(session('password_updated')): ?>
-                        <div class="alert alert-success py-2" role="alert">
+                        <div class="alert alert-success py-2" role="alert" data-auto-dismiss="5000">
                             <i class="fas fa-check-circle me-1"></i><?php echo e(session('password_updated')); ?>
 
                         </div>
@@ -673,7 +671,7 @@ unset($__errorArgs, $__bag); ?>
         form.addEventListener('submit', (event) => {
             if (!hasInk) {
                 event.preventDefault();
-                alert('Please draw your signature first.');
+                window.showAppToast('Please draw your signature first.', 'warning');
                 return;
             }
             input.value = canvas.toDataURL('image/png');

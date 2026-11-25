@@ -63,6 +63,28 @@
                             @enderror
                         </div>
 
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                            <label for="start_time" class="form-label fw-bold">Start Time @if($calendarEvent->event_type === 'activity')<span class="text-danger">*</span>@endif</label>
+                            <input type="time" class="form-control @error('start_time') is-invalid @enderror"
+                                   id="start_time" name="start_time" value="{{ old('start_time', $calendarEvent->start_time ? substr($calendarEvent->start_time, 0, 5) : '') }}"
+                                   {{ $calendarEvent->event_type === 'activity' ? 'required' : '' }}>
+                            @error('start_time')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            </div>
+                            <div class="col-md-6">
+                            <label for="end_time" class="form-label fw-bold">End Time @if($calendarEvent->event_type === 'activity')<span class="text-danger">*</span>@endif</label>
+                            <input type="time" class="form-control @error('end_time') is-invalid @enderror"
+                                   id="end_time" name="end_time" value="{{ old('end_time', $calendarEvent->end_time ? substr($calendarEvent->end_time, 0, 5) : '') }}"
+                                   {{ $calendarEvent->event_type === 'activity' ? 'required' : '' }}>
+                            @error('end_time')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            </div>
+                            <div class="col-12 form-text">Required for activities. Leave both blank for all-day holidays or suspensions.</div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="branch_id" class="form-label fw-bold">Branch</label>
                             @php

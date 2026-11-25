@@ -193,6 +193,49 @@
         .notification-menu .notification-item span { color: var(--text-color); }
         .notification-menu .notification-item small { color: var(--muted-color); }
 
+        .app-toast-region {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 2100;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            width: min(390px, calc(100vw - 2rem));
+            pointer-events: none;
+        }
+        .app-toast {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid #d1d5db;
+            border-left: 4px solid #2563eb;
+            border-radius: 0.75rem;
+            background: #fff;
+            color: #1f2937;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+            pointer-events: auto;
+            animation: app-toast-enter 0.18s ease-out;
+        }
+        .app-toast[data-type="success"] { border-left-color: #16a34a; }
+        .app-toast[data-type="error"] { border-left-color: #dc2626; }
+        .app-toast[data-type="warning"] { border-left-color: #d97706; }
+        .app-toast-message { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .app-toast-close {
+            border: 0;
+            padding: 0;
+            background: transparent;
+            color: #6b7280;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .app-toast-close:hover { color: #111827; }
+        @keyframes app-toast-enter {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         .theme-toggle {
             border-radius: 10px;
@@ -579,6 +622,26 @@
             <img src="<?php echo e(asset('images/logo.jpg')); ?>" alt="MTCGS" onerror="this.style.display='none'">
             <h5>MTCGS-EMS</h5>
             <small>v2.0</small>
+            <?php if(Auth::user()->isBranchAdmin()): ?>
+                <?php
+                    $accessibleBranchIds = Auth::user()->getAccessibleBranchIds();
+                    $accessibleBranches = \App\Models\Branch::whereIn('id', $accessibleBranchIds)->orderBy('branch_name')->get();
+                ?>
+                <?php if($accessibleBranches->count() > 1): ?>
+                    <form method="POST" action="<?php echo e(route('active-branch.update')); ?>" class="mt-3 px-2">
+                        <?php echo csrf_field(); ?>
+                        <label for="active-branch-select" class="form-label text-white small mb-1">Working Branch</label>
+                        <select id="active-branch-select" name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <?php $__currentLoopData = $accessibleBranches; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $branch): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($branch->id); ?>" <?php echo e(Auth::user()->getEffectiveBranchId() === (int) $branch->id ? 'selected' : ''); ?>>
+                                    <?php echo e($branch->branch_name); ?>
+
+                                </option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        </select>
+                    </form>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
         <nav class="sidebar-nav nav flex-column" data-turbo="true">
             <div class="nav-section">
@@ -697,6 +760,17 @@
                             <i class="fas fa-user-check"></i> My Cash Advance
                         </a>
                     <?php endif; ?>
+                    <?php if(Auth::user()->isSuperAdmin()): ?>
+                        <a class="nav-link <?php echo e(request()->routeIs('admin.verifications') ? 'active' : ''); ?>" href="<?php echo e(route('admin.verifications')); ?>">
+                            <i class="fas fa-id-card"></i> Account Creation Approval
+                            <?php
+                                $pendingApprovalCount = \App\Models\User::where('id_verification_status', 'pending')->count();
+                            ?>
+                            <?php if($pendingApprovalCount > 0): ?>
+                                <span class="badge bg-warning ms-auto"><?php echo e($pendingApprovalCount); ?></span>
+                            <?php endif; ?>
+                        </a>
+                    <?php endif; ?>
                     <?php if(Auth::user()->admin_type === 'super_admin'): ?>
                         <div class="nav-group-label">Permissions &amp; Audit</div>
                         <a class="nav-link <?php echo e(request()->routeIs('admin.homepage.*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.homepage.edit')); ?>">
@@ -707,15 +781,6 @@
                         </a>
                         <a class="nav-link <?php echo e(request()->routeIs('admin.authority') ? 'active' : ''); ?>" href="<?php echo e(route('admin.authority')); ?>">
                             <i class="fas fa-user-shield"></i> Employee Creation Authority
-                        </a>
-                        <a class="nav-link <?php echo e(request()->routeIs('admin.verifications') ? 'active' : ''); ?>" href="<?php echo e(route('admin.verifications')); ?>">
-                            <i class="fas fa-id-card"></i> Account Creation Approval
-                            <?php
-                                $pendingApprovalCount = \App\Models\User::where('id_verification_status', 'pending')->count();
-                            ?>
-                            <?php if($pendingApprovalCount > 0): ?>
-                                <span class="badge bg-warning ms-auto"><?php echo e($pendingApprovalCount); ?></span>
-                            <?php endif; ?>
                         </a>
                         <a class="nav-link <?php echo e(request()->routeIs('admin.leave-credits.*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.leave-credits.index')); ?>">
                             <i class="fas fa-award"></i> Leave Credits Management
@@ -897,9 +962,18 @@
                 <span id="themeLabel" class="theme-label">Dark Mode</span>
             </button>
             <?php
-                $headerProfile = Auth::user()->profile;
-                if (!$headerProfile && Auth::user()->role === 'admin') {
-                    $headerProfile = Auth::user()->getAdminProfile();
+                $headerProfile = match (Auth::user()->role) {
+                    'employee' => Auth::user()->getEmployeeProfile(),
+                    'finance_officer', 'finance_head' => Auth::user()->getFinanceProfile(),
+                    'admin' => Auth::user()->getAdminProfile(),
+                    'branch_head' => Auth::user()->getBranchHeadProfile(),
+                    default => Auth::user()->profile,
+                };
+                if ((!$headerProfile || !$headerProfile->profile_photo)
+                    && $headerProfile
+                    && in_array(Auth::user()->role, ['admin', 'finance_officer', 'finance_head'], true)
+                    && $headerProfile->employee_profile_id) {
+                    $headerProfile = \App\Models\EmployeeProfile::find($headerProfile->employee_profile_id);
                 }
                 $headerRoleLabel = match (Auth::user()->role) {
                     'admin' => match (Auth::user()->admin_type ?? '') {
@@ -915,15 +989,19 @@
                 };
                 $headerPhotoUrl = null;
                 if ($headerProfile?->profile_photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($headerProfile->profile_photo)) {
-                    $headerPhotoUrl = asset('storage/' . ltrim($headerProfile->profile_photo, '/')) . '?v=' . $headerProfile->updated_at?->timestamp;
+                    $headerPhotoUrl = route('profile.photo', [
+                        strtolower(class_basename($headerProfile)),
+                        $headerProfile->id,
+                    ]) . '?v=' . $headerProfile->updated_at?->timestamp;
                 }
+                $defaultAvatarUrl = asset('images/default-avatar.svg');
             ?>
             <div class="dropdown">
                 <button id="profileMenuToggle" class="btn btn-light btn-sm d-inline-flex align-items-center gap-2 text-decoration-none" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Open account menu">
                     <?php if($headerPhotoUrl): ?>
-                        <img src="<?php echo e($headerPhotoUrl); ?>" alt="Profile photo" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
+                        <img src="<?php echo e($headerPhotoUrl); ?>" onerror="this.onerror=null;this.src='<?php echo e($defaultAvatarUrl); ?>';" alt="Profile photo" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
                     <?php else: ?>
-                        <i class="fas fa-user-circle"></i>
+                        <img src="<?php echo e($defaultAvatarUrl); ?>" alt="Profile photo" class="rounded-circle" style="width: 28px; height: 28px; object-fit: cover;">
                     <?php endif; ?>
                     <span class="d-none d-sm-inline"><?php echo e(Auth::user()->name); ?></span>
                     <span class="badge bg-info ms-1"><?php echo e($headerRoleLabel); ?></span>
@@ -948,9 +1026,9 @@
     <div class="main-content" id="mainContent">
         <main>
             <?php if(session('success')): ?>
-                <div class="alert alert-success alert-dismissible fade show"><?php echo e(session('success')); ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert" data-auto-dismiss="5000"><?php echo e(session('success')); ?>
 
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
             <?php if(session('error') && !(in_array(Auth::user()->role, ['finance_officer', 'finance_head'], true) && session('error') === 'Employee profile not found')): ?>
@@ -977,13 +1055,132 @@
             let attendanceRefreshQueued = false;
             let livePollTimer = null;
 
+            function scheduleSuccessAlertDismissal(root = document) {
+                const selector = '.alert-success[data-auto-dismiss]';
+                const alerts = Array.from(root.querySelectorAll(selector));
+                if (root instanceof Element && root.matches(selector)) alerts.unshift(root);
+
+                alerts.forEach((alert) => {
+                    if (alert.dataset.dismissScheduled) return;
+                    alert.dataset.dismissScheduled = 'true';
+                    const delay = Number(alert.dataset.autoDismiss) || 5000;
+                    window.setTimeout(() => {
+                        if (!alert.isConnected) return;
+                        alert.classList.remove('show');
+                        window.setTimeout(() => alert.remove(), 150);
+                    }, delay);
+                });
+            }
+
+            const successAlertObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node instanceof Element) scheduleSuccessAlertDismissal(node);
+                    });
+                });
+            });
+            successAlertObserver.observe(document.documentElement, { childList: true, subtree: true });
+
             function showLiveArrival(arrival) {
                 const toast = document.createElement('div');
                 toast.className = 'alert alert-success shadow position-fixed';
                 toast.style.cssText = 'right: 1rem; bottom: 1rem; z-index: 1200; max-width: 360px;';
                 toast.innerHTML = `<strong><i class="fas fa-fingerprint me-1"></i> New attendance</strong><br>${arrival.employee} (${arrival.employee_number}) at ${arrival.time || 'now'}`;
                 document.body.appendChild(toast);
-                window.setTimeout(() => toast.remove(), 6000);
+                window.setTimeout(() => toast.remove(), 5000);
+            }
+
+            function updateNotificationMenu(notifications, unreadCount, markAllReadUrl) {
+                const menu = document.querySelector('.notification-menu');
+                if (!menu || !Array.isArray(notifications)) return;
+
+                const snapshot = JSON.stringify({ notifications, unreadCount });
+                if (menu.dataset.notificationSnapshot === snapshot) return;
+                menu.dataset.notificationSnapshot = snapshot;
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const menuHeader = document.createElement('div');
+                menuHeader.className = 'd-flex justify-content-between align-items-center px-3 py-2 border-bottom';
+                const heading = document.createElement('strong');
+                heading.textContent = 'Notifications';
+                menuHeader.appendChild(heading);
+
+                if (unreadCount > 0) {
+                    const markAllForm = document.createElement('form');
+                    markAllForm.method = 'POST';
+                    markAllForm.action = markAllReadUrl;
+                    markAllForm.className = 'notification-mark-all-form';
+                    if (csrfToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = csrfToken;
+                        markAllForm.appendChild(tokenInput);
+                    }
+                    const markAllButton = document.createElement('button');
+                    markAllButton.type = 'submit';
+                    markAllButton.className = 'btn btn-link btn-sm p-0';
+                    markAllButton.textContent = 'Mark all read';
+                    markAllForm.appendChild(markAllButton);
+                    menuHeader.appendChild(markAllForm);
+                }
+
+                menu.replaceChildren(menuHeader);
+                if (notifications.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'px-3 py-4 text-center text-muted';
+                    emptyState.textContent = 'No notifications yet.';
+                    menu.appendChild(emptyState);
+                    return;
+                }
+
+                notifications.forEach((notification) => {
+                    const row = document.createElement('div');
+                    row.className = 'notification-row border-bottom';
+                    const link = document.createElement('a');
+                    link.href = notification.read_url;
+                    link.className = `dropdown-item notification-item notification-read-link${notification.is_read ? '' : ' unread'} py-2`;
+
+                    const title = document.createElement('strong');
+                    title.className = 'd-block';
+                    title.textContent = notification.title;
+                    const message = document.createElement('span');
+                    message.className = 'd-block';
+                    message.textContent = notification.message;
+                    const createdAt = document.createElement('small');
+                    createdAt.textContent = notification.created_at || '';
+                    link.append(title, message, createdAt);
+                    row.appendChild(link);
+
+                    const deleteForm = document.createElement('form');
+                    deleteForm.method = 'POST';
+                    deleteForm.action = notification.delete_url;
+                    deleteForm.className = 'notification-delete-form';
+                    if (csrfToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = csrfToken;
+                        deleteForm.appendChild(tokenInput);
+                    }
+                    const methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    methodInput.value = 'DELETE';
+                    deleteForm.appendChild(methodInput);
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'submit';
+                    deleteButton.className = 'btn btn-sm btn-link notification-delete-button p-1';
+                    deleteButton.setAttribute('aria-label', 'Delete notification');
+                    deleteButton.title = 'Delete notification';
+                    const deleteIcon = document.createElement('i');
+                    deleteIcon.className = 'fas fa-trash-alt';
+                    deleteIcon.setAttribute('aria-hidden', 'true');
+                    deleteButton.appendChild(deleteIcon);
+                    deleteForm.appendChild(deleteButton);
+                    row.appendChild(deleteForm);
+                    menu.appendChild(row);
+                });
             }
 
             async function pollLiveUpdates() {
@@ -1006,6 +1203,7 @@
                         badge.textContent = count > 99 ? '99+' : count;
                         badge.classList.toggle('d-none', count === 0);
                     }
+                    updateNotificationMenu(data.notifications, Number(data.unread_notifications || 0), data.mark_all_read_url);
                     const arrivals = Array.isArray(data.arrivals) ? data.arrivals : [];
                     const currentWorkflowUpdatesSnapshot = JSON.stringify(data.workflow_updates || {
                         attendance: data.latest_attendance_updated_at || null,
@@ -1191,6 +1389,7 @@
             }
 
             applyTheme(localStorage.getItem('mtcgsTheme') || 'light');
+            scheduleSuccessAlertDismissal();
             document.addEventListener('click', function (event) {
                 if (event.target.closest('#themeToggle')) {
                     applyTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
@@ -1198,8 +1397,37 @@
             });
             document.addEventListener('turbo:load', function () {
                 applyTheme(localStorage.getItem('mtcgsTheme') || 'light');
+                scheduleSuccessAlertDismissal();
             });
         })();
+    </script>
+    <div id="appToastRegion" class="app-toast-region" aria-live="polite" aria-relevant="additions"></div>
+    <script>
+        window.showAppToast = function (message, type) {
+            const region = document.getElementById('appToastRegion');
+            if (!region) return;
+
+            const normalizedType = ['success', 'error', 'warning'].includes(type) ? type : 'info';
+            const toast = document.createElement('div');
+            toast.className = 'app-toast';
+            toast.dataset.type = normalizedType;
+            toast.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status');
+
+            const text = document.createElement('span');
+            text.className = 'app-toast-message';
+            text.textContent = String(message ?? '');
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'app-toast-close';
+            closeButton.type = 'button';
+            closeButton.setAttribute('aria-label', 'Dismiss notification');
+            closeButton.textContent = '×';
+            closeButton.addEventListener('click', () => toast.remove());
+
+            toast.append(text, closeButton);
+            region.appendChild(toast);
+            window.setTimeout(() => toast.remove(), normalizedType === 'error' ? 8000 : 5000);
+        };
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <?php echo $__env->yieldPushContent('scripts'); ?>

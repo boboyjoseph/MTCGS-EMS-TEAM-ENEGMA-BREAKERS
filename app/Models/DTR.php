@@ -114,8 +114,7 @@ class DTR extends Model
         }
 
         if ($amIn) {
-            $start = $log->employeeProfile?->shift?->start_time ?: '08:00:00';
-            $scheduledStart = $amIn->copy()->setTimeFromTimeString($start);
+            $scheduledStart = \App\Services\AttendanceWorkHours::scheduledStart($log->employeeProfile, $amIn);
 
             return \App\Services\AttendanceTimeRules::lateMinutes($amIn, $scheduledStart);
         }
@@ -217,7 +216,7 @@ class DTR extends Model
                     $totalHours += $minutes / 60;
 
                     if ($log->pm_out) {
-                        $scheduledPmOut = $log->pm_out->copy()->setTime(17, 0, 0);
+                        $scheduledPmOut = \App\Services\AttendanceWorkHours::scheduledEnd($log->employeeProfile, $log->pm_out);
                         if ($log->pm_out->lt($scheduledPmOut)) {
                             $earlyOutMinutes += max(0, abs($scheduledPmOut->diffInMinutes($log->pm_out)));
                         }

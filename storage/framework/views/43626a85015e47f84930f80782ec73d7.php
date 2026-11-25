@@ -74,6 +74,59 @@
 </style>
 <div class="container-fluid">
     <div class="mb-4"><h2 class="fw-bold mb-1"><i class="fas fa-calendar-days text-primary me-2"></i>Shifts & Schedules</h2><p class="text-muted mb-0"><?php if($canManageSchedules): ?> Create work schedules and assign them to active employees. <?php else: ?> View current shift assignments and schedule details. <?php endif; ?></p></div>
+    <?php if($canManageWorkHours): ?>
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0"><i class="fas fa-clock text-primary me-2"></i>School-Wide Default Work Hours</h5></div>
+            <div class="card-body">
+                <p class="text-muted">These hours apply to employees without an assigned shift and are used by web attendance and the C# attendance device through the server. An employee's assigned shift continues to take priority.</p>
+                <form method="POST" action="<?php echo e(route('admin.shifts.default-work-hours.update')); ?>">
+                    <?php echo csrf_field(); ?>
+                    <?php echo method_field('PUT'); ?>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="default-work-start" class="form-label">Default Time-In</label>
+                            <input id="default-work-start" name="start_time" type="time" class="form-control <?php $__errorArgs = ['start_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" value="<?php echo e(old('start_time', substr($defaultWorkStartTime, 0, 5))); ?>" required>
+                            <?php $__errorArgs = ['start_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="invalid-feedback"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="default-work-end" class="form-label">Default Time-Out</label>
+                            <input id="default-work-end" name="end_time" type="time" class="form-control <?php $__errorArgs = ['end_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" value="<?php echo e(old('end_time', substr($defaultWorkEndTime, 0, 5))); ?>" required>
+                            <?php $__errorArgs = ['end_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="invalid-feedback"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                        </div>
+                        <div class="col-md-4"><button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Work Hours</button></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    <?php endif; ?>
     <div class="row g-4">
         <?php if($canManageSchedules): ?>
             <div class="col-lg-5">
@@ -81,7 +134,7 @@
                     <form method="POST" action="<?php echo e(route('admin.shifts.store')); ?>"><?php echo csrf_field(); ?>
                         <div class="mb-3"><label for="shift-name" class="form-label">Shift Name</label><input id="shift-name" name="name" class="form-control" placeholder="Morning Shift" required></div>
                         <div class="row g-3 mb-3"><div class="col-6"><label for="class-code" class="form-label">Class Code</label><input id="class-code" name="class_code" class="form-control" placeholder="IT 1211"></div><div class="col-6"><label for="room" class="form-label">Room</label><input id="room" name="room" class="form-control" placeholder="Room 4"></div></div>
-                        <div class="row g-3 mb-3"><div class="col-6"><label for="shift-start" class="form-label">Start</label><input id="shift-start" name="start_time" type="time" class="form-control" value="08:00" required></div><div class="col-6"><label for="shift-end" class="form-label">End</label><input id="shift-end" name="end_time" type="time" class="form-control" value="17:00" required></div></div>
+                        <div class="row g-3 mb-3"><div class="col-6"><label for="shift-start" class="form-label">Start</label><input id="shift-start" name="start_time" type="time" class="form-control" value="<?php echo e(substr($defaultWorkStartTime, 0, 5)); ?>" required></div><div class="col-6"><label for="shift-end" class="form-label">End</label><input id="shift-end" name="end_time" type="time" class="form-control" value="<?php echo e(substr($defaultWorkEndTime, 0, 5)); ?>" required></div></div>
                         <div class="row g-3 mb-3"><div class="col-6"><label for="break-start" class="form-label">Break Start</label><input id="break-start" name="break_start" type="time" class="form-control" value="12:00"></div><div class="col-6"><label for="break-end" class="form-label">Break End</label><input id="break-end" name="break_end" type="time" class="form-control" value="13:00"></div></div>
                         <fieldset class="mb-3"><legend class="form-label fs-6">Working Days</legend><div class="d-flex flex-wrap gap-3"><?php $__currentLoopData = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><label class="form-check"><input class="form-check-input" type="checkbox" name="working_days[]" value="<?php echo e($day); ?>" <?php if($day !== 'Sat' && $day !== 'Sun'): echo 'checked'; endif; ?>><?php echo e($day); ?></label><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></div></fieldset>
                         <button class="btn btn-primary w-100"><i class="fas fa-plus me-2"></i>Create Shift</button>

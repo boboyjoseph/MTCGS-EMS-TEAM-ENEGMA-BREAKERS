@@ -21,7 +21,7 @@
                             </ul>
                         </div>
                     <?php endif; ?>
-                    <?php if(session('error')): ?>
+                    <?php if(session('error') && in_array(Auth::user()->role, ['finance_officer', 'finance_head'], true) && session('error') === 'Employee profile not found'): ?>
                         <div class="alert alert-danger" role="alert"><?php echo e(session('error')); ?></div>
                     <?php endif; ?>
 
@@ -112,7 +112,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Role <span class="text-danger">*</span></label>
-                                <select name="role" class="form-control" required id="role-select">
+                                <select name="role" class="form-select" required id="role-select">
                                     <option value="employee" <?php echo e(old('role', 'employee') === 'employee' ? 'selected' : ''); ?>>Employee</option>
                                     <option value="finance_officer" <?php echo e(old('role') === 'finance_officer' ? 'selected' : ''); ?>>Finance Officer</option>
                                     <?php if(Auth::user()->admin_type === 'super_admin' || blank(Auth::user()->admin_type)): ?>

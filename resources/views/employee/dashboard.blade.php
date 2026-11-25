@@ -8,6 +8,10 @@
         background: #8E1EA2 !important;
         background-image: none !important;
     }
+
+    body.dark-mode .employee-dashboard-theme .employee-schedule-title {
+        color: var(--text-color) !important;
+    }
 </style>
 
 <div class="container-fluid dashboard-shell employee-dashboard-theme p-0">
@@ -116,14 +120,14 @@
                 </div>
                 <div class="card-body d-flex flex-column justify-content-center">
                     @if($profile->shift)
-                        <h5 class="fw-bold text-dark mb-2">{{ $profile->shift->name }}</h5>
+                        <h5 class="fw-bold employee-schedule-title mb-2">{{ $profile->shift->name }}</h5>
                         <p class="text-muted mb-1">
                             {{ \Carbon\Carbon::parse($profile->shift->start_time)->format('h:i A') }} -
                             {{ \Carbon\Carbon::parse($profile->shift->end_time)->format('h:i A') }}
                         </p>
                         <small class="text-muted">Click to view full schedule</small>
                     @else
-                        <h5 class="fw-bold text-dark mb-2">No schedule assigned</h5>
+                        <h5 class="fw-bold employee-schedule-title mb-2">No schedule assigned</h5>
                         <small class="text-muted">Click to view schedule details</small>
                     @endif
                 </div>

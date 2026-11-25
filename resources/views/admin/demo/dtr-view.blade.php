@@ -235,12 +235,12 @@ demoDtrGenerateBtn.addEventListener('click', function() {
 
 // Export Button Click
 demoDtrExportBtn.addEventListener('click', function() {
-    alert('PDF export feature would be implemented here. In a real system, this would generate a PDF report.');
+    window.showAppToast('PDF export feature would be implemented here. In a real system, this would generate a PDF report.', 'info');
 });
 
 // Complete Button Click
 demoDtrCompleteBtn.addEventListener('click', function() {
-    alert('Demo tour completed! You have successfully explored all features of the MTCGS EMS system.');
+    window.showAppToast('Demo tour completed! You have successfully explored all features of the MTCGS EMS system.', 'success');
     updateDemoStatus('dtr', 'completed');
 });
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Device;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -82,7 +83,19 @@ class BiometricDeviceAuthenticator
             return $this->reject('Physical reader ID does not match the reader registered to this device.');
         }
 
-        $secret = (string) $device->api_secret;
+        try {
+            $secret = (string) $device->api_secret;
+        } catch (DecryptException) {
+            Log::error('Biometric device credential could not be decrypted; verify the production APP_KEY.', [
+                'device_id' => $device->getKey(),
+            ]);
+
+            return [
+                'error' => 'The server cannot decrypt this device credential. Restore the original APP_KEY or re-provision this device credential.',
+                'code' => 503,
+            ];
+        }
+
         if ($secret === '') {
             return $this->reject('This device has no provisioned credential. Ask a super administrator to provision it.');
         }
@@ -98,7 +111,13 @@ class BiometricDeviceAuthenticator
         }
 
         $signature = strtolower(trim((string) $request->input('signature')));
-        $expectedSignature = hash_hmac('sha256', $this->signingPayload($request), $secret);
+        $hasGpsData = collect(['gps_latitude', 'gps_longitude', 'gps_accuracy', 'gps_timestamp'])
+            ->contains(fn (string $field) => $request->input($field) !== null);
+        $expectedSignature = hash_hmac(
+            'sha256',
+            $this->signingPayload($request, $device->location_check_enabled && $hasGpsData),
+            $secret
+        );
         if (($signature === '' || !hash_equals($expectedSignature, $signature))
             && !$this->isLocalSuspensionRead($request)) {
             return $this->reject('Invalid device credential signature.');
@@ -120,7 +139,7 @@ class BiometricDeviceAuthenticator
             && strtolower(trim($request->path(), '/')) === 'api/biometric/suspensions';
     }
 
-    public function signingPayload(Request $request): string
+    public function signingPayload(Request $request, bool $includeGpsFields = false): string
     {
         $values = [
             strtoupper($request->method()),
@@ -135,7 +154,43 @@ class BiometricDeviceAuthenticator
             $values[] = is_scalar($value) ? (string) $value : '';
         }
 
+        if ($includeGpsFields) {
+            $gpsFields = ['gps_latitude', 'gps_longitude', 'gps_accuracy', 'gps_timestamp'];
+            foreach ($gpsFields as $field) {
+                $value = $request->input($field);
+                $values[] = is_scalar($value) ? (string) $value : '';
+            }
+        }
+
         return implode('|', $values);
+    }
+
+    public function isCurrentAttendanceTimestamp(string $timestamp, int $allowedDriftSeconds = 60): bool
+    {
+        try {
+            $attendanceTime = \Carbon\Carbon::parse($timestamp);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return abs($attendanceTime->diffInSeconds(now(), false)) <= $allowedDriftSeconds;
+    }
+
+    public function isAttendanceTimestampWithinOfflineWindow(
+        string $timestamp,
+        int $maxAgeSeconds = 86400,
+        int $futureToleranceSeconds = 60
+    ): bool {
+        try {
+            $attendanceTime = \Carbon\Carbon::parse($timestamp);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $now = now();
+
+        return $attendanceTime->greaterThanOrEqualTo($now->copy()->subSeconds($maxAgeSeconds))
+            && $attendanceTime->lessThanOrEqualTo($now->copy()->addSeconds($futureToleranceSeconds));
     }
 
     private function normalizeReaderId($readerId): string

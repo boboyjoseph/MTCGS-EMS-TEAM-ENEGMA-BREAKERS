@@ -25,6 +25,15 @@ class DTRSubmitWorkflowTest extends TestCase
     {
         parent::setUp();
 
+        if (!Schema::hasTable('site_settings')) {
+            Schema::create('site_settings', function (Blueprint $table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->text('value')->nullable();
+                $table->timestamps();
+            });
+        }
+
         if (!Schema::hasTable('dtrs')) {
             Schema::create('dtrs', function (Blueprint $table) {
                 $table->id();

@@ -38,7 +38,7 @@
                     <div class="col-md-6 d-none d-md-flex bg-primary text-white align-items-center justify-content-center p-4">
                         <div>
                             <h3 class="fw-bold">Join MTCGS EMS</h3>
-                            <p class="text-white-75">Register your employee account and request admin approval before logging in.</p>
+                            <p class="text-white-75">Register your employee account and request HR approval before logging in.</p>
                             <i class="fas fa-user-plus fa-4x mt-4"></i>
                         </div>
                     </div>

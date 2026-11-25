@@ -146,7 +146,7 @@
         <h3>Forgot Password</h3>
 
         <?php if(session('status')): ?>
-            <div class="alert alert-success"><?php echo e(session('status')); ?></div>
+            <div class="alert alert-success" data-auto-dismiss="5000"><?php echo e(session('status')); ?></div>
         <?php endif; ?>
         <?php if($errors->any()): ?>
             <div class="alert alert-danger"><?php echo e($errors->first()); ?></div>
@@ -163,6 +163,11 @@
 
         <a href="<?php echo e(route('login')); ?>" class="back-link">Back to login</a>
     </div>
+    <script>
+        document.querySelectorAll('.alert-success[data-auto-dismiss]').forEach((alert) => {
+            window.setTimeout(() => alert.remove(), Number(alert.dataset.autoDismiss) || 5000);
+        });
+    </script>
 </body>
 </html>
 <?php /**PATH C:\xampp\htdocs\ENIGMA_BREAKER\mtcgs-main_09-06-26\mtcgs-ems\resources\views\auth\forgot-password.blade.php ENDPATH**/ ?>

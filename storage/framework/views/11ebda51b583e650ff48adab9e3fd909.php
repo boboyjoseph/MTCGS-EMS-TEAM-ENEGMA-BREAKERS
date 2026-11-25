@@ -425,7 +425,7 @@ function updatePreview() {
 
 function submitDeduction(type) {
     if (!validateAmount()) {
-        alert('Please enter a valid amount');
+        window.showAppToast('Please enter a valid amount', 'warning');
         return;
     }
 
@@ -463,12 +463,12 @@ function submitDeduction(type) {
             // Show success message
             showSuccess('Deduction added successfully!');
         } else {
-            alert('Error: ' + (data.error || 'Failed to add deduction'));
+            window.showAppToast('Error: ' + (data.error || 'Failed to add deduction'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error adding deduction');
+        window.showAppToast('Error adding deduction', 'error');
     })
     .finally(() => {
         submitBtn.disabled = false;
@@ -493,12 +493,12 @@ function removeDeduction(deductionId) {
             loadDeductionsData();
             showSuccess('Deduction removed successfully!');
         } else {
-            alert('Error: ' + (data.error || 'Failed to remove deduction'));
+            window.showAppToast('Error: ' + (data.error || 'Failed to remove deduction'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error removing deduction');
+        window.showAppToast('Error removing deduction', 'error');
     });
 }
 

@@ -85,7 +85,9 @@ class AnalyticsController extends Controller
         if ($start->diffInDays($end) > 90) $start = $end->copy()->subDays(90);
 
         $branchId = null;
-        if (Auth::user()->isFinanceOfficer()) {
+        if (Auth::user()->isBranchAdmin()) {
+            $branchId = Auth::user()->getEffectiveBranchId();
+        } elseif (Auth::user()->isFinanceOfficer()) {
             $branchId = Auth::user()->getFinanceProfile()?->branch_id;
         }
         return compact('start', 'end', 'branchId');
@@ -93,6 +95,6 @@ class AnalyticsController extends Controller
 
     private function authorizeAnalytics(): void
     {
-        abort_unless(in_array(Auth::user()->role, ['admin', 'finance_officer', 'finance_head'], true), 403);
+        abort_unless(in_array(Auth::user()->role, ['admin', 'branch_head', 'finance_officer', 'finance_head'], true), 403);
     }
 }

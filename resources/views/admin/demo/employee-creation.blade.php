@@ -358,7 +358,7 @@ function demoEmpCreateEmployee() {
 
     // Show success message
     setTimeout(() => {
-        alert('Employee creation demo completed! Fingerprint has been registered.');
+        window.showAppToast('Employee creation demo completed! Fingerprint has been registered.', 'success');
     }, 500);
 }
 

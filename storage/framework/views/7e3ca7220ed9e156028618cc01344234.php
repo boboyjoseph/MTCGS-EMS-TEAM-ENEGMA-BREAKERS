@@ -500,6 +500,10 @@
         $earlyOutDeduction = (float) ($breakdown['early_out_deduction'] ?? 0);
         $leaveWithoutPayDays = (int) ($dtrStats['leave_without_pay'] ?? 0);
         $paidLeaveDays = (int) ($dtrStats['paid_leave'] ?? 0);
+        $paidLeaveRate = (float) ($breakdown['paid_leave_rate'] ?? ($paidLeaveDays * $dailyRate));
+        $totalEarnings = (float) ($breakdown['total_earnings'] ?? (
+            $totalDailyRate + $holidayBonus + $suspensionPay + $paidLeaveRate
+        ));
         $leaveWithoutPayDeduction = $leaveWithoutPayDays * $dailyRate;
         $cashAdvanceDeduction = (float) ($entry->cash_advance_deduction ?? ($breakdown['cash_advance_deduction'] ?? 0));
         $cashChargeDeduction = (float) ($entry->cash_charge_deduction ?? ($breakdown['cash_charge_deduction'] ?? 0));
@@ -633,6 +637,10 @@
                                         <span class="item-label">Total Daily Rate</span>
                                         <span class="item-value">₱<?php echo e(number_format($totalDailyRate, 2)); ?></span>
                                     </div>
+                                    <div class="item-row">
+                                        <span class="item-label">Paid Leave Rate</span>
+                                        <span class="item-value">₱<?php echo e(number_format($paidLeaveRate, 2)); ?></span>
+                                    </div>
                                     <?php if($suspensionPay > 0): ?>
                                     <div class="item-row">
                                         <span class="item-label">Suspended Work (<?php echo e(number_format($suspendedHoursToPay, 2)); ?> hrs)</span>
@@ -647,7 +655,7 @@
                                     <?php endif; ?>
                                     <?php if($entry->overtime_pay > 0): ?>
                                     <div class="item-row">
-                                        <span class="item-label">Overtime (<?php echo e(number_format($entry->overtime_hours, 2)); ?> hrs)</span>
+                                        <span class="item-label">Overtime Pay (Holiday Bonus + Suspension Pay)</span>
                                         <span class="item-value">₱<?php echo e(number_format($entry->overtime_pay, 2)); ?></span>
                                     </div>
                                     <?php endif; ?>
@@ -666,6 +674,10 @@
                                     <div class="total-row" style="color: #28a745; border-top-color: #28a745; border-bottom-color: #28a745;">
                                         <span>Gross Pay</span>
                                         <span>₱<?php echo e(number_format($entry->basic_pay, 2)); ?></span>
+                                    </div>
+                                    <div class="total-row" style="color: #28a745; border-bottom-color: #28a745;">
+                                        <span>Total Earnings</span>
+                                        <span>₱<?php echo e(number_format($totalEarnings, 2)); ?></span>
                                     </div>
                                 </div>
 
