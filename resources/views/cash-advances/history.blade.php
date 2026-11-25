@@ -16,8 +16,7 @@
         </div>
     </div>
 
-<<<<<<< HEAD
-    <div class="card">
+    <div class="card mb-3">
         <div class="card-body border-bottom">
             <form method="GET" action="{{ route('cash-advances.history') }}" class="row g-3 align-items-end">
                 @if(request('scope') === 'my')
@@ -37,19 +36,8 @@
                 </div>
             </form>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Payroll Period</th>
-                        <th>Employee</th>
-                        <th>Payroll Status</th>
-                        <th class="text-end">Cash Advance Deducted</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($entries as $entry)
-=======
+    </div>
+
     @forelse($entries->getCollection()->groupBy('payroll_period_id') as $periodEntries)
         @php
             $historyPeriod = $periodEntries->first()->payrollPeriod;
@@ -64,7 +52,6 @@
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
->>>>>>> 9bc41b890d1cf2493ca79fb5b2e5ed892c3a7ad5
                         <tr>
                             <th>Date</th>
                             <th>Employee Name</th>

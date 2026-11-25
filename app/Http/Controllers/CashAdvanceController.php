@@ -143,41 +143,22 @@ class CashAdvanceController extends Controller
             'remainingCashAdvanceBalance',
             'availableCashAdvanceBalance',
             'cashAdvanceAvailableByEmployee',
-<<<<<<< HEAD
             'historyView',
             'canViewHistory',
             'reviewerRelation',
             'reviewedAtColumn',
-            'cutoffCashAdvances',
-            'cutoffApprovedTotal'
-=======
             'cutoffPreviews'
->>>>>>> 9bc41b890d1cf2493ca79fb5b2e5ed892c3a7ad5
         ));
     }
 
     public function history(Request $request)
     {
         $user = Auth::user();
-<<<<<<< HEAD
         $scope = $request->query('scope');
         $period = $request->validate([
             'period_start' => 'nullable|required_with:period_end|date',
             'period_end' => 'nullable|required_with:period_start|date|after_or_equal:period_start',
         ]);
-=======
-        $scope = request()->query('scope');
-        $entries = $this->cashAdvanceHistoryQuery($user, $scope)
-            ->orderByDesc('payroll_period_id')
-            ->orderByDesc('id')
-            ->paginate(20);
-
-        return view('cash-advances.history', compact('entries'));
-    }
-
-    private function cashAdvanceHistoryQuery(User $user, ?string $scope)
-    {
->>>>>>> 9bc41b890d1cf2493ca79fb5b2e5ed892c3a7ad5
         $query = PayrollEntry::with(['employeeProfile', 'payrollPeriod'])
             ->fullyApprovedCashAdvanceHistory();
 
@@ -207,16 +188,12 @@ class CashAdvanceController extends Controller
             abort(403);
         }
 
-<<<<<<< HEAD
         $entries = $query->orderByDesc('payroll_period_id')
             ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
 
         return view('cash-advances.history', compact('entries'));
-=======
-        return $query;
->>>>>>> 9bc41b890d1cf2493ca79fb5b2e5ed892c3a7ad5
     }
 
     public function store(Request $request)
