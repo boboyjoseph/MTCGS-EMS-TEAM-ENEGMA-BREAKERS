@@ -9,10 +9,10 @@
             <div class="employee-toolbar d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3">Employee Management</h1>
                 <div class="employee-actions d-flex gap-2" role="group">
-                    <a href="{{ route('admin.employees-archives') }}" class="btn btn-danger">
+                    <a href="{{ route('admin.employees-archives') }}" class="btn btn-outline-danger">
                         <i class="fas fa-archive"></i> Archives
                     </a>
-                    <a href="{{ route('admin.employee-create') }}" class="btn btn-success">
+                    <a href="{{ route('admin.employee-create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Add Employee
                     </a>
                 </div>
@@ -50,7 +50,7 @@
 
     <div class="row g-4 mb-4 employee-summary">
         <div class="col-md-4">
-            <div class="card bg-primary text-white">
+            <div class="card employee-stat-card employee-stat-total">
                 <div class="card-body">
                     <h6>Total Employees</h6>
                     <h2 class="mb-0">{{ $totalEmployees ?? 0 }}</h2>
@@ -59,7 +59,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-info text-white">
+            <div class="card employee-stat-card employee-stat-finance">
                 <div class="card-body">
                     <h6>Finance Officers</h6>
                     <h2 class="mb-0">{{ $totalFinance ?? 0 }}</h2>
@@ -67,7 +67,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-danger text-white">
+            <div class="card employee-stat-card employee-stat-admin">
                 <div class="card-body">
                     <h6>Administrators</h6>
                     <h2 class="mb-0">{{ $totalAdmins ?? 0 }}</h2>
@@ -97,10 +97,62 @@
     </ul>
 
     <style>
-        body.dark-mode .employee-management-page .employee-summary .card {
-            background-color: #8E1EA2 !important;
-            background-image: none !important;
-            border-color: #8E1EA2 !important;
+        .employee-management-page .employee-stat-card {
+            border: 1px solid transparent;
+            box-shadow: 0 2px 8px rgba(62, 39, 88, 0.1);
+        }
+
+        .employee-management-page .employee-stat-card h6,
+        .employee-management-page .employee-stat-card h2,
+        .employee-management-page .employee-stat-card small {
+            color: inherit;
+        }
+
+        .employee-management-page .employee-stat-card h6 {
+            font-size: 0.84rem;
+            font-weight: 600;
+            opacity: 0.88;
+        }
+
+        .employee-management-page .employee-stat-card h2 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .employee-management-page .employee-stat-total {
+            background: #493267;
+            border-color: #493267;
+            color: #fff;
+        }
+
+        .employee-management-page .employee-stat-finance {
+            background: #7048a5;
+            border-color: #7048a5;
+            color: #fff;
+        }
+
+        .employee-management-page .employee-stat-admin {
+            background: #eee6f7;
+            border-color: #ded0ed;
+            color: #493267;
+        }
+
+        body.dark-mode .employee-management-page .employee-stat-total {
+            background: #39294c;
+            border-color: #61477c;
+            color: #fff;
+        }
+
+        body.dark-mode .employee-management-page .employee-stat-finance {
+            background: #50366f;
+            border-color: #76599a;
+            color: #fff;
+        }
+
+        body.dark-mode .employee-management-page .employee-stat-admin {
+            background: #30243c;
+            border-color: #5c476e;
+            color: #f2eafb;
         }
 
         .employee-tabs {
@@ -134,8 +186,8 @@
         }
 
         .employee-tabs .nav-link.active {
-            color: #0d6efd;
-            border-bottom-color: #0d6efd;
+            color: var(--primary);
+            border-bottom-color: var(--primary);
         }
 
         .employee-management-page .table-responsive {
@@ -230,7 +282,7 @@
         }
 
         :root[data-bs-theme="dark"] .employee-tabs .nav-link {
-            color: #a9d2ff;
+            color: #d3b9f4;
         }
 
         :root[data-bs-theme="dark"] .employee-tabs .nav-link:hover {
@@ -239,8 +291,8 @@
         }
 
         :root[data-bs-theme="dark"] .employee-tabs .nav-link.active {
-            color: #7dd3fc;
-            border-bottom-color: #7dd3fc;
+            color: #d3b9f4;
+            border-bottom-color: #a985d3;
         }
     </style>
 
