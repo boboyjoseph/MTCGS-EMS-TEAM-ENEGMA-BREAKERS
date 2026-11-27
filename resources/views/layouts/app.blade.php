@@ -264,6 +264,28 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 0.2rem rgba(112, 72, 165, 0.15);
         }
+        .form-select { accent-color: var(--primary); }
+        .form-select option:checked { background: var(--primary); color: #fff; }
+        .dropdown-menu {
+            padding: 0.35rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(48, 36, 67, 0.14);
+        }
+        .dropdown-item {
+            padding: 0.55rem 0.7rem;
+            border-radius: 5px;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+        .dropdown-item:hover, .dropdown-item:focus {
+            background: rgba(112, 72, 165, 0.1);
+            color: var(--primary-hover);
+        }
+        .dropdown-item.active, .dropdown-item:active {
+            background: var(--primary);
+            color: #fff;
+        }
 
         /* ===== Main Content ===== */
         .main-content {
@@ -480,8 +502,9 @@
         body.dark-mode .dropdown-menu { background: var(--card-bg); border-color: var(--border-color); }
         body.dark-mode .dropdown-item { color: var(--text-color); }
         body.dark-mode .dropdown-item:hover,
-        body.dark-mode .dropdown-item:focus,
-        body.dark-mode .dropdown-item.active { background: #603c91; color: #ffffff; }
+        body.dark-mode .dropdown-item:focus { background: rgba(147, 112, 193, 0.2); color: #e7d8fa; }
+        body.dark-mode .dropdown-item.active,
+        body.dark-mode .dropdown-item:active { background: #603c91; color: #ffffff; }
         body.dark-mode .sidebar .nav-group-label { color: #a9cec2; }
         body.dark-mode .sidebar .nav-section-label { color: #d1e2db; }
         body.dark-mode .sidebar .nav-link { color: #e4efea; }
@@ -506,6 +529,8 @@
             color: var(--text-color);
             border-color: var(--border-color);
         }
+        body.dark-mode .form-select option { background: #1e293b; color: #e2e8f0; }
+        body.dark-mode .form-select option:checked { background: #603c91; color: #fff; }
         body.dark-mode .form-control.text-dark,
         body.dark-mode .form-select.text-dark { color: var(--text-color) !important; }
         body.dark-mode .form-control::placeholder,

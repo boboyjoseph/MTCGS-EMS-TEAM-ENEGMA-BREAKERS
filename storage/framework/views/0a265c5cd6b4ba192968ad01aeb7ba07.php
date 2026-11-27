@@ -65,7 +65,7 @@
                             <div class="fw-bold stat-value" style="font-size: 1.75rem;"><?php echo e($totalEmployees ?? 0); ?></div>
                             <small class="text-muted">Active workforce</small>
                         </div>
-                        <div class="stat-icon" style="background: rgba(102,126,234,0.12); color: #667eea;">
+                        <div class="stat-icon" style="background: rgba(112,72,165,0.12); color: var(--primary);">
                             <i class="fas fa-users"></i>
                         </div>
                     </div>
