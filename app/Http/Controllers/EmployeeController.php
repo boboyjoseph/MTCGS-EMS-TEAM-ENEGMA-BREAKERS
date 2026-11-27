@@ -973,14 +973,22 @@ class EmployeeController extends Controller
             }
         }
 
+        $isSuperAdmin = Auth::user()->isSuperAdmin();
+        $currentAdminType = $admin->user?->admin_type ?: 'super_admin';
+
         $request->validate([
             'first_name' => 'required',
             'last_name' => 'required',
             'position' => 'required',
             'branch_id' => 'required|exists:branches,id',
             'date_hired' => 'required|date',
+            'admin_type' => ['required', 'in:branch_admin,hr,super_admin'],
             'fingerprint_data' => 'nullable|string',
         ]);
+
+        if (!$isSuperAdmin && $request->admin_type !== $currentAdminType) {
+            abort(403, 'Only the System Administrator can change an admin account role.');
+        }
 
         $fingerprintTemplate = $request->input('fingerprint_data');
         $fingerprintTemplate = is_string($fingerprintTemplate)
@@ -1005,9 +1013,17 @@ class EmployeeController extends Controller
             'position' => $request->position,
             'branch_id' => $request->branch_id,
             'date_hired' => $request->date_hired,
+            'admin_level' => $request->admin_type,
             'fingerprint_template' => $fingerprintTemplate,
             'is_fingerprint_registered' => $isFingerprintRegistered,
         ]);
+
+        if ($isSuperAdmin && $admin->user && $admin->user->admin_type !== $request->admin_type) {
+            $admin->user->update([
+                'role' => 'admin',
+                'admin_type' => $request->admin_type,
+            ]);
+        }
 
         if ($request->has('is_active') && $admin->user) {
             $admin->user->update([

@@ -263,6 +263,7 @@ class EmployeeFingerprintRegistrationOnEditTest extends TestCase
             ->put(route('admin.employee-update', $employee->id), [
                 'first_name' => 'Jane',
                 'last_name' => 'Employee',
+                'employee_number' => $employee->employee_number,
                 'position' => 'Senior Cashier',
                 'branch_id' => $branch->id,
                 'role' => 'employee',
@@ -337,6 +338,7 @@ class EmployeeFingerprintRegistrationOnEditTest extends TestCase
             ->put(route('admin.employee-update', $employee->id), [
                 'first_name' => 'Jane',
                 'last_name' => 'Employee',
+                'employee_number' => $employee->employee_number,
                 'position' => 'Cashier',
                 'branch_id' => $branch->id,
                 'role' => 'employee',
@@ -410,6 +412,7 @@ class EmployeeFingerprintRegistrationOnEditTest extends TestCase
             ->put(route('admin.employee-update', $employee->id), [
                 'first_name' => 'Jane',
                 'last_name' => 'Employee',
+                'employee_number' => $employee->employee_number,
                 'position' => 'Cashier',
                 'branch_id' => $branch->id,
                 'role' => 'employee',
@@ -484,6 +487,7 @@ class EmployeeFingerprintRegistrationOnEditTest extends TestCase
             ->put(route('admin.employee-update', $employee->id), [
                 'first_name' => 'Jane',
                 'last_name' => 'Employee Updated',
+                'employee_number' => $employee->employee_number,
                 'position' => 'Cashier',
                 'branch_id' => $branch->id,
                 'role' => 'employee',
@@ -1028,6 +1032,7 @@ class EmployeeFingerprintRegistrationOnEditTest extends TestCase
             ->put(route('admin.employee-update', $employee->id), [
                 'first_name' => 'Sample',
                 'last_name' => 'Employee',
+                'employee_number' => $employee->employee_number,
                 'position' => 'Cashier',
                 'branch_id' => $branch->id,
                 'role' => 'employee',

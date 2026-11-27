@@ -67,4 +67,125 @@ class AdminCreateEmployeeAccessTest extends TestCase
         $response->assertSee('<option value="finance_officer"', false);
         $response->assertSee('<option value="finance_head"', false);
     }
+
+    public function test_super_admin_can_change_admin_role_from_edit_employee_page(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-ROLE-01',
+            'branch_name' => 'Role Dropdown Branch',
+            'address' => 'Role Address',
+        ]);
+        $superAdmin = User::create([
+            'name' => 'System Admin',
+            'email' => 'role-superadmin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'super_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $branchAdmin = User::create([
+            'name' => 'Branch Admin',
+            'email' => 'role-branchadmin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $branchAdminProfile = AdminProfile::create([
+            'user_id' => $branchAdmin->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'ADM-ROLE-01',
+            'first_name' => 'Branch',
+            'last_name' => 'Admin',
+            'position' => 'Branch Administrator',
+            'admin_level' => 'branch_admin',
+            'date_hired' => now(),
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.admin-edit', $branchAdminProfile->id))
+            ->assertOk()
+            ->assertSee('<select id="role" name="admin_type"', false)
+            ->assertSee('<option value="branch_admin"', false)
+            ->assertSee('<option value="hr"', false)
+            ->assertSee('<option value="super_admin"', false);
+
+        $this->put(route('admin.admin-update', $branchAdminProfile->id), [
+            'first_name' => 'Branch',
+            'last_name' => 'Admin',
+            'position' => 'Branch Administrator',
+            'branch_id' => $branch->id,
+            'date_hired' => now()->format('Y-m-d'),
+            'admin_type' => 'hr',
+        ])->assertRedirect(route('admin.employees', absolute: false));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $branchAdmin->id,
+            'admin_type' => 'hr',
+        ]);
+        $this->assertDatabaseHas('admin_profiles', [
+            'id' => $branchAdminProfile->id,
+            'admin_level' => 'hr',
+        ]);
+    }
+
+    public function test_branch_admin_cannot_escalate_admin_role(): void
+    {
+        $branch = Branch::create([
+            'branch_code' => 'BR-ROLE-02',
+            'branch_name' => 'Protected Role Branch',
+            'address' => 'Role Address',
+        ]);
+        $branchAdmin = User::create([
+            'name' => 'Branch Admin',
+            'email' => 'role-protected-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $targetUser = User::create([
+            'name' => 'Other Branch Admin',
+            'email' => 'role-target-admin@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'admin_type' => 'branch_admin',
+            'branch_id' => $branch->id,
+            'is_active' => true,
+            'is_verified' => true,
+            'id_verification_status' => 'approved',
+        ]);
+        $targetProfile = AdminProfile::create([
+            'user_id' => $targetUser->id,
+            'branch_id' => $branch->id,
+            'employee_number' => 'ADM-ROLE-02',
+            'first_name' => 'Other',
+            'last_name' => 'Admin',
+            'position' => 'Branch Administrator',
+            'admin_level' => 'branch_admin',
+            'date_hired' => now(),
+        ]);
+
+        $this->actingAs($branchAdmin)
+            ->put(route('admin.admin-update', $targetProfile->id), [
+                'first_name' => 'Other',
+                'last_name' => 'Admin',
+                'position' => 'Branch Administrator',
+                'branch_id' => $branch->id,
+                'date_hired' => now()->format('Y-m-d'),
+                'admin_type' => 'super_admin',
+            ])
+            ->assertForbidden();
+
+        $this->assertSame('branch_admin', $targetUser->fresh()->admin_type);
+    }
 }

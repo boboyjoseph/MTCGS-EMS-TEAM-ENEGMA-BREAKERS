@@ -130,8 +130,17 @@
                             <div class="col-md-6 mb-3">
                                 @if(($employee->is_admin_profile ?? false))
                                     <label for="role" class="form-label">Role</label>
-                                    <input type="text" id="role" class="form-control" value="{{ ucfirst($employee->user->role ?? 'admin') }}" readonly>
-                                    <input type="hidden" name="role" value="{{ $employee->user->role ?? 'admin' }}">
+                                    @php
+                                        $adminType = $employee->user->admin_type ?: 'super_admin';
+                                    @endphp
+                                    <select id="role" name="admin_type" class="form-select" @disabled(!Auth::user()->isSuperAdmin())>
+                                        <option value="branch_admin" {{ old('admin_type', $adminType) === 'branch_admin' ? 'selected' : '' }}>Branch Admin</option>
+                                        <option value="hr" {{ old('admin_type', $adminType) === 'hr' ? 'selected' : '' }}>HR</option>
+                                        <option value="super_admin" {{ old('admin_type', $adminType) === 'super_admin' ? 'selected' : '' }}>Super Admin</option>
+                                    </select>
+                                    @unless(Auth::user()->isSuperAdmin())
+                                        <input type="hidden" name="admin_type" value="{{ $adminType }}">
+                                    @endunless
                                 @else
                                     <label for="role" class="form-label">Role</label>
                                     <select id="role" name="role" class="form-control" required>
@@ -154,7 +163,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="date-of-birth" class="form-label">Date of Birth</label>
-                                <input type="date" id="date-of-birth" name="date_of_birth" class="form-control" value="{{ old('date_of_birth', optional($employee->date_of_birth)->format('Y-m-d')) }}" autocomplete="off" max="{{ now()->toDateString() }}">
+                                <input type="date" id="date-of-birth" name="date_of_birth" class="form-control" value="{{ old('date_of_birth', optional($employee->date_of_birth ?? null)->format('Y-m-d')) }}" autocomplete="off" max="{{ now()->toDateString() }}">
                                 <small id="age-display" class="form-text text-muted" aria-live="polite">Enter a date of birth to calculate age.</small>
                             </div>
                             <div class="col-md-6 mb-3">
