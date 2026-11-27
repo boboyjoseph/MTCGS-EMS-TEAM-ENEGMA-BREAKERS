@@ -29,6 +29,11 @@ class AdminCreateEmployeeAccessTest extends TestCase
             'branch_name' => 'Main Branch',
             'address' => 'Test Address',
         ]);
+        $otherBranch = Branch::create([
+            'branch_code' => 'BR-101',
+            'branch_name' => 'Other Branch',
+            'address' => 'Other Address',
+        ]);
 
         $admin = User::create([
             'name' => 'System Admin',
@@ -62,6 +67,9 @@ class AdminCreateEmployeeAccessTest extends TestCase
         $response->assertOk();
         $response->assertSee('name="position"', false);
         $response->assertSee('Employee ID', false);
+        $response->assertSee('id="branch-select"', false);
+        $response->assertSee($branch->branch_name);
+        $response->assertSee($otherBranch->branch_name);
         $response->assertSee('<select name="role" class="form-select" required id="role-select">', false);
         $response->assertSee('<option value="employee"', false);
         $response->assertSee('<option value="finance_officer"', false);

@@ -60,7 +60,7 @@
                             </div>
                             <div class="col-md-6 mb-3" id="branch-field-wrapper">
                                 <label class="form-label">Branch</label>
-                                @if(Auth::user()->admin_type === 'super_admin')
+                                @if(Auth::user()->role === 'admin' && (Auth::user()->admin_type === 'super_admin' || !Auth::user()->admin_type || Auth::user()->admin_type === 'admin'))
                                     <select name="branch_id" class="form-control" id="branch-select">
                                         <option value="">-- Select Branch --</option>
                                         @foreach($branches as $branch)
