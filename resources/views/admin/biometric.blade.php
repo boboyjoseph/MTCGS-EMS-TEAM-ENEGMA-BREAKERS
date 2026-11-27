@@ -61,7 +61,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #0d6efd;
+        background: var(--primary);
         color: #fff;
         font-weight: 700;
         font-size: 0.9rem;
@@ -102,9 +102,8 @@
         color: #e2e8f0 !important;
     }
 
-    body.dark-mode .biometric-page .text-primary {
-        color: #FFD166 !important;
-    }
+    .biometric-page .bg-primary { background-color: var(--primary) !important; color: #fff !important; }
+    body.dark-mode .biometric-page .text-primary { color: #d3b9f4 !important; }
 
     .biometric-profile-link {
         color: inherit;
@@ -116,16 +115,16 @@
     }
 
     body.dark-mode .biometric-page .biometric-profile-link {
-        color: #FFD166 !important;
+        color: #d3b9f4 !important;
     }
 </style>
 <div class="container-fluid biometric-page">
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card bg-primary text-white">
+            <div class="card module-hero">
                 <div class="card-body">
                     <h2><i class="fas fa-fingerprint me-2"></i> Biometric Management</h2>
-                    <p class="mb-0">Manage fingerprint registrations for eligible employees in your branch.</p>
+                    <p class="module-hero-subtitle mb-0">Manage fingerprint registrations for eligible employees in your branch.</p>
                 </div>
             </div>
         </div>

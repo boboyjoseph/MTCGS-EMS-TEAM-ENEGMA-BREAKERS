@@ -42,17 +42,17 @@
     
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card bg-primary text-white">
+            <div class="card module-stat-card module-stat-total">
                 <div class="card-body"><h5>Total Users</h5><h2>{{ $totalUsers ?? 0 }}</h2></div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-success text-white">
+            <div class="card module-stat-card module-stat-primary">
                 <div class="card-body"><h5>Active</h5><h2>{{ $activeCount ?? 0 }}</h2></div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-secondary text-white">
+            <div class="card module-stat-card module-stat-soft">
                 <div class="card-body"><h5>Inactive</h5><h2>{{ $inactiveCount ?? 0 }}</h2></div>
             </div>
         </div>
@@ -68,9 +68,9 @@
         .tab-switcher {
             display: inline-flex;
             width: auto;
-            background: rgba(9, 30, 45, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 10px 10px 0 0;
+            background: #f3edf9;
+            border: 1px solid #ded0ed;
+            border-radius: 8px 8px 0 0;
             overflow: hidden;
             margin-bottom: 0;
         }
@@ -82,7 +82,7 @@
         .tab-switcher .nav-link {
             border: 0;
             border-radius: 0;
-            color: #a9d2ff;
+            color: #5d398f;
             background: transparent;
             padding: 0.9rem 1.25rem;
             font-weight: 600;
@@ -94,9 +94,23 @@
         }
 
         .tab-switcher .nav-link.active {
-            background: #f5f7fb;
-            color: #0f172a;
-            box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+            background: #7048a5;
+            color: #ffffff;
+            box-shadow: inset 0 -2px 0 rgba(48, 36, 67, 0.2);
+        }
+
+        body.dark-mode .tab-switcher {
+            background: #241d2e;
+            border-color: #5c476e;
+        }
+
+        body.dark-mode .tab-switcher .nav-link {
+            color: #d3b9f4;
+        }
+
+        body.dark-mode .tab-switcher .nav-link.active {
+            background: #603c91;
+            color: #ffffff;
         }
     </style>
     

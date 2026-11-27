@@ -15,7 +15,7 @@
     <!-- Summary Cards -->
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card bg-primary text-white">
+            <div class="card module-stat-card module-stat-total">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -29,7 +29,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-info text-white">
+            <div class="card module-stat-card module-stat-primary">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -43,7 +43,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-success text-white">
+            <div class="card module-stat-card module-stat-secondary">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -60,7 +60,7 @@
 
     <!-- Branch Admins Authority -->
     <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
+        <div class="card-header module-section-header">
             <h5 class="mb-0"><i class="fas fa-user-tie me-2"></i>Branch Admins</h5>
         </div>
         <div class="card-body">
@@ -128,7 +128,7 @@
 
     <!-- Finance Officers Authority -->
     <div class="card">
-        <div class="card-header bg-info text-white">
+        <div class="card-header module-section-header-alt">
             <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Finance Officers</h5>
         </div>
         <div class="card-body">
@@ -199,7 +199,7 @@
 <div class="modal fade" id="grantAdminModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header module-section-header">
                 <h5 class="modal-title">Grant Employee Creation Authority</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -234,7 +234,7 @@
 <div class="modal fade" id="grantFinanceModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header module-section-header-alt">
                 <h5 class="modal-title">Grant Employee Creation Authority</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

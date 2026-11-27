@@ -4,20 +4,19 @@
 
 @section('content')
 <style>
-    body.dark-mode .attendance-management-hero {
-        background: #8E1EA2 !important;
-    }
+    .attendance-management-page .attendance-management-hero { background: #493267; }
+    .attendance-management-page .attendance-hr-icon { background: #7048a5 !important; }
 </style>
 
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 attendance-management-page">
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm rounded-4 attendance-management-hero" style="background: linear-gradient(135deg, #4f8fe9 0%, #3a73d8 100%); color: white;">
+            <div class="card module-hero attendance-management-hero">
                 <div class="card-body p-4">
                     <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
                         <div>
                             <h2 class="mb-1 text-white">Attendance Management</h2>
-                            <p class="text-white-50 mb-0">Review and approve attendance adjustment requests submitted by employees.</p>
+                            <p class="module-hero-subtitle mb-0">Review and approve attendance adjustment requests submitted by employees.</p>
                         </div>
                         <div class="text-end mt-2 mt-md-0">
                             <span class="badge bg-white text-primary py-2 px-3">Updated {{ now()->format('M d, Y') }}</span>
@@ -30,7 +29,7 @@
 
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card module-stat-card module-stat-soft h-100">
                 <div class="card-body py-4 px-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background: linear-gradient(135deg, #f7b731, #f39c12);">
@@ -46,10 +45,10 @@
         </div>
 
         <div class="col-sm-6 col-xl-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card module-stat-card module-stat-primary h-100">
                 <div class="card-body py-4 px-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background: linear-gradient(135deg, #6a73ff, #4f8fe9);">
+                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center attendance-hr-icon" style="width:48px;height:48px;">
                             <i class="fas fa-user-check"></i>
                         </div>
                         <div>
@@ -62,10 +61,10 @@
         </div>
 
         <div class="col-sm-12 col-xl-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card module-stat-card module-stat-secondary h-100">
                 <div class="card-body py-4 px-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background: linear-gradient(135deg, #32c787, #28a745);">
+                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center attendance-total-icon" style="width:48px;height:48px;background:#7048a5;">
                             <i class="fas fa-list-alt"></i>
                         </div>
                         <div>

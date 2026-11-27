@@ -6,10 +6,10 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card bg-danger text-white">
+            <div class="card module-hero">
                 <div class="card-body">
                     <h2><i class="fas fa-lock-open me-2"></i> Manage Admin Permissions</h2>
-                    <p class="mb-0">Grant or revoke ID verification authority to administrators</p>
+                    <p class="module-hero-subtitle mb-0">Grant or revoke ID verification authority to administrators</p>
                 </div>
             </div>
         </div>
@@ -22,7 +22,7 @@
                     <h5 class="mb-0">
                         <i class="fas fa-users me-2"></i>Administrators
                     </h5>
-                    <span class="badge bg-info">{{ $admins->count() }} Admin(s)</span>
+                    <span class="badge bg-theme-purple">{{ $admins->count() }} Admin(s)</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -42,7 +42,7 @@
                                     <td>
                                         <strong>{{ $admin->first_name }} {{ $admin->last_name }}</strong>
                                         @if($admin->user->admin_type === 'super_admin')
-                                            <span class="badge bg-danger ms-2">Super Admin</span>
+                                            <span class="badge bg-theme-purple ms-2">Super Admin</span>
                                         @endif
                                     </td>
                                     <td>{{ $admin->user->email }}</td>

@@ -5,88 +5,52 @@
 @section('content')
 <style>
     .dtr-management-page .nav-tabs .nav-link {
-        color: #334155 !important;
-        background-color: #e2e8f0;
-        border-color: #cbd5e1;
+        color: #493267 !important;
+        background-color: #eee6f7;
+        border-color: #ded0ed;
     }
 
     .dtr-management-page .nav-tabs .nav-link:hover,
     .dtr-management-page .nav-tabs .nav-link.active {
-        color: #0f172a !important;
-        background-color: #ffffff;
-        border-color: #cbd5e1 #cbd5e1 #ffffff;
+        color: #fff !important;
+        background-color: #7048a5;
+        border-color: #7048a5 #7048a5 #7048a5;
     }
 
     .dtr-management-page .dtr-stat-label {
-        color: #e2e8f0 !important;
+        color: inherit !important;
         font-weight: 600;
-        opacity: 1;
+        opacity: 0.82;
     }
 
     body.dark-mode .dtr-management-page .nav-tabs .nav-link {
-        color: #e2e8f0 !important;
-        background-color: #1e293b;
-        border-color: #475569;
+        color: #d9c8ed !important;
+        background-color: #30243c;
+        border-color: #5c476e;
     }
 
     body.dark-mode .dtr-management-page .nav-tabs .nav-link:hover,
     body.dark-mode .dtr-management-page .nav-tabs .nav-link.active {
         color: #ffffff !important;
-        background-color: #334155;
-        border-color: #64748b #64748b #334155;
+        background-color: #603c91;
+        border-color: #80639d #80639d #603c91;
     }
-
-    body.dark-mode .dtr-management-page .table-responsive {
-        background-color: #111827 !important;
-        border-color: #475569 !important;
-    }
-
-    body.dark-mode .dtr-management-page .table {
-        --bs-table-bg: #111827;
-        --bs-table-color: #f8fafc;
-        --bs-table-border-color: #475569;
-        color: #f8fafc;
-    }
-
-    body.dark-mode .dtr-management-page .table thead th {
-        background-color: #1f2937 !important;
-        color: #cbd5e1 !important;
-        border-color: #475569 !important;
-    }
-
-    body.dark-mode .dtr-management-page .table tbody tr,
-    body.dark-mode .dtr-management-page .table tbody td {
-        background-color: #111827 !important;
-        border-color: #475569 !important;
-        color: #f8fafc;
-    }
-
-    body.dark-mode .dtr-management-page .table tbody td .text-dark {
-        color: #f8fafc !important;
-    }
-
-    body.dark-mode .dtr-management-page .table .text-success { color: #4ade80 !important; }
-    body.dark-mode .dtr-management-page .table .text-danger { color: #f87171 !important; }
-    body.dark-mode .dtr-management-page .table .text-warning { color: #facc15 !important; }
-    body.dark-mode .dtr-management-page .table .text-info { color: #67e8f9 !important; }
-    body.dark-mode .dtr-management-page .table .text-primary { color: #93c5fd !important; }
-    body.dark-mode .dtr-management-page .table .text-muted { color: #cbd5e1 !important; }
 
     body.dark-mode .dtr-management-page .dtr-management-hero {
-        background: #9132a8 !important;
+        background: #493267 !important;
     }
 </style>
 
-<div class="container-fluid py-4 dtr-management-page" style="background-color: #0a1221; min-height: 100vh;">
+<div class="container-fluid py-4 dtr-management-page">
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm rounded-4 dtr-management-hero" style="background: linear-gradient(135deg, #4f8fe9 0%, #3a73d8 100%); color: white;">
+            <div class="card module-hero dtr-management-hero">
                 <div class="card-body p-4">
                     <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
                         <div>
                             <h2 class="mb-1 text-white">DTR / Attendance</h2>
-                            <p class="text-white-50 mb-0">Review and manage attendance records and DTR updates for payroll and monitoring.</p>
+                            <p class="module-hero-subtitle mb-0">Review and manage attendance records and DTR updates for payroll and monitoring.</p>
                         </div>
                         <div class="text-end mt-2 mt-md-0">
                             <span class="badge bg-white text-primary py-2 px-3">Updated {{ now()->format('M d, Y') }}</span>
@@ -99,10 +63,10 @@
 
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08)!important;">
+            <div class="card module-stat-card module-stat-total h-100">
                 <div class="card-body py-4 px-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background: linear-gradient(135deg, #6a73ff, #4f8fe9);">
+                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:#8e6ab8;">
                             <i class="fas fa-layer-group"></i>
                         </div>
                         <div>
@@ -114,7 +78,7 @@
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08)!important;">
+            <div class="card module-stat-card module-stat-soft h-100">
                 <div class="card-body py-4 px-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background: linear-gradient(135deg, #f7b731, #f39c12);">
@@ -129,7 +93,7 @@
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08)!important;">
+            <div class="card module-stat-card module-stat-primary h-100">
                 <div class="card-body py-4 px-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background: linear-gradient(135deg, #32c787, #28a745);">
@@ -144,7 +108,7 @@
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08)!important;">
+            <div class="card module-stat-card module-stat-secondary h-100">
                 <div class="card-body py-4 px-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width:48px;height:48px;background: linear-gradient(135deg, #ff6b6b, #dc3545);">
@@ -162,10 +126,10 @@
 
     <div class="row">
         <div class="col-12">
-            <div class="card border-0 shadow-sm" style="background: rgba(10,18,33,0.55); border: 1px solid rgba(255,255,255,0.08)!important;">
+            <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-0 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 py-3">
                     <div>
-                        <p class="text-white-50 mb-0">Browse pending and approved DTRs in one place.</p>
+                        <p class="text-muted mb-0">Browse pending and approved DTRs in one place.</p>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-warning text-dark py-2 px-3">Pending {{ $pendingCount }}</span>
@@ -200,12 +164,12 @@
                     </div>
                 </div>
                 <div class="card-body p-3">
-                    <ul class="nav nav-tabs mb-3" role="tablist" style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+                    <ul class="nav nav-tabs mb-3 dtr-tabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active text-white" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-tab-pane" type="button" role="tab" aria-controls="pending-tab-pane" aria-selected="true">Pending DTRs</button>
+                            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-tab-pane" type="button" role="tab" aria-controls="pending-tab-pane" aria-selected="true">Pending DTRs</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link text-white" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved-tab-pane" type="button" role="tab" aria-controls="approved-tab-pane" aria-selected="false">Approved DTRs</button>
+                            <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved-tab-pane" type="button" role="tab" aria-controls="approved-tab-pane" aria-selected="false">Approved DTRs</button>
                         </li>
                     </ul>
                     <div class="tab-content">

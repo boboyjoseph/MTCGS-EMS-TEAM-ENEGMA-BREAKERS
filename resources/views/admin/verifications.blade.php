@@ -6,10 +6,10 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card bg-info text-white">
+            <div class="card module-hero">
                 <div class="card-body">
                     <h2><i class="fas fa-id-card me-2"></i> Account Creation Approval</h2>
-                    <p class="mb-0">Review and approve employee registrations</p>
+                    <p class="module-hero-subtitle mb-0">Review and approve employee registrations</p>
                 </div>
             </div>
         </div>
@@ -17,23 +17,23 @@
 
     <!-- SIMPLE BUTTON TABS - GARANTISADONG HIWALAY -->
     <div class="mb-3">
-        <a href="?tab=pending" class="btn {{ in_array(request('tab'), ['rejected', 'deactivated', 'credentials', 'status_changes', 'employee_id_changes']) ? 'btn-secondary' : 'btn-primary' }}">
+        <a href="?tab=pending" class="btn {{ in_array(request('tab'), ['rejected', 'deactivated', 'credentials', 'status_changes', 'employee_id_changes']) ? 'btn-outline-secondary' : 'btn-primary' }}">
             <i class="fas fa-clock"></i> Pending ({{ $pendingUsers->count() }})
         </a>
-        <a href="?tab=rejected" class="btn {{ request('tab') == 'rejected' ? 'btn-primary' : 'btn-secondary' }}">
+        <a href="?tab=rejected" class="btn {{ request('tab') == 'rejected' ? 'btn-primary' : 'btn-outline-secondary' }}">
             <i class="fas fa-times-circle"></i> Rejected ({{ $rejectedUsers->count() }})
         </a>
-        <a href="?tab=deactivated" class="btn {{ request('tab') == 'deactivated' ? 'btn-primary' : 'btn-secondary' }}">
+        <a href="?tab=deactivated" class="btn {{ request('tab') == 'deactivated' ? 'btn-primary' : 'btn-outline-secondary' }}">
             <i class="fas fa-ban"></i> Deactivated ({{ $deactivatedUsers->count() }})
         </a>
-        <a href="?tab=credentials" class="btn {{ request('tab') == 'credentials' ? 'btn-primary' : 'btn-secondary' }}">
+        <a href="?tab=credentials" class="btn {{ request('tab') == 'credentials' ? 'btn-primary' : 'btn-outline-secondary' }}">
             <i class="fas fa-envelope"></i> Credentials Not Sent ({{ $pendingCredentials->count() }})
         </a>
         @if(Auth::user()->isSuperAdmin())
-            <a href="?tab=status_changes" class="btn {{ request('tab') == 'status_changes' ? 'btn-primary' : 'btn-secondary' }}">
+            <a href="?tab=status_changes" class="btn {{ request('tab') == 'status_changes' ? 'btn-primary' : 'btn-outline-secondary' }}">
                 <i class="fas fa-user-edit"></i> Status Changes ({{ $pendingStatusChanges->count() }})
             </a>
-            <a href="?tab=employee_id_changes" class="btn {{ request('tab') == 'employee_id_changes' ? 'btn-primary' : 'btn-secondary' }}">
+            <a href="?tab=employee_id_changes" class="btn {{ request('tab') == 'employee_id_changes' ? 'btn-primary' : 'btn-outline-secondary' }}">
                 <i class="fas fa-id-card"></i> Employee ID Changes ({{ $pendingEmployeeNumberChanges->count() }})
             </a>
         @endif

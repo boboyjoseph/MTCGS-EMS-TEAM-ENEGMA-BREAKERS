@@ -68,12 +68,36 @@
 </div>
 
 <style>
+    #statsContainer > .col:nth-child(1) .card,
+    #statsContainer > .col-md-3:nth-child(1) .card {
+        background-color: #493267 !important;
+        border-color: #493267 !important;
+        color: #fff !important;
+    }
+    #statsContainer > .col:nth-child(2) .card,
+    #statsContainer > .col-md-3:nth-child(2) .card {
+        background-color: #7048a5 !important;
+        border-color: #7048a5 !important;
+        color: #fff !important;
+    }
+    #statsContainer > .col:nth-child(3) .card,
+    #statsContainer > .col-md-3:nth-child(3) .card {
+        background-color: #8e6ab8 !important;
+        border-color: #8e6ab8 !important;
+        color: #fff !important;
+    }
+    #statsContainer > .col:nth-child(4) .card,
+    #statsContainer > .col-md-3:nth-child(4) .card {
+        background-color: #eee6f7 !important;
+        border-color: #ded0ed !important;
+        color: #493267 !important;
+    }
+
     body.dark-mode .modal-content {
         background-color: #1e1e2f;
         color: #ffffff;
         border: 1px solid rgba(149, 100, 221, 0.5);
     }
-
     body.dark-mode .modal-header,
     body.dark-mode .modal-footer {
         border-color: rgba(149, 100, 221, 0.35);
@@ -85,9 +109,9 @@
     body.dark-mode select,
     body.dark-mode input,
     body.dark-mode textarea {
-        background-color: #9564DD !important;
+        background-color: #241d2e !important;
         color: #ffffff !important;
-        border-color: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(185, 154, 220, 0.4) !important;
     }
 
     body.dark-mode .form-control::placeholder,
@@ -103,25 +127,25 @@
     body.dark-mode select:focus,
     body.dark-mode input:focus,
     body.dark-mode textarea:focus {
-        background-color: #9564DD !important;
+        background-color: #30243c !important;
         color: #ffffff !important;
-        border-color: rgba(255, 255, 255, 0.5) !important;
-        box-shadow: 0 0 0 0.2rem rgba(149, 100, 221, 0.25) !important;
+        border-color: #a985d3 !important;
+        box-shadow: 0 0 0 0.2rem rgba(112, 72, 165, 0.28) !important;
     }
 
     body.dark-mode .btn-close {
         filter: invert(1) grayscale(100%) brightness(200%);
     }
 
-    body.dark-mode #statsContainer .card {
-        background-color: #9132a8 !important;
-        border-color: #9132a8 !important;
-        color: #fff !important;
-    }
-
-    body.dark-mode #statsContainer .card small,
-    body.dark-mode #statsContainer .card h3 {
-        color: #fff !important;
+    body.dark-mode #statsContainer > div:nth-child(1) .card { background-color: #39294c !important; border-color: #61477c !important; color: #fff !important; }
+    body.dark-mode #statsContainer > div:nth-child(2) .card { background-color: #50366f !important; border-color: #76599a !important; color: #fff !important; }
+    body.dark-mode #statsContainer > div:nth-child(3) .card { background-color: #60477d !important; border-color: #80639d !important; color: #fff !important; }
+    body.dark-mode #statsContainer > div:nth-child(4) .card { background-color: #30243c !important; border-color: #5c476e !important; color: #f2eafb !important; }
+    body.dark-mode #statsContainer > .col:nth-child(4) .card small,
+    body.dark-mode #statsContainer > .col:nth-child(4) .card h3,
+    body.dark-mode #statsContainer > .col-md-3:nth-child(4) .card small,
+    body.dark-mode #statsContainer > .col-md-3:nth-child(4) .card h3 {
+        color: #f2eafb !important;
     }
 
     body.dark-mode #periodsContainer table tbody tr,
