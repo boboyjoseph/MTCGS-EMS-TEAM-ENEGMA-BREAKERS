@@ -8,6 +8,7 @@
     .dashboard-shell .dashboard-stat-card .card-body > .d-flex > div:first-child { min-width: 0; }
     .dashboard-shell .dashboard-stat-card .text-uppercase { overflow-wrap: anywhere; }
     .dashboard-shell .chart-container { min-width: 0; }
+    .dashboard-shell .dashboard-hero .welcome-title { color: #fff; }
 
     @media (max-width: 576px) {
         .dashboard-shell .dashboard-hero .card-body { padding: 1.15rem; }
@@ -37,7 +38,7 @@
     @include('dashboard.birthday-banner')
 
     <!-- Welcome Hero -->
-    <div class="card dashboard-hero mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="card dashboard-hero mb-4" style="background: #493267;">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                 <div>
