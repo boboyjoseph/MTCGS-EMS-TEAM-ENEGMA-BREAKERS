@@ -7,7 +7,7 @@
     <div class="row justify-content-center">
         <div class="col-12 col-lg-12">
             <!-- Calendar Card - Raised Higher -->
-            <div class="card border-0 shadow-sm" style="margin-top: 0; border-radius: 8px;">
+            <div class="card border-0 shadow-sm school-calendar-card" style="margin-top: 0; border-radius: 8px;">
                 <div class="card-header bg-white border-0 pt-1 pb-0 px-3">
                     <div class="d-flex justify-content-between align-items-center flex-wrap">
                         <div>
@@ -32,27 +32,27 @@
                 <div class="bg-light border-top px-3 py-2" style="font-size: 0.75rem;">
                     <div class="d-flex flex-wrap gap-3">
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge" style="background-color: #0d6efd; width: 20px; height: 20px;"></span>
+                            <span class="badge calendar-legend-own" style="width: 20px; height: 20px;"></span>
                             <span>Your Leave</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge" style="background-color: #198754; width: 20px; height: 20px;"></span>
+                            <span class="badge calendar-legend-approved" style="width: 20px; height: 20px;"></span>
                             <span>Approved Leave</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge" style="background-color: #ffc107; width: 20px; height: 20px;"></span>
+                            <span class="badge calendar-legend-pending" style="width: 20px; height: 20px;"></span>
                             <span>Pending Leave</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary" style="width: 20px; height: 20px;"></span>
+                            <span class="badge calendar-legend-activity" style="width: 20px; height: 20px;"></span>
                             <span>Activity</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-warning" style="width: 20px; height: 20px;"></span>
+                            <span class="badge calendar-legend-holiday" style="width: 20px; height: 20px;"></span>
                             <span>Holiday</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-danger" style="width: 20px; height: 20px;"></span>
+                            <span class="badge calendar-legend-suspension" style="width: 20px; height: 20px;"></span>
                             <span>Suspension</span>
                         </div>
                     </div>
@@ -95,6 +95,50 @@
         padding-top: 0 !important;
     }
 
+    body.dark-mode .school-calendar-card {
+        background: #182233 !important;
+        border: 1px solid rgba(167, 139, 250, 0.25) !important;
+    }
+
+    body.dark-mode .school-calendar-card .card-header,
+    body.dark-mode .school-calendar-card .bg-light {
+        background: #182233 !important;
+        color: #f8fafc;
+    }
+
+    body.dark-mode .school-calendar-card .text-muted {
+        color: #cbd5e1 !important;
+    }
+
+    body.dark-mode .fc .fc-toolbar-title,
+    body.dark-mode .fc .fc-col-header-cell-cushion {
+        color: #ede9fe !important;
+    }
+
+    body.dark-mode .fc .fc-daygrid-day-frame {
+        background: #182233 !important;
+    }
+
+    body.dark-mode .fc .fc-daygrid-day,
+    body.dark-mode .fc .fc-scrollgrid,
+    body.dark-mode .fc .fc-scrollgrid td,
+    body.dark-mode .fc .fc-scrollgrid th {
+        border-color: #334155 !important;
+    }
+
+    body.dark-mode .fc .fc-daygrid-day-number {
+        color: #e2e8f0 !important;
+    }
+
+    body.dark-mode .fc .fc-day-today {
+        background: rgba(112, 72, 165, 0.22) !important;
+        box-shadow: inset 0 0 0 2px #a78bfa;
+    }
+
+    body.dark-mode .fc .fc-day-today .fc-daygrid-day-number {
+        color: #ddd6fe !important;
+    }
+
     body.dark-mode #eventModal .modal-content,
     body.dark-mode #eventModal .modal-header,
     body.dark-mode #eventModal .modal-footer {
@@ -133,20 +177,46 @@
         padding-right: 1rem !important;
     }
     
-    /* Calendar Styling - Compact para makita ang nasa baba */
+    /* Calendar Styling */
+    .school-calendar-card {
+        background: #ffffff;
+    }
+
+    .calendar-legend-own { background: #7048a5 !important; }
+    .calendar-legend-approved { background: #493267 !important; }
+    .calendar-legend-pending { background: #d9a01e !important; }
+    .calendar-legend-activity { background: #7048a5 !important; }
+    .calendar-legend-holiday { background: #8e6ab8 !important; }
+    .calendar-legend-suspension { background: #b83a53 !important; }
+
     .fc {
         width: 100%;
     }
     
     .fc .fc-toolbar-title {
-        font-size: 0.85rem !important;
-        font-weight: bold !important;
+        font-size: 1.15rem !important;
+        font-weight: 800 !important;
+        color: #493267;
+        letter-spacing: 0;
     }
     
     .fc .fc-button {
-        padding: 0.15rem 0.4rem !important;
-        font-size: 0.65rem !important;
-        border-radius: 4px !important;
+        padding: 0.38rem 0.65rem !important;
+        font-size: 0.78rem !important;
+        border-radius: 6px !important;
+        border: 1px solid #7048a5 !important;
+        background: #7048a5 !important;
+        color: #fff !important;
+    }
+    .fc .fc-button:hover,
+    .fc .fc-button:focus {
+        background: #5d398f !important;
+        border-color: #5d398f !important;
+    }
+    .fc .fc-button-active {
+        background: #493267 !important;
+        border-color: #493267 !important;
+        box-shadow: none !important;
     }
     
     .fc .fc-toolbar.fc-header-toolbar {
@@ -154,17 +224,18 @@
     }
     
     .fc .fc-col-header-cell-cushion {
-        font-size: 0.65rem !important;
-        font-weight: 600 !important;
-        padding: 0.3rem 0 !important;
+        font-size: 0.76rem !important;
+        font-weight: 800 !important;
+        padding: 0.55rem 0 !important;
         text-decoration: none !important;
+        color: #493267;
     }
     
     .fc .fc-daygrid-day-number {
-        font-size: 0.7rem !important;
-        padding: 0.2rem !important;
-        font-weight: 500 !important;
-        color: #1f2937 !important;
+        font-size: 0.78rem !important;
+        padding: 0.42rem 0.48rem !important;
+        font-weight: 700 !important;
+        color: #493267 !important;
     }
 
     .fc .fc-daygrid-day {
@@ -172,8 +243,9 @@
     }
     
     .fc .fc-daygrid-day-frame {
-        min-height: 55px !important;
+        min-height: 78px !important;
         height: auto !important;
+        background: linear-gradient(180deg, #ffffff 0%, #fcfbfe 100%);
     }
     
     .fc .fc-daygrid-day-events {
@@ -181,14 +253,16 @@
     }
     
     .fc .fc-event-title {
-        font-size: 0.55rem !important;
-        font-weight: 500 !important;
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        line-height: 1.25;
     }
     
     .fc .fc-event {
-        padding: 0.05rem 0.2rem !important;
-        margin: 1px 1px !important;
-        border-radius: 3px !important;
+        min-height: 24px;
+        padding: 0.28rem 0.38rem !important;
+        margin: 2px 3px !important;
+        border-radius: 5px !important;
         cursor: pointer !important;
         pointer-events: auto !important;
         position: relative;
@@ -196,12 +270,12 @@
     }
     
     .fc .fc-day-today {
-        background-color: #dbeafe !important;
-        box-shadow: inset 0 0 0 2px #2563eb;
+        background: #f3edf9 !important;
+        box-shadow: inset 0 0 0 2px #7048a5;
     }
 
     .fc .fc-day-today .fc-daygrid-day-number {
-        color: #1d4ed8 !important;
+        color: #7048a5 !important;
         font-size: 0.85rem !important;
         font-weight: 800 !important;
     }
@@ -253,8 +327,8 @@ document.addEventListener('turbo:load', function() {
                 start: @json($event->start_time ? $event->event_date->format('Y-m-d') . 'T' . $event->start_time : $event->event_date->format('Y-m-d')),
                 end: @json($event->end_time ? $event->event_date->format('Y-m-d') . 'T' . $event->end_time : null),
                 allDay: @json(!$event->start_time),
-                backgroundColor: @json($event->event_type === 'activity' ? '#0d6efd' : ($event->event_type === 'suspension' ? '#dc3545' : '#fd7e14')),
-                borderColor: @json($event->event_type === 'activity' ? '#0d6efd' : ($event->event_type === 'suspension' ? '#dc3545' : '#fd7e14')),
+                backgroundColor: @json($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#b83a53' : '#8e6ab8')),
+                borderColor: @json($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#b83a53' : '#8e6ab8')),
                 textColor: '#ffffff',
                 extendedProps: {
                     type: @json($event->event_type),
@@ -271,8 +345,8 @@ document.addEventListener('turbo:load', function() {
                     title: @json('Leave: ' . (optional($leave->employeeProfile)->full_name ?? optional($leave->employee)->name ?? 'Employee')),
                     start: @json($leave->start_date->format('Y-m-d')),
                     end: @json($leave->end_date->copy()->addDay()->format('Y-m-d')),
-                    backgroundColor: @json(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#0d6efd' : ($leave->status === 'approved' ? '#198754' : '#ffc107')),
-                    borderColor: @json(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#0d6efd' : ($leave->status === 'approved' ? '#198754' : '#ffc107')),
+                    backgroundColor: @json(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#7048a5' : ($leave->status === 'approved' ? '#493267' : '#d9a01e')),
+                    borderColor: @json(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#7048a5' : ($leave->status === 'approved' ? '#493267' : '#d9a01e')),
                     textColor: '#ffffff',
                     extendedProps: {
                         type: 'leave',
