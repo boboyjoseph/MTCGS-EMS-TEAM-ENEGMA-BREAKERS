@@ -35,9 +35,35 @@
         line-height: 1.3;
     }
 
+    .payroll-period-summary .card {
+        min-height: 96px;
+        border: 0;
+        color: #fff !important;
+    }
+    .payroll-period-summary .card h6,
+    .payroll-period-summary .card h3 {
+        color: inherit !important;
+    }
+    .payroll-period-summary .card h6 { font-weight: 700; }
+    .payroll-period-summary .col-md-3:nth-child(1) .card { background: #493267 !important; }
+    .payroll-period-summary .col-md-3:nth-child(2) .card { background: #7048a5 !important; }
+    .payroll-period-summary .col-md-3:nth-child(3) .card { background: #8e6ab8 !important; }
+    .payroll-period-summary .col-md-3:nth-child(4) .card { background: #5d398f !important; }
+
+    .payroll-net-pay,
+    .payroll-status-approved,
+    .payroll-sent-status { color: #7048a5 !important; }
+    .payroll-status-approved { background: #7048a5 !important; color: #fff !important; }
+    .payroll-status-calculated { background: #eee6f7 !important; color: #493267 !important; }
+    .payroll-status-secondary { background: #8e6ab8 !important; color: #fff !important; }
+    .payroll-entries-actions-purple {
+        background: #7048a5 !important;
+        border-color: #7048a5 !important;
+        color: #fff !important;
+    }
+
     body.dark-mode .payroll-period-summary .card {
-        background-color: #9132a8 !important;
-        border-color: #9132a8 !important;
+        border: 1px solid #80639d;
         color: #fff !important;
     }
 
@@ -70,7 +96,7 @@
     
     <div class="row mb-4 payroll-period-summary">
         <div class="col-md-3">
-            <div class="card bg-info text-white">
+            <div class="card text-white">
                 <div class="card-body">
                     <h6>Total Employees</h6>
                     <h3>{{ $summary['total_employees'] }}</h3>
@@ -78,7 +104,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-primary text-white">
+            <div class="card text-white">
                 <div class="card-body">
                     <h6>Total Gross Pay</h6>
                     <h3>₱{{ number_format($summary['total_gross'], 2) }}</h3>
@@ -86,7 +112,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-warning text-white">
+            <div class="card text-white">
                 <div class="card-body">
                     <h6>Total Deductions</h6>
                     <h3>₱{{ number_format($summary['total_deductions'], 2) }}</h3>
@@ -94,7 +120,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-success text-white">
+            <div class="card text-white">
                 <div class="card-body">
                     <h6>Total Net Pay</h6>
                     <h3>₱{{ number_format($summary['total_net'], 2) }}</h3>
@@ -229,16 +255,16 @@
                         <td>₱{{ number_format($entry->philhealth_contribution, 2) }}</td>
                         <td>₱{{ number_format($entry->pagibig_contribution, 2) }}</td>
                         <td>₱{{ number_format($entry->withholding_tax, 2) }}</small></td>
-                        <td><strong class="text-success">₱{{ number_format($entry->net_pay, 2) }}</strong></td>
+                        <td><strong class="payroll-net-pay">₱{{ number_format($entry->net_pay, 2) }}</strong></td>
                         <td>
                             <div class="payroll-entry-actions">
-                            <span class="badge bg-{{ $entry->status === 'approved' ? 'success' : ($entry->status === 'calculated' ? 'warning' : 'secondary') }}">
+                            <span class="badge {{ $entry->status === 'approved' ? 'payroll-status-approved' : ($entry->status === 'calculated' ? 'payroll-status-calculated' : 'payroll-status-secondary') }}">
                                 {{ ucfirst($entry->status) }}
                             </span>
                         </td>
                         <td>
                             @if($period->status === 'draft')
-                                <a href="{{ route('admin.payroll.edit-entry', $entry->id) }}" class="btn btn-sm btn-warning mb-1">
+                                <a href="{{ route('admin.payroll.edit-entry', $entry->id) }}" class="btn btn-sm payroll-entries-actions-purple mb-1">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
                             @else
@@ -247,7 +273,7 @@
                                 </a>
                             @endif
                             @if(auth()->user()->role === 'finance_officer')
-                                <a href="{{ route('admin.payroll.download-payslip', $entry->id) }}" class="btn btn-sm btn-success mb-1">
+                                <a href="{{ route('admin.payroll.download-payslip', $entry->id) }}" class="btn btn-sm payroll-entries-actions-purple mb-1">
                                     <i class="fas fa-file-invoice-dollar"></i> Generate Payslip
                                 </a>
                                 @if($entry->status === 'approved')
@@ -258,7 +284,7 @@
                                         </button>
                                     </form>
                                     @if($entry->payslip_sent_at)
-                                        <small class="d-block text-success"><i class="fas fa-check-circle"></i> Sent to {{ $entry->payslip_sent_to }}</small>
+                                        <small class="d-block payroll-sent-status"><i class="fas fa-check-circle"></i> Sent to {{ $entry->payslip_sent_to }}</small>
                                     @elseif($entry->payslip_published_at)
                                         <small class="d-block text-info"><i class="fas fa-eye"></i> Available in My Payslips; email not sent</small>
                                     @endif
