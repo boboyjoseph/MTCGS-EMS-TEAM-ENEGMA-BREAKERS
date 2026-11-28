@@ -251,8 +251,17 @@
             gap: 0.5rem;
         }
 
+        .bg-primary { background-color: var(--primary) !important; }
+        .border-primary { border-color: var(--primary) !important; }
+        .text-primary { color: var(--primary) !important; }
         .btn-primary { background-color: var(--primary); border-color: var(--primary); }
         .btn-primary:hover, .btn-primary:focus { background-color: var(--primary-hover); border-color: var(--primary-hover); }
+        .btn-outline-primary { color: var(--primary); border-color: var(--primary); }
+        .btn-outline-primary:hover, .btn-outline-primary:focus, .btn-outline-primary.active {
+            color: #fff;
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
         .btn-info { background-color: #168a91; border-color: #168a91; color: #fff; }
         .btn-success { background-color: #228b62; border-color: #228b62; color: #fff; }
         .btn-danger { background-color: #dc3545; border-color: #dc3545; }

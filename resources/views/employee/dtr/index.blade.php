@@ -4,17 +4,17 @@
 
 @section('content')
 <style>
-    body.dark-mode .current-period-card.border-primary {
-        border-color: #8E1EA2 !important;
+    .employee-dtr-page .current-period-card,
+    .employee-dtr-page .current-period-header {
+        border-color: var(--primary) !important;
     }
 
-    body.dark-mode .current-period-header {
-        background-color: #8E1EA2 !important;
-        border-color: #8E1EA2 !important;
+    .employee-dtr-page .current-period-header {
+        background-color: var(--primary) !important;
     }
 </style>
 
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 employee-dtr-page">
     <!-- Page Header -->
     <div class="row mb-4">
         <div class="col-12">
@@ -24,7 +24,7 @@
                     <p class="text-muted mt-2">{{ $employeeProfile->first_name }} {{ $employeeProfile->last_name }}</p>
                 </div>
                 <div>
-                    <a href="{{ route('employee.dtr.summary') }}" class="btn btn-info">
+                    <a href="{{ route('employee.dtr.summary') }}" class="btn btn-primary">
                         <i class="fas fa-chart-bar"></i> Summary
                     </a>
                 </div>
