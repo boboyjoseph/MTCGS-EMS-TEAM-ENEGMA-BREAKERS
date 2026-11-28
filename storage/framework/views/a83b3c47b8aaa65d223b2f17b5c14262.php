@@ -2,9 +2,122 @@
 
 <?php $__env->startSection('title', 'Add Biometric Device'); ?>
 
+<?php $__env->startPush('styles'); ?>
+<style>
+    .add-device-page { max-width: 980px; }
+
+    .add-device-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .device-registration-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #b9e3f1;
+        border-radius: 8px;
+        background: #eef9fd;
+        color: #315b6b;
+    }
+
+    .device-registration-section {
+        border: 1px solid #e4deed;
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .device-registration-section + .device-registration-section { margin-top: 1rem; }
+
+    .device-registration-section-header {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid #e4deed;
+        background: #f8fafc;
+        font-weight: 700;
+    }
+
+    .device-registration-section-body { padding: 1rem; }
+
+    .device-registration-section .form-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #4b5563;
+    }
+
+    .device-registration-section .form-control,
+    .device-registration-section .form-select {
+        min-height: 42px;
+    }
+
+    .device-location-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid #ded0ed;
+        border-radius: 8px;
+        background: #faf8fc;
+    }
+
+    .device-location-check .form-check-input { margin-top: 0.25rem; }
+
+    .device-registration-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin: 1.25rem -1.25rem -1.25rem;
+        padding: 0.85rem 1.25rem;
+        border-top: 1px solid #e4deed;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(8px);
+    }
+
+    body.dark-mode .device-registration-note {
+        background: #172033;
+        border-color: #36556a;
+        color: #d8edf7;
+    }
+
+    body.dark-mode .device-registration-section,
+    body.dark-mode .device-registration-section-header,
+    body.dark-mode .device-location-check {
+        background: #1e293b;
+        border-color: #334155;
+        color: #e2e8f0;
+    }
+
+    body.dark-mode .device-registration-section .form-label,
+    body.dark-mode .device-location-check .form-check-label,
+    body.dark-mode .device-location-check small { color: #e2e8f0; }
+
+    body.dark-mode .device-registration-footer {
+        background: rgba(30, 41, 59, 0.96);
+        border-top-color: #334155;
+    }
+
+    @media (max-width: 767.98px) {
+        .add-device-header { flex-direction: column; }
+        .add-device-header .btn { width: 100%; }
+        .device-registration-footer {
+            position: static;
+            margin: 1rem -1rem -1rem;
+        }
+        .device-registration-footer .btn { flex: 1 1 0; }
+    }
+</style>
+<?php $__env->stopPush(); ?>
+
 <?php $__env->startSection('content'); ?>
-<div class="container-fluid" style="max-width: 860px;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="container-fluid add-device-page">
+    <div class="add-device-header mb-3">
         <div>
             <h3 class="mb-1">Add Biometric Device</h3>
             <p class="text-muted mb-0">Register the kiosk once, then download its setup file for the desktop apps.</p>
@@ -12,8 +125,9 @@
         <a href="<?php echo e(route('admin.devices.index')); ?>" class="btn btn-outline-secondary">Back to Devices</a>
     </div>
 
-    <div class="alert alert-info" role="note">
-        Only a Super Admin can register a device. Keep the computer MAC, scanner serial, and device ID from the kiosk's current app configuration nearby.
+    <div class="device-registration-note" role="note">
+        <i class="fas fa-circle-info mt-1"></i>
+        <span>Only a Super Admin can register a device. Keep the computer MAC, scanner serial, and device ID nearby.</span>
     </div>
 
     <div class="card">
@@ -21,8 +135,10 @@
             <form action="<?php echo e(route('admin.devices.store')); ?>" method="POST" data-device-form>
                 <?php echo csrf_field(); ?>
 
-                <h5 class="mb-3">1. Identify the kiosk</h5>
-                <div class="row g-3 mb-4">
+                <section class="device-registration-section">
+                    <div class="device-registration-section-header">1. Identify the kiosk</div>
+                    <div class="device-registration-section-body">
+                        <div class="row g-3">
                     <div class="col-md-6">
                         <label for="device_name" class="form-label">Kiosk Name</label>
                         <input type="text" name="device_name" id="device_name" class="form-control" value="<?php echo e(old('device_name')); ?>" placeholder="Buhi Attendance Kiosk" required>
@@ -52,31 +168,42 @@
                             <option value="maintenance" <?php echo e(old('status') === 'maintenance' ? 'selected' : ''); ?>>Maintenance</option>
                         </select>
                     </div>
-                </div>
+                        </div>
+                    </div>
+                </section>
 
-                <h5 class="mb-1">2. Connect the fingerprint reader</h5>
-                <p class="small text-muted mb-3">Use the values from the kiosk computer and scanner. These identifiers must match the installed desktop app.</p>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="mac_address" class="form-label">Kiosk Computer MAC Address</label>
-                        <input type="text" name="mac_address" id="mac_address" class="form-control" value="<?php echo e(old('mac_address')); ?>" placeholder="00:1A:2B:3C:4D:5E" required>
+                <section class="device-registration-section">
+                    <div class="device-registration-section-header">
+                        2. Connect the fingerprint reader
+                        <small class="d-block text-muted fw-normal mt-1">Use values that match the kiosk computer and installed desktop app.</small>
                     </div>
-                    <div class="col-md-6">
-                        <label for="laptop_mac_address" class="form-label">Kiosk Device ID</label>
-                        <input type="text" name="laptop_mac_address" id="laptop_mac_address" class="form-control" value="<?php echo e(old('laptop_mac_address')); ?>" placeholder="DeviceIdentifier from app config" required>
+                    <div class="device-registration-section-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="mac_address" class="form-label">Kiosk Computer MAC Address</label>
+                                <input type="text" name="mac_address" id="mac_address" class="form-control" value="<?php echo e(old('mac_address')); ?>" placeholder="00:1A:2B:3C:4D:5E" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="laptop_mac_address" class="form-label">Kiosk Device ID</label>
+                                <input type="text" name="laptop_mac_address" id="laptop_mac_address" class="form-control" value="<?php echo e(old('laptop_mac_address')); ?>" placeholder="DeviceIdentifier from app config" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="serial_number" class="form-label">Fingerprint Scanner Serial Number</label>
+                                <input type="text" name="serial_number" id="serial_number" class="form-control" value="<?php echo e(old('serial_number')); ?>" placeholder="Serial number on the scanner" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="reader_id" class="form-label">Physical Reader ID <span class="text-muted">(if required)</span></label>
+                                <input type="text" name="reader_id" id="reader_id" class="form-control" value="<?php echo e(old('reader_id')); ?>" placeholder="ExpectedDpfpReaderId from app config">
+                                <small class="text-muted">Required automatically for supported reader-bound scanners.</small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <label for="serial_number" class="form-label">Fingerprint Scanner Serial Number</label>
-                        <input type="text" name="serial_number" id="serial_number" class="form-control" value="<?php echo e(old('serial_number')); ?>" placeholder="Serial number on the scanner" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="reader_id" class="form-label">Physical Reader ID <span class="text-muted">(if required)</span></label>
-                        <input type="text" name="reader_id" id="reader_id" class="form-control" value="<?php echo e(old('reader_id')); ?>" placeholder="ExpectedDpfpReaderId from app config">
-                        <small class="text-muted">Required automatically for supported reader-bound scanners.</small>
-                    </div>
-                </div>
+                </section>
 
-                <details class="mt-4">
+                <section class="device-registration-section">
+                    <div class="device-registration-section-header">3. Optional location and security</div>
+                    <div class="device-registration-section-body">
+                <details>
                     <summary class="fw-semibold">Optional location and security settings</summary>
                     <div class="row g-3 mt-1">
                         <div class="col-md-6">
@@ -99,7 +226,7 @@
                             <label for="radius_meters" class="form-label">Allowed Radius (meters)</label>
                             <input type="number" name="radius_meters" id="radius_meters" class="form-control" value="<?php echo e(old('radius_meters', 100)); ?>" min="1" max="10000">
                         </div>
-                        <div class="col-12 form-check ms-2">
+                        <div class="col-12 device-location-check">
                             <input type="hidden" name="location_check_enabled" value="0">
                             <input type="checkbox" name="location_check_enabled" id="location_check_enabled" class="form-check-input" value="1" <?php echo e(old('location_check_enabled', true) ? 'checked' : ''); ?>>
                             <label for="location_check_enabled" class="form-check-label">Require GPS for attendance and fingerprint enrollment</label>
@@ -111,8 +238,10 @@
                         </div>
                     </div>
                 </details>
+                    </div>
+                </section>
 
-                <div class="d-flex justify-content-end gap-2 mt-4">
+                <div class="device-registration-footer">
                     <a href="<?php echo e(route('admin.devices.index')); ?>" class="btn btn-outline-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary">Register and Create Setup</button>
                 </div>
