@@ -319,6 +319,19 @@ document.addEventListener('turbo:load', function() {
             week: 'Week',
             list: 'List'
         },
+        displayEventTime: false,
+        eventContent: function(info) {
+            if (info.view.type === 'dayGridMonth' && info.event.extendedProps.type === 'activity') {
+                const title = info.event.title
+                    .replace(/^\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)?\s*(?:[-–]\s*\d{1,2}:\d{2}\s*(?:am|pm)?\s*)?)/i, '')
+                    .trim();
+                const container = document.createElement('div');
+                container.className = 'fc-event-title';
+                container.textContent = title || info.event.title;
+                return { domNodes: [container] };
+            }
+            return true;
+        },
         events: [
             @foreach($events as $event)
             {
