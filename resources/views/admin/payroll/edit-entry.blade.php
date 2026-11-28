@@ -42,9 +42,17 @@
         max-width: 1120px;
         margin: 0 auto;
     }
-    .payroll-entry-page .payroll-section .row > .col-md-3 {
-        flex: 0 0 100%;
-        max-width: 100%;
+    @media (min-width: 992px) {
+        .payroll-entry-page .payroll-section .row > [class*="col-"] {
+            flex: 0 0 33.333333%;
+            max-width: 33.333333%;
+        }
+    }
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .payroll-entry-page .payroll-section .row > [class*="col-"] {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
     }
     .payroll-section-header {
         display: flex;
@@ -182,7 +190,7 @@
         color: #cbd5e1 !important;
     }
     @media (max-width: 767.98px) {
-        .payroll-entry-page .payroll-section .row > .col-md-3 {
+        .payroll-entry-page .payroll-section .row > [class*="col-"] {
             flex-basis: 100%;
             max-width: 100%;
         }
