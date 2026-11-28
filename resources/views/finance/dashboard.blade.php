@@ -29,7 +29,7 @@
     @include('dashboard.birthday-banner')
 
     <!-- Header Hero -->
-    <div class="card dashboard-hero mb-4" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+    <div class="card dashboard-hero mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                 <div>

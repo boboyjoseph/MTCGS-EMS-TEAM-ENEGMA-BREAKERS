@@ -38,7 +38,7 @@
     @include('dashboard.birthday-banner')
 
     <!-- Welcome Hero -->
-    <div class="card dashboard-hero mb-4" style="background: #493267;">
+    <div class="card dashboard-hero mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                 <div>

@@ -372,6 +372,8 @@
         .dashboard-hero {
             border: 0;
             border-radius: 8px;
+            background: #493267;
+            background-image: none;
             color: #fff;
             box-shadow: 0 4px 12px rgba(48, 36, 67, 0.16);
             overflow: hidden;
@@ -470,6 +472,7 @@
         body.dark-mode .module-section-header { background: #50366f !important; border-color: #76599a !important; color: #fff !important; }
         body.dark-mode .module-section-header-alt { background: #60477d !important; border-color: #80639d !important; color: #fff !important; }
         body.dark-mode .bg-theme-purple { background-color: #603c91 !important; color: #fff !important; }
+        body.dark-mode .dashboard-hero { background: #39294c; background-image: none; }
         body.dark-mode .dashboard-stat-card { color: var(--text-color); }
         body.dark-mode .profile-page .fw-semibold,
         body.dark-mode .profile-page .text-dark { color: var(--text-color) !important; }
