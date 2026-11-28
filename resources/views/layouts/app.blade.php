@@ -724,6 +724,11 @@
                 <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
+                @if(Auth::user()->role !== 'employee')
+                    <a class="nav-link {{ request()->routeIs('analytics.*') ? 'active' : '' }}" href="{{ route('analytics.index') }}">
+                        <i class="fas fa-chart-line"></i> Analytics
+                    </a>
+                @endif
             </div>
 
             @if(Auth::user()->role === 'admin')

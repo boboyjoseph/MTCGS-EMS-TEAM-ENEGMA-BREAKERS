@@ -725,6 +725,11 @@
                 <a class="nav-link <?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>" href="<?php echo e(route('dashboard')); ?>">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
+                <?php if(Auth::user()->role !== 'employee'): ?>
+                    <a class="nav-link <?php echo e(request()->routeIs('analytics.*') ? 'active' : ''); ?>" href="<?php echo e(route('analytics.index')); ?>">
+                        <i class="fas fa-chart-line"></i> Analytics
+                    </a>
+                <?php endif; ?>
             </div>
 
             <?php if(Auth::user()->role === 'admin'): ?>
