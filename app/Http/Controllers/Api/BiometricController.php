@@ -1316,7 +1316,7 @@ class BiometricController extends Controller
                 'branch_id' => $employee->branch_id,
                 'branch_name' => $employee->branch?->branch_name ?? 'Unknown Branch',
                 'profile_photo_url' => $employee->profile_photo && Storage::disk('public')->exists($employee->profile_photo)
-                    ? asset('storage/' . ltrim($employee->profile_photo, '/') . '?v=' . $employee->updated_at?->timestamp)
+                    ? route('profile.photo', ['type' => 'employee', 'id' => $employee->id])
                     : null,
                 'is_fingerprint_registered' => $hasFingerprintTemplate || (bool) $employee->is_fingerprint_registered,
             ];
@@ -1358,7 +1358,7 @@ class BiometricController extends Controller
                 'branch_id' => $finance->branch_id,
                 'branch_name' => $finance->branch?->branch_name ?? 'Unknown Branch',
                 'profile_photo_url' => $finance->profile_photo && Storage::disk('public')->exists($finance->profile_photo)
-                    ? asset('storage/' . ltrim($finance->profile_photo, '/') . '?v=' . $finance->updated_at?->timestamp)
+                    ? route('profile.photo', ['type' => 'financeprofile', 'id' => $finance->id])
                     : null,
                 'role' => $finance->user?->role ?? 'finance_officer',
                 'is_fingerprint_registered' => (bool) $finance->is_fingerprint_registered,
@@ -1400,7 +1400,7 @@ class BiometricController extends Controller
                 'admin_type' => $userAdminType,
                 'branch_name' => $isBranchAdmin ? ($admin->branch?->branch_name ?? 'Unknown Branch') : null,
                 'profile_photo_url' => $admin->profile_photo && Storage::disk('public')->exists($admin->profile_photo)
-                    ? asset('storage/' . ltrim($admin->profile_photo, '/') . '?v=' . $admin->updated_at?->timestamp)
+                    ? route('profile.photo', ['type' => 'adminprofile', 'id' => $admin->id])
                     : null,
                 'role' => $admin->user?->role ?? 'admin',
                 'is_branch_admin' => $isBranchAdmin,

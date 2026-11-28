@@ -594,7 +594,10 @@ function profileAvatar(item) {
         .join('');
 
     if (item.profile_photo_url) {
-        return `<img src="${item.profile_photo_url}" alt="${item.name || 'Profile photo'}" class="biometric-profile-avatar">`;
+        return `<span class="biometric-profile-avatar" style="position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 46px">`
+            + `<img src="${item.profile_photo_url}" alt="${item.name || 'Profile photo'}" class="biometric-profile-avatar" style="position:absolute;inset:0;width:46px;height:46px;margin:0;border:0" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">`
+            + `<span class="biometric-profile-avatar biometric-profile-initials" aria-hidden="true" style="display:none">${initials}</span>`
+            + `</span>`;
     }
 
     return `<span class="biometric-profile-avatar biometric-profile-initials" aria-hidden="true">${initials}</span>`;
