@@ -52,6 +52,84 @@
         overflow-wrap: anywhere;
     }
 
+    body.dark-mode .device-management-table,
+    body.dark-mode .device-management-table th,
+    body.dark-mode .device-management-table td,
+    body.dark-mode .device-management-table code {
+        color: #f8fafc !important;
+    }
+
+    body.dark-mode .device-management-table .text-muted {
+        color: #cbd5e1 !important;
+    }
+
+    body.dark-mode .device-management-table thead th {
+        background: #30243c !important;
+        color: #f2eafb !important;
+        border-color: #5c476e !important;
+    }
+
+    body.dark-mode .device-management-table tbody tr,
+    body.dark-mode .device-management-table tbody td {
+        background: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+    }
+
+    body.dark-mode .device-management-table.table-hover tbody tr:hover,
+    body.dark-mode .device-management-table.table-hover tbody tr:hover td {
+        background: #273449 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .device-status {
+        background: #30243c !important;
+        color: #f8fafc !important;
+        border-color: #80639d !important;
+    }
+
+    body.dark-mode .device-status option {
+        background: #30243c;
+        color: #f8fafc;
+    }
+
+    body.dark-mode .device-management-table + .text-muted {
+        color: #cbd5e1 !important;
+    }
+
+    body.dark-mode .device-action-stack .btn-outline-primary {
+        background: #7048a5 !important;
+        border-color: #7048a5 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .device-action-stack .btn-warning {
+        background: #d97706 !important;
+        border-color: #d97706 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .device-action-stack .btn-danger {
+        background: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card {
+        background: #30243c !important;
+        border: 1px solid #80639d !important;
+        color: #f8fafc !important;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.22);
+    }
+
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-muted,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-success,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-warning,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-danger,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .fs-3 {
+        color: #f8fafc !important;
+    }
+
     @media (max-width: 991.98px) {
         .device-management-table {
             min-width: 1040px;
