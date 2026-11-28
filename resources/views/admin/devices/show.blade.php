@@ -41,9 +41,144 @@
     ];
 @endphp
 
+@push('styles')
+<style>
+    .device-details-page {
+        max-width: 980px;
+    }
+
+    .device-details-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .device-credential-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #e4deed;
+        border-left: 4px solid #7048a5;
+        border-radius: 8px;
+        background: #faf8fc;
+    }
+
+    .device-credential-copy {
+        min-width: 0;
+        color: #5f6673;
+        line-height: 1.45;
+    }
+
+    .device-details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .device-detail-card {
+        height: 100%;
+        border: 1px solid #e4deed;
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .device-detail-card-header {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid #e4deed;
+        background: #f8fafc;
+        font-weight: 700;
+    }
+
+    .device-detail-list {
+        display: grid;
+        grid-template-columns: minmax(105px, 0.38fr) minmax(0, 0.62fr);
+        margin: 0;
+    }
+
+    .device-detail-list dt,
+    .device-detail-list dd {
+        margin: 0;
+        padding: 0.72rem 1rem;
+        border-bottom: 1px solid #eef0f3;
+    }
+
+    .device-detail-list dt {
+        color: #6b7280;
+        font-size: 0.78rem;
+        font-weight: 700;
+        background: #fbfcfd;
+    }
+
+    .device-detail-list dd {
+        min-width: 0;
+        color: #2f3340;
+        overflow-wrap: anywhere;
+    }
+
+    .device-detail-list dt:last-of-type,
+    .device-detail-list dd:last-of-type {
+        border-bottom: 0;
+    }
+
+    body.dark-mode .device-credential-banner,
+    body.dark-mode .device-detail-card,
+    body.dark-mode .device-detail-card-header,
+    body.dark-mode .device-detail-list dt {
+        background: #1e293b;
+        border-color: #334155;
+        color: #e2e8f0;
+    }
+
+    body.dark-mode .device-detail-list dd {
+        background: #172033;
+        border-color: #334155;
+        color: #f8fafc;
+    }
+
+    body.dark-mode .device-credential-copy,
+    body.dark-mode .device-detail-list dt {
+        color: #cbd5e1;
+    }
+
+    @media (max-width: 767.98px) {
+        .device-details-header,
+        .device-credential-banner {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .device-credential-banner .btn {
+            width: 100%;
+        }
+
+        .device-details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .device-detail-list {
+            grid-template-columns: 1fr;
+        }
+
+        .device-detail-list dt {
+            padding-bottom: 0.25rem;
+            border-bottom: 0;
+        }
+
+        .device-detail-list dd {
+            padding-top: 0.25rem;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
-<div class="container-fluid" style="max-width: 900px;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="container-fluid device-details-page">
+    <div class="device-details-header mb-3">
         <div>
             <h3 class="mb-1">Device Details</h3>
             <p class="text-muted mb-0">View the registered device information and authorization status.</p>
@@ -65,21 +200,21 @@
                 </div>
             @endif
 
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <strong>Biometric API credential:</strong>
-                    <span class="badge {{ $credentialStatus === 'provisioned' ? 'bg-success' : 'bg-warning text-dark' }}">
+            <div class="device-credential-banner">
+                <div class="device-credential-copy">
+                    <strong>Biometric API credential</strong>
+                    <span class="badge ms-1 {{ $credentialStatus === 'provisioned' ? 'bg-success' : 'bg-warning text-dark' }}">
                         {{ match ($credentialStatus) {
                             'provisioned' => 'Provisioned',
                             'unreadable' => 'Cannot be decrypted',
                             default => 'Not provisioned',
                         } }}
                     </span>
-                    <div class="small text-muted">
+                    <div class="small mt-1">
                         @if ($credentialStatus === 'unreadable')
-                            The stored credential cannot be decrypted with the current application key. Generate a new credential and import the new setup package in both kiosk apps.
+                            The stored credential cannot be decrypted. Generate a new credential and import the setup package again.
                         @else
-                            The secret is not displayed again. Rotating it immediately disables the previous device credential.
+                            Rotating it disables the previous credential immediately.
                         @endif
                     </div>
                 </div>
@@ -93,51 +228,60 @@
             <div class="alert alert-warning d-none" role="alert" data-credential-result></div>
             <div class="small text-muted mb-3">When the credential changes, download a fresh setup package and import it in Attendance and Enrollment. New app versions are checked automatically at startup; device credentials and local attendance data are retained during app updates.</div>
 
-            <dl class="row mb-0">
-                <dt class="col-sm-4">Device Name</dt>
-                <dd class="col-sm-8">{{ $device->device_name }}</dd>
+            <div class="device-details-grid">
+                <section class="device-detail-card">
+                    <div class="device-detail-card-header">Device Identity</div>
+                    <dl class="device-detail-list">
+                <dt>Device Name</dt>
+                <dd>{{ $device->device_name }}</dd>
 
-                <dt class="col-sm-4">Device MAC Address</dt>
-                <dd class="col-sm-8"><code>{{ $device->formatted_mac_address }}</code></dd>
+                <dt>MAC Address</dt>
+                <dd><code>{{ $device->formatted_mac_address }}</code></dd>
 
-                <dt class="col-sm-4">Scanner Serial Number</dt>
-                <dd class="col-sm-8">{{ $device->serial_number ?: 'N/A' }}</dd>
+                <dt>Scanner Serial</dt>
+                <dd><code>{{ $device->serial_number ?: 'N/A' }}</code></dd>
 
-                <dt class="col-sm-4">Device ID</dt>
-                <dd class="col-sm-8">{{ $device->laptop_mac_address ?: 'N/A' }}</dd>
+                <dt>Device ID</dt>
+                <dd><code>{{ $device->laptop_mac_address ?: 'N/A' }}</code></dd>
 
-                <dt class="col-sm-4">Device Type</dt>
-                <dd class="col-sm-8">{{ str_replace('_', ' ', ucfirst($device->device_type)) }}</dd>
+                <dt>Device Type</dt>
+                <dd>{{ str_replace('_', ' ', ucfirst($device->device_type)) }}</dd>
 
-                <dt class="col-sm-4">Branch</dt>
-                <dd class="col-sm-8">{{ $device->branch?->branch_name ?? 'N/A' }}</dd>
+                <dt>Status</dt>
+                <dd><span class="badge {{ $device->status === 'active' ? 'bg-success' : ($device->status === 'maintenance' ? 'bg-warning text-dark' : 'bg-secondary') }}">{{ ucfirst($device->status) }}</span></dd>
+                    </dl>
+                </section>
 
-                <dt class="col-sm-4">Status</dt>
-                <dd class="col-sm-8">{{ ucfirst($device->status) }}</dd>
+                <section class="device-detail-card">
+                    <div class="device-detail-card-header">Location &amp; Security</div>
+                    <dl class="device-detail-list">
 
-                <dt class="col-sm-4">Location</dt>
-                <dd class="col-sm-8">{{ $device->location ?: 'N/A' }}</dd>
+                <dt>Branch</dt>
+                <dd>{{ $device->branch?->branch_name ?? 'N/A' }}</dd>
 
-                <dt class="col-sm-4">School Address</dt>
-                <dd class="col-sm-8">{{ $device->address ?: 'N/A' }}</dd>
+                <dt>Location</dt>
+                <dd>{{ $device->location ?: 'N/A' }}</dd>
 
-                <dt class="col-sm-4">School Coordinates</dt>
-                <dd class="col-sm-8">
-                    {{ $device->latitude !== null && $device->longitude !== null ? "{$device->latitude}, {$device->longitude}" : 'N/A' }}
-                </dd>
+                <dt>School Address</dt>
+                <dd>{{ $device->address ?: 'N/A' }}</dd>
 
-                <dt class="col-sm-4">Allowed Radius</dt>
-                <dd class="col-sm-8">{{ $device->radius_meters ? "{$device->radius_meters} meters" : 'N/A' }}</dd>
+                <dt>Coordinates</dt>
+                <dd>{{ $device->latitude !== null && $device->longitude !== null ? "{$device->latitude}, {$device->longitude}" : 'N/A' }}</dd>
 
-                <dt class="col-sm-4">School Location Check</dt>
-                <dd class="col-sm-8">{{ $device->location_check_enabled ? 'Enabled' : 'Disabled' }}</dd>
+                <dt>Allowed Radius</dt>
+                <dd>{{ $device->radius_meters ? "{$device->radius_meters} meters" : 'N/A' }}</dd>
 
-                <dt class="col-sm-4">Last Used</dt>
-                <dd class="col-sm-8">{{ $device->last_used_at?->format('M d, Y h:i A') ?? 'Never' }}</dd>
+                <dt>Location Check</dt>
+                <dd><span class="badge {{ $device->location_check_enabled ? 'bg-success' : 'bg-secondary' }}">{{ $device->location_check_enabled ? 'Enabled' : 'Disabled' }}</span></dd>
 
-                <dt class="col-sm-4">Notes</dt>
-                <dd class="col-sm-8">{{ $device->notes ?: 'N/A' }}</dd>
-            </dl>
+                <dt>Last Used</dt>
+                <dd>{{ $device->last_used_at?->format('M d, Y h:i A') ?? 'Never' }}</dd>
+
+                <dt>Notes</dt>
+                <dd>{{ $device->notes ?: 'N/A' }}</dd>
+                    </dl>
+                </section>
+            </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="{{ route('admin.devices.edit', $device) }}" class="btn btn-primary">Edit Device</a>
