@@ -68,27 +68,52 @@
 </div>
 
 <style>
+    #statsContainer .card {
+        min-height: 96px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #statsContainer .card h6,
+    #statsContainer .card h3,
+    #statsContainer .card small {
+        color: inherit !important;
+    }
+
+    #statsContainer .card h6,
+    #statsContainer .card small {
+        font-weight: 700;
+        letter-spacing: 0;
+        opacity: 1;
+    }
+
+    #statsContainer .card h3 {
+        font-weight: 700;
+        margin-top: 0.35rem;
+    }
+
     #statsContainer > .col:nth-child(1) .card,
     #statsContainer > .col-md-3:nth-child(1) .card {
-        background-color: #493267 !important;
+        background: #493267 !important;
         border-color: #493267 !important;
-        color: #fff !important;
+        color: #ffffff !important;
     }
     #statsContainer > .col:nth-child(2) .card,
     #statsContainer > .col-md-3:nth-child(2) .card {
-        background-color: #7048a5 !important;
+        background: #7048a5 !important;
         border-color: #7048a5 !important;
-        color: #fff !important;
+        color: #ffffff !important;
     }
     #statsContainer > .col:nth-child(3) .card,
     #statsContainer > .col-md-3:nth-child(3) .card {
-        background-color: #8e6ab8 !important;
+        background: #8e6ab8 !important;
         border-color: #8e6ab8 !important;
-        color: #fff !important;
+        color: #ffffff !important;
     }
     #statsContainer > .col:nth-child(4) .card,
     #statsContainer > .col-md-3:nth-child(4) .card {
-        background-color: #eee6f7 !important;
+        background: #eee6f7 !important;
         border-color: #ded0ed !important;
         color: #493267 !important;
     }
