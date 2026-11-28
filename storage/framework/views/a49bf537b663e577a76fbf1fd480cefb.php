@@ -722,25 +722,9 @@
         <nav class="sidebar-nav nav flex-column" data-turbo="true">
             <div class="nav-section">
                 <div class="nav-section-label">Overview</div>
-                <?php if(Auth::user()->role === 'employee'): ?>
-                    <a class="nav-link <?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>" href="<?php echo e(route('dashboard')); ?>">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a>
-                <?php else: ?>
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle <?php echo e(request()->routeIs(['dashboard', 'analytics.*']) ? 'active' : ''); ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-turbo="false">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item <?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>" href="<?php echo e(route('dashboard')); ?>">
-                                Dashboard
-                            </a>
-                            <a class="dropdown-item <?php echo e(request()->routeIs('analytics.*') ? 'active' : ''); ?>" href="<?php echo e(route('analytics.index')); ?>">
-                                Analytics
-                            </a>
-                        </div>
-                    </div>
-                <?php endif; ?>
+                <a class="nav-link <?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>" href="<?php echo e(route('dashboard')); ?>">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
             </div>
 
             <?php if(Auth::user()->role === 'admin'): ?>

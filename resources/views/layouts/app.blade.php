@@ -721,25 +721,9 @@
         <nav class="sidebar-nav nav flex-column" data-turbo="true">
             <div class="nav-section">
                 <div class="nav-section-label">Overview</div>
-                @if(Auth::user()->role === 'employee')
-                    <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a>
-                @else
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {{ request()->routeIs(['dashboard', 'analytics.*']) ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-turbo="false">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                                Dashboard
-                            </a>
-                            <a class="dropdown-item {{ request()->routeIs('analytics.*') ? 'active' : '' }}" href="{{ route('analytics.index') }}">
-                                Analytics
-                            </a>
-                        </div>
-                    </div>
-                @endif
+                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
             </div>
 
             @if(Auth::user()->role === 'admin')
