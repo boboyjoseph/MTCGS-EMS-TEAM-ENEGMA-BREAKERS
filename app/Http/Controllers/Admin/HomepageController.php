@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\HomepagePost;
 use App\Models\HomepageSlideArchive;
 use App\Models\SiteSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class HomepageController extends Controller
 {
@@ -45,8 +47,9 @@ class HomepageController extends Controller
         ksort($slides);
         $archives = HomepageSlideArchive::with('archivedBy')->latest('archived_at')->get();
         $branches = Branch::query()->orderBy('branch_name')->get();
+        $homepagePosts = HomepagePost::query()->latest('published_at')->latest('created_at')->get();
 
-        return view('admin.homepage.edit', compact('settings', 'slides', 'archives', 'branches'));
+        return view('admin.homepage.edit', compact('settings', 'slides', 'archives', 'branches', 'homepagePosts'));
     }
 
     public function update(Request $request)
@@ -113,6 +116,39 @@ class HomepageController extends Controller
         }
 
         return redirect()->route('admin.homepage.edit')->with('success', 'Homepage content updated successfully.');
+    }
+
+    public function storePost(Request $request)
+    {
+        $this->authorizeHomepageManagement();
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:180'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+        ]);
+
+        $imagePath = $request->file('image')->store('homepage-posts', 'public');
+
+        HomepagePost::create([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'image_path' => $imagePath,
+            'published_at' => now(),
+            'created_by' => Auth::id(),
+        ]);
+
+        return redirect()->route('admin.homepage.edit')->with('success', 'Homepage event or announcement posted successfully.');
+    }
+
+    public function destroyPost(HomepagePost $post)
+    {
+        $this->authorizeHomepageManagement();
+
+        Storage::disk('public')->delete($post->image_path);
+        $post->delete();
+
+        return redirect()->route('admin.homepage.edit')->with('success', 'Homepage post removed.');
     }
 
     public function restoreArchive(HomepageSlideArchive $archive)

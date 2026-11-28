@@ -4,8 +4,26 @@
 
 @section('content')
 <style>
+    .biometric-status-list {
+        border: 1px solid #e4deed;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
     .biometric-status-list .list-group-item {
-        padding: 0.9rem 1rem;
+        padding: 0.78rem 1rem;
+        border-left: 0;
+        border-right: 0;
+    }
+
+    .biometric-status-list .biometric-branch-divider {
+        padding: 0.58rem 1rem;
+        background: #f4f1f7;
+    }
+
+    .biometric-status-list .biometric-branch-divider h6 {
+        font-size: 0.82rem;
+        line-height: 1.2;
     }
 
     .biometric-status-item {
@@ -36,16 +54,29 @@
         justify-content: center;
         gap: 0.35rem;
         white-space: nowrap;
-        min-width: 132px;
-        font-size: 0.8rem;
-        padding: 0.5rem 0.7rem;
+        min-width: 118px;
+        max-width: 118px;
+        font-size: 0.78rem;
+        padding: 0.45rem 0.55rem;
     }
 
     .biometric-profile-card {
         display: flex;
         align-items: center;
-        gap: 0.8rem;
+        gap: 0.65rem;
         min-width: 0;
+    }
+
+    .biometric-profile-card > div {
+        min-width: 0;
+        line-height: 1.25;
+    }
+
+    .biometric-profile-card strong,
+    .biometric-profile-card a,
+    .biometric-profile-card small {
+        display: block;
+        overflow-wrap: anywhere;
     }
 
     .biometric-profile-avatar {
@@ -85,6 +116,7 @@
         .biometric-status-badge {
             width: 100%;
             min-width: 0;
+            max-width: none;
             justify-content: center;
         }
     }
@@ -95,6 +127,11 @@
         background-color: #1e293b !important;
         color: #e2e8f0 !important;
         border-color: #334155 !important;
+    }
+
+    body.dark-mode .biometric-page .biometric-status-list { border-color: #334155; }
+    body.dark-mode .biometric-page .biometric-status-list .biometric-branch-divider {
+        background: #172033 !important;
     }
 
     body.dark-mode .biometric-page .biometric-status-list .list-group-item strong,
@@ -506,8 +543,8 @@ async function loadUnregisteredEmployees() {
 
         branchEntries.forEach(([branchName, employees]) => {
             html += `
-                <div class="list-group-item bg-light">
-                    <h6 class="mb-0 fw-bold text-primary">${branchName}</h6>
+                <div class="list-group-item biometric-branch-divider">
+                    <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-building me-2"></i>${branchName}</h6>
                 </div>
             `;
 
@@ -597,7 +634,7 @@ function renderStatusList(container, items, emptyMessage, accentClass, labelPref
     Object.entries(groups).forEach(([branchName, groupItems]) => {
         if (groupByBranch) {
             html += `
-                <div class="list-group-item bg-light">
+                <div class="list-group-item biometric-branch-divider">
                     <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-building me-2"></i>${branchName}</h6>
                 </div>
             `;

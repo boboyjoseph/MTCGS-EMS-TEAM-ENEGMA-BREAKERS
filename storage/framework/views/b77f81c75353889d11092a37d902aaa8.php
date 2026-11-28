@@ -215,6 +215,56 @@
 
     <div class="card mt-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <strong><i class="fas fa-bullhorn me-2"></i>News &amp; Events</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <form method="POST" action="<?php echo e(route('admin.homepage.posts.store')); ?>" enctype="multipart/form-data">
+                        <?php echo csrf_field(); ?>
+                        <div class="mb-3">
+                            <label for="homepage_post_title" class="form-label">Title</label>
+                            <input id="homepage_post_title" name="title" class="form-control" maxlength="180" required value="<?php echo e(old('title')); ?>">
+                        </div>
+                        <div class="mb-3">
+                            <label for="homepage_post_description" class="form-label">Description</label>
+                            <textarea id="homepage_post_description" name="description" class="form-control" rows="4" maxlength="1000"><?php echo e(old('description')); ?></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="homepage_post_image" class="form-label">Event or announcement image</label>
+                            <input id="homepage_post_image" name="image" type="file" class="form-control" accept="image/jpeg,image/png,image/webp" required>
+                            <small class="text-muted">JPEG, PNG, or WebP. Maximum 8 MB.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-cloud-arrow-up me-1"></i> Publish Post
+                        </button>
+                    </form>
+                </div>
+                <div class="col-lg-7">
+                    <?php $__empty_1 = true; $__currentLoopData = $homepagePosts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $post): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <div class="d-flex gap-3 border rounded p-3 mb-3">
+                            <img src="<?php echo e(asset('storage/'.$post->image_path)); ?>" alt="<?php echo e($post->title); ?>" style="width:120px;height:82px;object-fit:cover;border-radius:6px;flex-shrink:0;">
+                            <div class="min-w-0 flex-grow-1">
+                                <strong class="d-block"><?php echo e($post->title); ?></strong>
+                                <?php if($post->description): ?><p class="small text-muted mb-2"><?php echo e(\Illuminate\Support\Str::limit($post->description, 120)); ?></p><?php endif; ?>
+                                <small class="text-muted">Published <?php echo e($post->published_at?->format('M d, Y h:i A')); ?></small>
+                            </div>
+                            <form method="POST" action="<?php echo e(route('admin.homepage.posts.destroy', $post)); ?>" onsubmit="return confirm('Remove this homepage post?')">
+                                <?php echo csrf_field(); ?>
+                                <?php echo method_field('DELETE'); ?>
+                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                        <div class="border rounded p-4 text-center text-muted">No homepage events or announcements yet.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <strong><i class="fas fa-building me-2"></i>Homepage Branches</strong>
             <a href="<?php echo e(route('admin.branches.create')); ?>" class="btn btn-sm btn-primary">
                 <i class="fas fa-plus me-1"></i> Add School Branch

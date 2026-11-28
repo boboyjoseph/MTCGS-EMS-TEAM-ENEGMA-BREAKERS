@@ -43,6 +43,11 @@ Route::get('/', function () {
     return view('landing', [
         'homepageSettings' => $homepageSettings,
         'slides' => $slides,
+        'homepagePosts' => \App\Models\HomepagePost::query()
+            ->whereNotNull('published_at')
+            ->latest('published_at')
+            ->limit(12)
+            ->get(),
         'branches' => \App\Models\Branch::query()
             ->select(['branch_name', 'branch_code', 'address'])
             ->orderBy('branch_name')
@@ -319,6 +324,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/homepage', [App\Http\Controllers\Admin\HomepageController::class, 'edit'])->name('homepage.edit');
         Route::put('/homepage', [App\Http\Controllers\Admin\HomepageController::class, 'update'])->name('homepage.update');
+        Route::post('/homepage/posts', [App\Http\Controllers\Admin\HomepageController::class, 'storePost'])->name('homepage.posts.store');
+        Route::delete('/homepage/posts/{post}', [App\Http\Controllers\Admin\HomepageController::class, 'destroyPost'])->name('homepage.posts.destroy');
         Route::post('/homepage/slides/{slideId}/archive', [App\Http\Controllers\Admin\HomepageController::class, 'archiveSlide'])->name('homepage.slides.archive');
         Route::post('/homepage/archives/{archive}/restore', [App\Http\Controllers\Admin\HomepageController::class, 'restoreArchive'])->name('homepage.archives.restore');
         Route::delete('/homepage/archives/{archive}', [App\Http\Controllers\Admin\HomepageController::class, 'destroyArchive'])->name('homepage.archives.destroy');

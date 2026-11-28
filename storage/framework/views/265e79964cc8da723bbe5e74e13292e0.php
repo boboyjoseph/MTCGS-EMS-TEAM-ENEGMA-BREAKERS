@@ -498,6 +498,32 @@
     </main>
 
 
+    <?php if($homepagePosts->isNotEmpty()): ?>
+        <section id="news-events" class="py-5">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h2 class="section-title">News &amp; Events</h2>
+                    <div class="accent-line"></div>
+                    <p class="text-muted mt-3">Latest announcements and activities from MTCGS.</p>
+                </div>
+                <div class="row g-4">
+                    <?php $__currentLoopData = $homepagePosts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $post): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div class="col-md-6 col-lg-4">
+                            <article class="card h-100 border-0 shadow-sm overflow-hidden">
+                                <img src="<?php echo e(asset('storage/'.$post->image_path)); ?>" alt="<?php echo e($post->title); ?>" style="width:100%;aspect-ratio:16/10;object-fit:cover;">
+                                <div class="card-body">
+                                    <small class="text-muted d-block mb-2"><?php echo e($post->published_at?->format('M d, Y')); ?></small>
+                                    <h3 class="h5"><?php echo e($post->title); ?></h3>
+                                    <?php if($post->description): ?><p class="text-muted mb-0"><?php echo e($post->description); ?></p><?php endif; ?>
+                                </div>
+                            </article>
+                        </div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
+
     <!-- Branches as list rows -->
     <section id="features" class="py-5 branches-section">
         <div class="container">

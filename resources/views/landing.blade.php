@@ -498,6 +498,32 @@
     </main>
 
 
+    @if($homepagePosts->isNotEmpty())
+        <section id="news-events" class="py-5">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h2 class="section-title">News &amp; Events</h2>
+                    <div class="accent-line"></div>
+                    <p class="text-muted mt-3">Latest announcements and activities from MTCGS.</p>
+                </div>
+                <div class="row g-4">
+                    @foreach($homepagePosts as $post)
+                        <div class="col-md-6 col-lg-4">
+                            <article class="card h-100 border-0 shadow-sm overflow-hidden">
+                                <img src="{{ asset('storage/'.$post->image_path) }}" alt="{{ $post->title }}" style="width:100%;aspect-ratio:16/10;object-fit:cover;">
+                                <div class="card-body">
+                                    <small class="text-muted d-block mb-2">{{ $post->published_at?->format('M d, Y') }}</small>
+                                    <h3 class="h5">{{ $post->title }}</h3>
+                                    @if($post->description)<p class="text-muted mb-0">{{ $post->description }}</p>@endif
+                                </div>
+                            </article>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
     <!-- Branches as list rows -->
     <section id="features" class="py-5 branches-section">
         <div class="container">
