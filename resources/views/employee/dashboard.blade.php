@@ -4,11 +4,6 @@
 
 @section('content')
 <style>
-    body.dark-mode .employee-dashboard-theme .employee-dashboard-accent {
-        background: #8E1EA2 !important;
-        background-image: none !important;
-    }
-
     body.dark-mode .employee-dashboard-theme .employee-schedule-title {
         color: var(--text-color) !important;
     }
@@ -17,7 +12,7 @@
 <div class="container-fluid dashboard-shell employee-dashboard-theme p-0">
     @include('dashboard.birthday-banner')
     <!-- Header Hero -->
-    <div class="card dashboard-hero employee-dashboard-accent mb-4" style="background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);">
+    <div class="card dashboard-hero employee-dashboard-accent mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                 <div>
