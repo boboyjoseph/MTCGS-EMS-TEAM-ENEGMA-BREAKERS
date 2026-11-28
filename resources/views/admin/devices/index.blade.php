@@ -2,6 +2,64 @@
 
 @section('title', 'Device Management')
 
+@push('styles')
+<style>
+    .device-management-table {
+        min-width: 1180px;
+    }
+
+    .device-management-table th,
+    .device-management-table td {
+        vertical-align: middle;
+    }
+
+    .device-management-table .device-name-column { min-width: 150px; }
+    .device-management-table .device-mac-column { width: 170px; }
+    .device-management-table .device-id-column { min-width: 150px; }
+    .device-management-table .status-column { width: 128px; }
+    .device-management-table .last-used-column {
+        width: 145px;
+        white-space: nowrap;
+    }
+    .device-management-table .actions-column {
+        width: 112px;
+        text-align: right;
+    }
+
+    .device-status {
+        width: 118px;
+        min-width: 118px;
+    }
+
+    .device-action-stack {
+        display: grid;
+        justify-items: stretch;
+        gap: 6px;
+        width: 92px;
+        margin-left: auto;
+    }
+
+    .device-action-stack .btn {
+        width: 92px;
+    }
+
+    .device-action-stack form {
+        margin: 0;
+    }
+
+    .device-management-table code {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 991.98px) {
+        .device-management-table {
+            min-width: 1040px;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -55,48 +113,41 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 device-management-table">
                     <thead class="table-light">
                         <tr>
-                            <th>Device Name</th>
-                            <th>Device MAC Address</th>
+                            <th class="device-name-column">Device Name</th>
+                            <th class="device-mac-column">Device MAC Address</th>
                             <th>Scanner Serial</th>
-                            <th>Device ID</th>
+                            <th class="device-id-column">Device ID</th>
                             <th>Type</th>
                             <th>Branch</th>
                             <th>Location</th>
-                            <th>Status</th>
-                            <th>Last Used</th>
-                            <th>Actions</th>
+                            <th class="status-column">Status</th>
+                            <th class="last-used-column">Last Used</th>
+                            <th class="actions-column">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($devices as $device)
                             <tr data-device-id="{{ $device->id }}">
-                                <td>{{ $device->device_name }}</td>
-                                <td><code>{{ $device->formatted_mac_address }}</code></td>
+                                <td class="device-name-column">{{ $device->device_name }}</td>
+                                <td class="device-mac-column"><code>{{ $device->formatted_mac_address }}</code></td>
                                 <td><code>{{ $device->serial_number ?? 'N/A' }}</code></td>
-                                <td><code>{{ $device->laptop_mac_address ?: 'N/A' }}</code></td>
+                                <td class="device-id-column"><code>{{ $device->laptop_mac_address ?: 'N/A' }}</code></td>
                                 <td>{{ str_replace('_', ' ', ucfirst($device->device_type)) }}</td>
                                 <td>{{ $device->branch?->branch_name ?? 'N/A' }}</td>
                                 <td>{{ $device->location ?? 'N/A' }}</td>
-                                <td>
-                                    @php
-                                        $statusClass = [
-                                            'active' => 'success',
-                                            'inactive' => 'secondary',
-                                            'maintenance' => 'warning',
-                                        ][$device->status] ?? 'secondary';
-                                    @endphp
+                                <td class="status-column">
                                     <select class="form-select form-select-sm device-status" data-status-url="{{ route('admin.devices.status', $device) }}" aria-label="Update status for {{ $device->device_name }}">
                                         @foreach(['active' => 'Active', 'inactive' => 'Inactive', 'maintenance' => 'Maintenance'] as $status => $label)
                                             <option value="{{ $status }}" {{ $device->status === $status ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
                                 </td>
-                                <td class="device-last-used">{{ $device->last_used_at ? $device->last_used_at->format('M d, Y h:i A') : 'Never' }}</td>
-                                <td>
-                                    <div class="d-flex flex-wrap gap-2">
+                                <td class="device-last-used last-used-column">{{ $device->last_used_at ? $device->last_used_at->format('M d, Y h:i A') : 'Never' }}</td>
+                                <td class="actions-column">
+                                    <div class="device-action-stack">
                                         <a href="{{ route('admin.devices.show', $device) }}" class="btn btn-sm btn-outline-primary">View</a>
                                         <a href="{{ route('admin.devices.edit', $device) }}" class="btn btn-sm btn-warning">Edit</a>
                                         <form action="{{ route('admin.devices.destroy', $device) }}" method="POST"

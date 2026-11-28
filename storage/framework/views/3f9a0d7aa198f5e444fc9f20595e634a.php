@@ -1,1 +1,0 @@
-<?php /**PATH C:\xampp\htdocs\MTCGS-EMS-TEAM-ENEGMA-BREAKERS\resources\views\layouts\footer.blade.php ENDPATH**/ ?>
