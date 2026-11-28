@@ -180,12 +180,12 @@
         background: #ffffff;
     }
 
-    .calendar-legend-own { background: #7048a5 !important; }
-    .calendar-legend-approved { background: #493267 !important; }
-    .calendar-legend-pending { background: #d9a01e !important; }
+    .calendar-legend-own { background: #0891b2 !important; }
+    .calendar-legend-approved { background: #0891b2 !important; }
+    .calendar-legend-pending { background: #f97316 !important; }
     .calendar-legend-activity { background: #7048a5 !important; }
-    .calendar-legend-holiday { background: #8e6ab8 !important; }
-    .calendar-legend-suspension { background: #b83a53 !important; }
+    .calendar-legend-holiday { background: #eab308 !important; }
+    .calendar-legend-suspension { background: #dc3545 !important; }
 
     .fc {
         width: 100%;
@@ -338,9 +338,9 @@ document.addEventListener('turbo:load', function() {
                 start: <?php echo json_encode($event->start_time ? $event->event_date->format('Y-m-d') . 'T' . $event->start_time : $event->event_date->format('Y-m-d'), 15, 512) ?>,
                 end: <?php echo json_encode($event->end_time ? $event->event_date->format('Y-m-d') . 'T' . $event->end_time : null, 15, 512) ?>,
                 allDay: <?php echo json_encode(!$event->start_time, 15, 512) ?>,
-                backgroundColor: <?php echo json_encode($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#b83a53' : '#8e6ab8'), 15, 512) ?>,
-                borderColor: <?php echo json_encode($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#b83a53' : '#8e6ab8'), 15, 512) ?>,
-                textColor: '#ffffff',
+                backgroundColor: <?php echo json_encode($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#dc3545' : '#eab308'), 15, 512) ?>,
+                borderColor: <?php echo json_encode($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#dc3545' : '#eab308'), 15, 512) ?>,
+                textColor: <?php echo json_encode($event->event_type === 'holiday' ? '#4a3800' : '#ffffff', 15, 512) ?>,
                 extendedProps: {
                     type: <?php echo json_encode($event->event_type, 15, 512) ?>,
                     description: <?php echo json_encode($event->description, 15, 512) ?>,
@@ -356,8 +356,8 @@ document.addEventListener('turbo:load', function() {
                     title: <?php echo json_encode('Leave: ' . (optional($leave->employeeProfile)->full_name ?? optional($leave->employee)->name ?? 'Employee'), 15, 512) ?>,
                     start: <?php echo json_encode($leave->start_date->format('Y-m-d'), 15, 512) ?>,
                     end: <?php echo json_encode($leave->end_date->copy()->addDay()->format('Y-m-d'), 15, 512) ?>,
-                    backgroundColor: <?php echo json_encode(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#7048a5' : ($leave->status === 'approved' ? '#493267' : '#d9a01e'), 15, 512) ?>,
-                    borderColor: <?php echo json_encode(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#7048a5' : ($leave->status === 'approved' ? '#493267' : '#d9a01e'), 15, 512) ?>,
+                    backgroundColor: <?php echo json_encode($leave->status === 'pending' ? '#f97316' : '#0891b2', 15, 512) ?>,
+                    borderColor: <?php echo json_encode($leave->status === 'pending' ? '#f97316' : '#0891b2', 15, 512) ?>,
                     textColor: '#ffffff',
                     extendedProps: {
                         type: 'leave',
@@ -400,7 +400,7 @@ document.addEventListener('turbo:load', function() {
                         <div class="col-6">
                             <div class="mb-3">
                                 <strong class="d-block text-muted" style="font-size: 0.85rem;">Employee</strong>
-                                <span class="badge ${props.isOwnLeave ? 'bg-primary' : 'bg-info'} p-2">
+                                <span class="badge p-2" style="background:#0891b2 !important;color:#ffffff !important">
                                     ${props.employee}${props.isOwnLeave ? ' (Your Leave)' : ''}
                                 </span>
                             </div>
@@ -417,7 +417,7 @@ document.addEventListener('turbo:load', function() {
                         <div class="col-6">
                             <div class="mb-3">
                                 <strong class="d-block text-muted" style="font-size: 0.85rem;">Status</strong>
-                                <span class="badge ${props.status === 'approved' ? 'bg-success' : props.status === 'pending' ? 'bg-warning' : 'bg-danger'} p-2">${props.status.charAt(0).toUpperCase() + props.status.slice(1)}</span>
+                                <span class="badge p-2" style="background:${props.status === 'pending' ? '#f97316' : '#0891b2'} !important;color:#ffffff !important">${props.status.charAt(0).toUpperCase() + props.status.slice(1)}</span>
                             </div>
                         </div>
                         <div class="col-6">

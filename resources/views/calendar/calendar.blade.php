@@ -182,12 +182,12 @@
         background: #ffffff;
     }
 
-    .calendar-legend-own { background: #7048a5 !important; }
-    .calendar-legend-approved { background: #493267 !important; }
-    .calendar-legend-pending { background: #d9a01e !important; }
+    .calendar-legend-own { background: #0891b2 !important; }
+    .calendar-legend-approved { background: #0891b2 !important; }
+    .calendar-legend-pending { background: #f97316 !important; }
     .calendar-legend-activity { background: #7048a5 !important; }
-    .calendar-legend-holiday { background: #8e6ab8 !important; }
-    .calendar-legend-suspension { background: #b83a53 !important; }
+    .calendar-legend-holiday { background: #eab308 !important; }
+    .calendar-legend-suspension { background: #dc3545 !important; }
 
     .fc {
         width: 100%;
@@ -340,9 +340,9 @@ document.addEventListener('turbo:load', function() {
                 start: @json($event->start_time ? $event->event_date->format('Y-m-d') . 'T' . $event->start_time : $event->event_date->format('Y-m-d')),
                 end: @json($event->end_time ? $event->event_date->format('Y-m-d') . 'T' . $event->end_time : null),
                 allDay: @json(!$event->start_time),
-                backgroundColor: @json($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#b83a53' : '#8e6ab8')),
-                borderColor: @json($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#b83a53' : '#8e6ab8')),
-                textColor: '#ffffff',
+                backgroundColor: @json($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#dc3545' : '#eab308')),
+                borderColor: @json($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#dc3545' : '#eab308')),
+                textColor: @json($event->event_type === 'holiday' ? '#4a3800' : '#ffffff'),
                 extendedProps: {
                     type: @json($event->event_type),
                     description: @json($event->description),
@@ -358,8 +358,8 @@ document.addEventListener('turbo:load', function() {
                     title: @json('Leave: ' . (optional($leave->employeeProfile)->full_name ?? optional($leave->employee)->name ?? 'Employee')),
                     start: @json($leave->start_date->format('Y-m-d')),
                     end: @json($leave->end_date->copy()->addDay()->format('Y-m-d')),
-                    backgroundColor: @json(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#7048a5' : ($leave->status === 'approved' ? '#493267' : '#d9a01e')),
-                    borderColor: @json(($currentUserProfileId && $leave->employee_profile_id === $currentUserProfileId) ? '#7048a5' : ($leave->status === 'approved' ? '#493267' : '#d9a01e')),
+                    backgroundColor: @json($leave->status === 'pending' ? '#f97316' : '#0891b2'),
+                    borderColor: @json($leave->status === 'pending' ? '#f97316' : '#0891b2'),
                     textColor: '#ffffff',
                     extendedProps: {
                         type: 'leave',
@@ -401,7 +401,7 @@ document.addEventListener('turbo:load', function() {
                         <div class="col-6">
                             <div class="mb-3">
                                 <strong class="d-block text-muted" style="font-size: 0.85rem;">Employee</strong>
-                                <span class="badge ${props.isOwnLeave ? 'bg-primary' : 'bg-info'} p-2">
+                                <span class="badge p-2" style="background:#0891b2 !important;color:#ffffff !important">
                                     ${props.employee}${props.isOwnLeave ? ' (Your Leave)' : ''}
                                 </span>
                             </div>
@@ -418,7 +418,7 @@ document.addEventListener('turbo:load', function() {
                         <div class="col-6">
                             <div class="mb-3">
                                 <strong class="d-block text-muted" style="font-size: 0.85rem;">Status</strong>
-                                <span class="badge ${props.status === 'approved' ? 'bg-success' : props.status === 'pending' ? 'bg-warning' : 'bg-danger'} p-2">${props.status.charAt(0).toUpperCase() + props.status.slice(1)}</span>
+                                <span class="badge p-2" style="background:${props.status === 'pending' ? '#f97316' : '#0891b2'} !important;color:#ffffff !important">${props.status.charAt(0).toUpperCase() + props.status.slice(1)}</span>
                             </div>
                         </div>
                         <div class="col-6">
