@@ -187,6 +187,22 @@
     .calendar-legend-holiday { background: #eab308 !important; }
     .calendar-legend-suspension { background: #dc3545 !important; }
 
+    .fc .school-activity-event,
+    .fc .fc-event.school-activity-event,
+    .fc .school-activity-event .fc-event-main {
+        background-color: #7048a5 !important;
+        border-color: #7048a5 !important;
+        color: #ffffff !important;
+    }
+
+    .fc .school-holiday-event,
+    .fc .fc-event.school-holiday-event,
+    .fc .school-holiday-event .fc-event-main {
+        background-color: #eab308 !important;
+        border-color: #eab308 !important;
+        color: #4a3800 !important;
+    }
+
     .fc {
         width: 100%;
     }
@@ -341,6 +357,7 @@ document.addEventListener('turbo:load', function() {
                 backgroundColor: <?php echo json_encode($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#dc3545' : '#eab308'), 15, 512) ?>,
                 borderColor: <?php echo json_encode($event->event_type === 'activity' ? '#7048a5' : ($event->event_type === 'suspension' ? '#dc3545' : '#eab308'), 15, 512) ?>,
                 textColor: <?php echo json_encode($event->event_type === 'holiday' ? '#4a3800' : '#ffffff', 15, 512) ?>,
+                classNames: <?php echo json_encode($event->event_type === 'activity' ? ['school-activity-event'] : ($event->event_type === 'holiday' ? ['school-holiday-event'] : ($event->event_type === 'suspension' ? ['school-suspension-event'] : [])), 15, 512) ?>,
                 extendedProps: {
                     type: <?php echo json_encode($event->event_type, 15, 512) ?>,
                     description: <?php echo json_encode($event->description, 15, 512) ?>,
@@ -374,6 +391,24 @@ document.addEventListener('turbo:load', function() {
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             <?php endif; ?>
         ],
+        eventDidMount: function(info) {
+            if (info.event.extendedProps.type === 'activity') {
+                info.el.style.setProperty('background-color', '#7048a5', 'important');
+                info.el.style.setProperty('border-color', '#7048a5', 'important');
+                info.el.style.setProperty('color', '#ffffff', 'important');
+                info.el.classList.add('school-activity-event');
+            }
+            if (info.event.extendedProps.type === 'holiday') {
+                info.el.style.setProperty('background-color', '#eab308', 'important');
+                info.el.style.setProperty('border-color', '#eab308', 'important');
+                info.el.style.setProperty('color', '#4a3800', 'important');
+            }
+            if (info.event.extendedProps.type === 'suspension') {
+                info.el.style.setProperty('background-color', '#dc3545', 'important');
+                info.el.style.setProperty('border-color', '#dc3545', 'important');
+                info.el.style.setProperty('color', '#ffffff', 'important');
+            }
+        },
         eventClick: function(info) {
             const event = info.event;
             const props = event.extendedProps;

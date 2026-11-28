@@ -5,7 +5,8 @@
 @push('styles')
 <style>
     .device-management-table {
-        min-width: 1180px;
+        width: 100%;
+        table-layout: fixed;
     }
 
     .device-management-table th,
@@ -13,22 +14,56 @@
         vertical-align: middle;
     }
 
-    .device-management-table .device-name-column { min-width: 150px; }
-    .device-management-table .device-mac-column { width: 170px; }
-    .device-management-table .device-id-column { min-width: 150px; }
-    .device-management-table .status-column { width: 128px; }
-    .device-management-table .last-used-column {
-        width: 145px;
-        white-space: nowrap;
+    .device-management-table th:nth-child(1) { width: 17%; }
+    .device-management-table th:nth-child(2) { width: 23%; }
+    .device-management-table th:nth-child(3) { width: 19%; }
+    .device-management-table th:nth-child(4) { width: 12%; }
+    .device-management-table th:nth-child(5) { width: 13%; }
+    .device-management-table th:nth-child(6) { width: 16%; }
+
+    .device-name-column strong {
+        display: block;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
     }
-    .device-management-table .actions-column {
-        width: 112px;
-        text-align: right;
+
+    .device-detail-block {
+        display: grid;
+        gap: 5px;
+        min-width: 0;
+    }
+
+    .device-detail-row {
+        display: grid;
+        grid-template-columns: 52px minmax(0, 1fr);
+        align-items: baseline;
+        gap: 6px;
+        font-size: 0.78rem;
+        line-height: 1.25;
+    }
+
+    .device-detail-row small {
+        color: #7b8492;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .device-detail-row code,
+    .device-detail-row span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .device-status {
         width: 118px;
         min-width: 118px;
+    }
+
+    .device-last-used {
+        font-size: 0.8rem;
+        line-height: 1.35;
     }
 
     .device-action-stack {
@@ -39,22 +74,31 @@
         margin-left: auto;
     }
 
-    .device-action-stack .btn {
+    .device-action-stack .btn,
+    .device-action-stack form,
+    .device-action-stack form .btn {
         width: 92px;
-    }
-
-    .device-action-stack form {
         margin: 0;
     }
 
-    .device-management-table code {
-        white-space: normal;
-        overflow-wrap: anywhere;
+    @media (max-width: 1199.98px) {
+        .device-management-table th:nth-child(1) { width: 15%; }
+        .device-management-table th:nth-child(2) { width: 26%; }
+        .device-management-table th:nth-child(3) { width: 21%; }
+        .device-management-table th:nth-child(4) { width: 12%; }
+        .device-management-table th:nth-child(5) { width: 14%; }
+        .device-management-table th:nth-child(6) { width: 12%; }
+
+        .device-detail-row {
+            grid-template-columns: 1fr;
+            gap: 1px;
+        }
     }
 
     @media (max-width: 991.98px) {
         .device-management-table {
-            min-width: 1040px;
+            min-width: 920px;
+            table-layout: auto;
         }
     }
 </style>
@@ -116,37 +160,43 @@
                 <table class="table table-hover mb-0 device-management-table">
                     <thead class="table-light">
                         <tr>
-                            <th class="device-name-column">Device Name</th>
-                            <th class="device-mac-column">Device MAC Address</th>
-                            <th>Scanner Serial</th>
-                            <th class="device-id-column">Device ID</th>
-                            <th>Type</th>
-                            <th>Branch</th>
-                            <th>Location</th>
-                            <th class="status-column">Status</th>
-                            <th class="last-used-column">Last Used</th>
-                            <th class="actions-column">Actions</th>
+                            <th>Device</th>
+                            <th>Connection Details</th>
+                            <th>Assignment</th>
+                            <th>Status</th>
+                            <th>Last Used</th>
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($devices as $device)
                             <tr data-device-id="{{ $device->id }}">
-                                <td class="device-name-column">{{ $device->device_name }}</td>
-                                <td class="device-mac-column"><code>{{ $device->formatted_mac_address }}</code></td>
-                                <td><code>{{ $device->serial_number ?? 'N/A' }}</code></td>
-                                <td class="device-id-column"><code>{{ $device->laptop_mac_address ?: 'N/A' }}</code></td>
-                                <td>{{ str_replace('_', ' ', ucfirst($device->device_type)) }}</td>
-                                <td>{{ $device->branch?->branch_name ?? 'N/A' }}</td>
-                                <td>{{ $device->location ?? 'N/A' }}</td>
-                                <td class="status-column">
+                                <td class="device-name-column">
+                                    <strong>{{ $device->device_name }}</strong>
+                                    <small class="text-muted d-block mt-1">{{ str_replace('_', ' ', ucfirst($device->device_type)) }}</small>
+                                </td>
+                                <td>
+                                    <div class="device-detail-block">
+                                        <div class="device-detail-row"><small>MAC</small><code>{{ $device->formatted_mac_address }}</code></div>
+                                        <div class="device-detail-row"><small>Serial</small><code>{{ $device->serial_number ?? 'N/A' }}</code></div>
+                                        <div class="device-detail-row"><small>Device</small><code>{{ $device->laptop_mac_address ?: 'N/A' }}</code></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="device-detail-block">
+                                        <div class="device-detail-row"><small>Branch</small><span>{{ $device->branch?->branch_name ?? 'N/A' }}</span></div>
+                                        <div class="device-detail-row"><small>Location</small><span>{{ $device->location ?: 'N/A' }}</span></div>
+                                    </div>
+                                </td>
+                                <td>
                                     <select class="form-select form-select-sm device-status" data-status-url="{{ route('admin.devices.status', $device) }}" aria-label="Update status for {{ $device->device_name }}">
                                         @foreach(['active' => 'Active', 'inactive' => 'Inactive', 'maintenance' => 'Maintenance'] as $status => $label)
                                             <option value="{{ $status }}" {{ $device->status === $status ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
                                 </td>
-                                <td class="device-last-used last-used-column">{{ $device->last_used_at ? $device->last_used_at->format('M d, Y h:i A') : 'Never' }}</td>
-                                <td class="actions-column">
+                                <td class="device-last-used">{{ $device->last_used_at ? $device->last_used_at->format('M d, Y h:i A') : 'Never' }}</td>
+                                <td>
                                     <div class="device-action-stack">
                                         <a href="{{ route('admin.devices.show', $device) }}" class="btn btn-sm btn-outline-primary">View</a>
                                         <a href="{{ route('admin.devices.edit', $device) }}" class="btn btn-sm btn-warning">Edit</a>
@@ -163,7 +213,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="text-center py-4 text-muted">No devices registered yet.</td>
+                                <td colspan="6" class="text-center py-4 text-muted">No devices registered yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
