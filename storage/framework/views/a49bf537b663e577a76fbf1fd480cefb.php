@@ -129,6 +129,32 @@
             border-color: rgba(199, 175, 232, 0.26);
             box-shadow: inset 3px 0 0 #b89ae2;
         }
+
+        .sidebar-submenu { margin: 1px 0; }
+        .sidebar-submenu summary {
+            list-style: none;
+            cursor: pointer;
+        }
+        .sidebar-submenu summary::-webkit-details-marker { display: none; }
+        .sidebar-submenu summary::after {
+            content: '\f078';
+            margin-left: auto;
+            font-family: 'Font Awesome 6 Free';
+            font-size: 0.62rem;
+            font-weight: 900;
+            transition: transform 0.18s ease;
+        }
+        .sidebar-submenu[open] summary::after { transform: rotate(180deg); }
+        .sidebar-submenu-links {
+            margin: 2px 0 5px 1.35rem;
+            padding-left: 0.5rem;
+            border-left: 1px solid rgba(255,255,255,0.16);
+        }
+        .sidebar-submenu-links .nav-link {
+            min-height: 36px;
+            padding: 0.48rem 0.65rem;
+            font-size: 0.82rem;
+        }
         .sidebar .nav-section-label,
         .sidebar .nav-group-label {
             text-shadow: none;
@@ -742,19 +768,19 @@
                         </a>
                     <?php endif; ?>
                     <?php if(Auth::user()->admin_type === 'super_admin'): ?>
-                        <div class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle <?php echo e(request()->routeIs('admin.user-management*') || request()->routeIs('admin.employees*') ? 'active' : ''); ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-turbo="false">
-                                <i class="fas fa-users-cog"></i> Users & Admin
-                            </a>
-                            <div class="dropdown-menu">
-                                <a class="dropdown-item <?php echo e(request()->routeIs('admin.user-management*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.user-management')); ?>">
-                                    Users & Admin
+                        <details class="sidebar-submenu" <?php echo e(request()->routeIs('admin.user-management*') || request()->routeIs('admin.employees*') ? 'open' : ''); ?>>
+                            <summary class="nav-link <?php echo e(request()->routeIs('admin.user-management*') || request()->routeIs('admin.employees*') ? 'active' : ''); ?>">
+                                <i class="fas fa-users-cog"></i> Users &amp; Admin
+                            </summary>
+                            <div class="sidebar-submenu-links">
+                                <a class="nav-link <?php echo e(request()->routeIs('admin.user-management*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.user-management')); ?>">
+                                    <i class="fas fa-user-cog"></i> Users &amp; Admin
                                 </a>
-                                <a class="dropdown-item <?php echo e(request()->routeIs('admin.employees*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.employees')); ?>">
-                                    Employee
+                                <a class="nav-link <?php echo e(request()->routeIs('admin.employees*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.employees')); ?>">
+                                    <i class="fas fa-users"></i> Employee
                                 </a>
                             </div>
-                        </div>
+                        </details>
                     <?php endif; ?>
                     <?php if(Auth::user()->admin_type !== 'super_admin'): ?>
                         <a class="nav-link <?php echo e(request()->routeIs('admin.employees*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.employees')); ?>">
@@ -864,21 +890,21 @@
                     <?php endif; ?>
                     <?php if(Auth::user()->admin_type === 'super_admin' || Auth::user()->role === 'branch_head' || (Auth::user()->role === 'admin' && Auth::user()->admin_type === 'branch_admin')): ?>
                         <div class="nav-group-label">Cash Management</div>
-                        <div class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle <?php echo e(request()->routeIs('admin.cash-charges.*') ? 'active' : ''); ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-turbo="false">
+                        <details class="sidebar-submenu" <?php echo e(request()->routeIs('admin.cash-charges.*') ? 'open' : ''); ?>>
+                            <summary class="nav-link <?php echo e(request()->routeIs('admin.cash-charges.*') ? 'active' : ''); ?>">
                                 <i class="fas fa-wallet"></i> Cash Charges
-                            </a>
-                            <div class="dropdown-menu">
-                                <a class="dropdown-item <?php echo e(request()->routeIs('admin.cash-charges.index') && !request('scope') ? 'active' : ''); ?>" href="<?php echo e(route('admin.cash-charges.index')); ?>">
-                                    Cash Charges
+                            </summary>
+                            <div class="sidebar-submenu-links">
+                                <a class="nav-link <?php echo e(request()->routeIs('admin.cash-charges.index') && !request('scope') ? 'active' : ''); ?>" href="<?php echo e(route('admin.cash-charges.index')); ?>">
+                                    <i class="fas fa-list"></i> Cash Charges
                                 </a>
                                 <?php if(Auth::user()->admin_type !== 'super_admin' && Auth::user()->admin_type !== 'hr'): ?>
-                                    <a class="dropdown-item <?php echo e(request()->routeIs('admin.cash-charges.index') && request('scope') === 'my' ? 'active' : ''); ?>" href="<?php echo e(route('admin.cash-charges.index', ['scope' => 'my'])); ?>">
-                                        My Charges
+                                    <a class="nav-link <?php echo e(request()->routeIs('admin.cash-charges.index') && request('scope') === 'my' ? 'active' : ''); ?>" href="<?php echo e(route('admin.cash-charges.index', ['scope' => 'my'])); ?>">
+                                        <i class="fas fa-user"></i> My Charges
                                     </a>
                                 <?php endif; ?>
                             </div>
-                        </div>
+                        </details>
                     <?php endif; ?>
                     <div class="nav-group-label">Biometric &amp; Devices</div>
                     <a class="nav-link <?php echo e(request()->routeIs('admin.biometric') ? 'active' : ''); ?>" href="<?php echo e(route('admin.biometric')); ?>">
