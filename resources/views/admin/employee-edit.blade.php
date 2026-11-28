@@ -4,6 +4,71 @@
 
 @push('styles')
 <style>
+    .edit-employee-page { max-width: 980px; }
+
+    .edit-employee-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .employee-form-section {
+        border: 1px solid #e4deed;
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .employee-form-section-header {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid #e4deed;
+        background: #f8fafc;
+        font-weight: 700;
+    }
+
+    .employee-form-section-body { padding: 1rem; }
+
+    .employee-form-section .form-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #4b5563;
+    }
+
+    .employee-form-section .form-control,
+    .employee-form-section .form-select {
+        min-height: 42px;
+    }
+
+    .employee-form-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin: 1.25rem -1.25rem -1.25rem;
+        padding: 0.85rem 1.25rem;
+        border-top: 1px solid #e4deed;
+        background: rgba(255,255,255,0.96);
+        backdrop-filter: blur(8px);
+    }
+
+    body.dark-mode .employee-form-section,
+    body.dark-mode .employee-form-section-header {
+        background: #1e293b;
+        border-color: #334155;
+        color: #e2e8f0;
+    }
+
+    body.dark-mode .employee-form-section .form-label { color: #e2e8f0; }
+
+    body.dark-mode .employee-form-footer {
+        background: rgba(30,41,59,0.96);
+        border-top-color: #334155;
+    }
+
     .fingerprint-registration-card .fingerprint-data-field {
         min-width: 0;
     }
@@ -21,6 +86,15 @@
 
     .fingerprint-registration-card #scanner-status {
         overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 767.98px) {
+        .employee-form-footer {
+            position: static;
+            margin: 1rem -1rem -1rem;
+        }
+
+        .employee-form-footer .btn { flex: 1 1 0; }
     }
 
     @media (max-width: 576px) {
@@ -59,9 +133,9 @@
 @endpush
 
 @section('content')
-<div class="container">
+<div class="container edit-employee-page">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h4 class="mb-0">
@@ -73,7 +147,10 @@
                         @csrf
                         @method('PUT')
                         
-                        <div class="row">
+                        <section class="employee-form-section">
+                            <div class="employee-form-section-header">Personal &amp; Employment</div>
+                            <div class="employee-form-section-body">
+                                <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
                                 <input type="text" id="first-name" name="first_name" class="form-control" value="{{ old('first_name', $employee->first_name) }}" autocomplete="given-name" required>
@@ -201,7 +278,9 @@
                         <div class="mb-3 form-check">
                             <input type="checkbox" id="is-active" name="is_active" class="form-check-input" autocomplete="off" {{ ($employee->user && $employee->user->is_active) ? 'checked' : '' }}>
                             <label for="is-active" class="form-check-label">Active</label>
-                        </div>
+                                </div>
+                            </div>
+                        </section>
                         
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> 
@@ -322,7 +401,7 @@
                         
                         <hr>
                         
-                        <div class="d-flex justify-content-between">
+                        <div class="employee-form-footer">
                             <a href="{{ route('admin.employees') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Cancel
                             </a>
