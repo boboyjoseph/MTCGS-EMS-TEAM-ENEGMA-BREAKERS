@@ -1,0 +1,387 @@
+<?php $__env->startSection('title', 'Device Management'); ?>
+
+<?php $__env->startPush('styles'); ?>
+<style>
+    .device-management-table {
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .device-management-table th,
+    .device-management-table td {
+        vertical-align: middle;
+    }
+
+    .device-management-table th:nth-child(1) { width: 17%; }
+    .device-management-table th:nth-child(2) { width: 23%; }
+    .device-management-table th:nth-child(3) { width: 19%; }
+    .device-management-table th:nth-child(4) { width: 12%; }
+    .device-management-table th:nth-child(5) { width: 13%; }
+    .device-management-table th:nth-child(6) { width: 16%; }
+
+    .device-name-column strong {
+        display: block;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    .device-detail-block {
+        display: grid;
+        gap: 5px;
+        min-width: 0;
+    }
+
+    .device-detail-row {
+        display: grid;
+        grid-template-columns: 52px minmax(0, 1fr);
+        align-items: baseline;
+        gap: 6px;
+        font-size: 0.78rem;
+        line-height: 1.25;
+    }
+
+    .device-detail-row small {
+        color: #7b8492;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .device-detail-row code,
+    .device-detail-row span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .device-status {
+        width: 118px;
+        min-width: 118px;
+    }
+
+    .device-last-used {
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    .device-action-stack {
+        display: grid;
+        justify-items: stretch;
+        gap: 6px;
+        width: 92px;
+        margin-left: auto;
+    }
+
+    .device-action-stack .btn,
+    .device-action-stack form,
+    .device-action-stack form .btn {
+        width: 92px;
+        margin: 0;
+    }
+
+    @media (max-width: 1199.98px) {
+        .device-management-table th:nth-child(1) { width: 15%; }
+        .device-management-table th:nth-child(2) { width: 26%; }
+        .device-management-table th:nth-child(3) { width: 21%; }
+        .device-management-table th:nth-child(4) { width: 12%; }
+        .device-management-table th:nth-child(5) { width: 14%; }
+        .device-management-table th:nth-child(6) { width: 12%; }
+
+        .device-detail-row {
+            grid-template-columns: 1fr;
+            gap: 1px;
+        }
+    }
+
+    body.dark-mode .device-management-table,
+    body.dark-mode .device-management-table th,
+    body.dark-mode .device-management-table td,
+    body.dark-mode .device-management-table code {
+        color: #f8fafc !important;
+    }
+
+    body.dark-mode .device-management-table .text-muted {
+        color: #cbd5e1 !important;
+    }
+
+    body.dark-mode .device-management-table thead th {
+        background: #30243c !important;
+        color: #f2eafb !important;
+        border-color: #5c476e !important;
+    }
+
+    body.dark-mode .device-management-table tbody tr,
+    body.dark-mode .device-management-table tbody td {
+        background: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+    }
+
+    body.dark-mode .device-management-table.table-hover tbody tr:hover,
+    body.dark-mode .device-management-table.table-hover tbody tr:hover td {
+        background: #273449 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .device-status {
+        background: #30243c !important;
+        color: #f8fafc !important;
+        border-color: #80639d !important;
+    }
+
+    body.dark-mode .device-status option {
+        background: #30243c;
+        color: #f8fafc;
+    }
+
+    body.dark-mode .device-management-table + .text-muted {
+        color: #cbd5e1 !important;
+    }
+
+    body.dark-mode .device-action-stack .btn-outline-primary {
+        background: #7048a5 !important;
+        border-color: #7048a5 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .device-action-stack .btn-warning {
+        background: #d97706 !important;
+        border-color: #d97706 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .device-action-stack .btn-danger {
+        background: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: #ffffff !important;
+    }
+
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card {
+        background: #30243c !important;
+        border: 1px solid #80639d !important;
+        color: #f8fafc !important;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.22);
+    }
+
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-muted,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-success,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-warning,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .text-danger,
+    body.dark-mode .row.g-3.mb-4 > [class*="col-"] .card .fs-3 {
+        color: #f8fafc !important;
+    }
+
+    @media (max-width: 991.98px) {
+        .device-management-table {
+            min-width: 920px;
+            table-layout: auto;
+        }
+    }
+</style>
+<?php $__env->stopPush(); ?>
+
+<?php $__env->startSection('content'); ?>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-1">Biometric Device Management</h3>
+            <p class="text-muted mb-0">Authorized scanner and kiosk devices for attendance validation.</p>
+        </div>
+        <a href="<?php echo e(route('admin.devices.create')); ?>" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Register Device
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total Devices</div>
+                    <div id="deviceTotalCount" class="fs-3 fw-bold"><?php echo e($devices->count()); ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Active</div>
+                    <div id="deviceActiveCount" class="fs-3 fw-bold text-success"><?php echo e($devices->where('status', 'active')->count()); ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Maintenance</div>
+                    <div id="deviceMaintenanceCount" class="fs-3 fw-bold text-warning"><?php echo e($devices->where('status', 'maintenance')->count()); ?></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Inactive</div>
+                    <div id="deviceInactiveCount" class="fs-3 fw-bold text-danger"><?php echo e($devices->where('status', 'inactive')->count()); ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Registered Devices</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 device-management-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Device</th>
+                            <th>Connection Details</th>
+                            <th>Assignment</th>
+                            <th>Status</th>
+                            <th>Last Used</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $__empty_1 = true; $__currentLoopData = $devices; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $device): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                            <tr data-device-id="<?php echo e($device->id); ?>">
+                                <td class="device-name-column">
+                                    <strong><?php echo e($device->device_name); ?></strong>
+                                    <small class="text-muted d-block mt-1"><?php echo e(str_replace('_', ' ', ucfirst($device->device_type))); ?></small>
+                                </td>
+                                <td>
+                                    <div class="device-detail-block">
+                                        <div class="device-detail-row"><small>MAC</small><code><?php echo e($device->formatted_mac_address); ?></code></div>
+                                        <div class="device-detail-row"><small>Serial</small><code><?php echo e($device->serial_number ?? 'N/A'); ?></code></div>
+                                        <div class="device-detail-row"><small>Device</small><code><?php echo e($device->laptop_mac_address ?: 'N/A'); ?></code></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="device-detail-block">
+                                        <div class="device-detail-row"><small>Branch</small><span><?php echo e($device->branch?->branch_name ?? 'N/A'); ?></span></div>
+                                        <div class="device-detail-row"><small>Location</small><span><?php echo e($device->location ?: 'N/A'); ?></span></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm device-status" data-status-url="<?php echo e(route('admin.devices.status', $device)); ?>" aria-label="Update status for <?php echo e($device->device_name); ?>">
+                                        <?php $__currentLoopData = ['active' => 'Active', 'inactive' => 'Inactive', 'maintenance' => 'Maintenance']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $status => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <option value="<?php echo e($status); ?>" <?php echo e($device->status === $status ? 'selected' : ''); ?>><?php echo e($label); ?></option>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                    </select>
+                                </td>
+                                <td class="device-last-used"><?php echo e($device->last_used_at ? $device->last_used_at->format('M d, Y h:i A') : 'Never'); ?></td>
+                                <td>
+                                    <div class="device-action-stack">
+                                        <a href="<?php echo e(route('admin.devices.show', $device)); ?>" class="btn btn-sm btn-outline-primary">View</a>
+                                        <a href="<?php echo e(route('admin.devices.edit', $device)); ?>" class="btn btn-sm btn-warning">Edit</a>
+                                        <form action="<?php echo e(route('admin.devices.destroy', $device)); ?>" method="POST"
+                                            data-delete-device
+                                            data-device-name="<?php echo e($device->device_name); ?>"
+                                            data-branch-name="<?php echo e($device->branch?->branch_name ?? ''); ?>">
+                                            <?php echo csrf_field(); ?>
+                                            <?php echo method_field('DELETE'); ?>
+                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No devices registered yet.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startPush('scripts'); ?>
+<script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+const deviceStatusDataUrl = <?php echo json_encode(route('admin.devices.status-data'), 15, 512) ?>;
+const statusLabels = { active: 'Active', inactive: 'Inactive', maintenance: 'Maintenance' };
+
+function refreshDeviceStatusSummary(devices) {
+    const counts = devices.reduce((summary, device) => {
+        summary.total++;
+        if (summary[device.status] !== undefined) summary[device.status]++;
+        return summary;
+    }, { total: 0, active: 0, maintenance: 0, inactive: 0 });
+    document.getElementById('deviceTotalCount').textContent = counts.total;
+    document.getElementById('deviceActiveCount').textContent = counts.active;
+    document.getElementById('deviceMaintenanceCount').textContent = counts.maintenance;
+    document.getElementById('deviceInactiveCount').textContent = counts.inactive;
+}
+
+async function pollDeviceStatuses() {
+    try {
+        const response = await fetch(deviceStatusDataUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const devices = Array.isArray(payload.devices) ? payload.devices : [];
+        refreshDeviceStatusSummary(devices);
+        devices.forEach((device) => {
+            const row = document.querySelector(`[data-device-id="${device.id}"]`);
+            if (!row) return;
+            const select = row.querySelector('.device-status');
+            if (select && select.value !== device.status && !select.disabled) {
+                select.value = device.status;
+                [...select.options].forEach((option) => { option.defaultSelected = option.value === device.status; });
+            }
+            const lastUsed = row.querySelector('.device-last-used');
+            if (lastUsed) lastUsed.textContent = device.last_used_at || 'Never';
+        });
+    } catch (error) {
+        console.debug('Device status refresh unavailable:', error);
+    }
+}
+
+pollDeviceStatuses();
+window.setInterval(pollDeviceStatuses, 5000);
+
+document.querySelectorAll('.device-status').forEach((select) => select.addEventListener('change', async (event) => {
+    const control = event.currentTarget;
+    const previousStatus = [...control.options].find((option) => option.defaultSelected)?.value;
+    control.disabled = true;
+    try {
+        const response = await fetch(control.dataset.statusUrl, {
+            method: 'PATCH',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify({ status: control.value }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || 'Unable to update device status.');
+        [...control.options].forEach((option) => { option.defaultSelected = option.value === control.value; });
+    } catch (error) {
+        if (previousStatus) control.value = previousStatus;
+        window.showAppToast(error.message, 'error');
+    } finally { control.disabled = false; }
+}));
+
+document.querySelectorAll('[data-delete-device]').forEach((form) => form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const branchName = form.dataset.branchName;
+    const resetNotice = branchName
+        ? `All saved fingerprint templates for ${branchName} will also be permanently cleared. Everyone in that branch must enroll again.`
+        : 'No branch is assigned, so no branch fingerprints will be cleared.';
+    if (!confirm(`Remove ${form.dataset.deviceName} and revoke its credential?\n\n${resetNotice}`)) return;
+
+    try {
+        const response = await fetch(form.action, { method: 'DELETE', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || 'Unable to remove device.');
+        form.closest('tr').remove();
+        window.showAppToast(payload.message || 'Device removed successfully.', 'success');
+    } catch (error) {
+        window.showAppToast(error.message, 'error');
+    }
+}));
+</script>
+<?php $__env->stopPush(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\xampp\htdocs\ENIGMA_BREAKER\mtcgs-main_09-06-26\mtcgs-ems\resources\views\admin\devices\index.blade.php ENDPATH**/ ?>

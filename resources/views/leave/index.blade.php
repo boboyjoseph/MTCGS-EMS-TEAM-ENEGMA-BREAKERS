@@ -12,6 +12,38 @@
         font-weight: 700;
     }
 
+    .leave-date-range {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        white-space: nowrap;
+        line-height: 1.35;
+    }
+
+    .leave-requests-table {
+        min-width: 1100px;
+    }
+
+    .leave-requests-table th,
+    .leave-requests-table td {
+        vertical-align: middle;
+    }
+
+    .leave-requests-table td {
+        padding-top: 0.8rem;
+        padding-bottom: 0.8rem;
+    }
+
+    .leave-employee-id,
+    .leave-reason {
+        overflow-wrap: anywhere;
+    }
+
+    .leave-requests-table .badge {
+        white-space: normal;
+        line-height: 1.25;
+    }
+
     .leave-action-btn {
         width: 150px;
         box-sizing: border-box;
@@ -76,13 +108,19 @@
             <tbody>
                 @forelse($leaves ?? [] as $leave)
                     <tr>
-                        <td>{{ optional($leave->employeeProfile)->employee_number ?? 'N/A' }}</td>
+                        <td class="leave-employee-id">{{ optional($leave->employeeProfile)->employee_number ?? 'N/A' }}</td>
                         <td>{{ optional($leave->employeeProfile)->full_name ?? 'N/A' }}</td>
                         <td>{{ optional($leave->employeeProfile)->position ?? 'N/A' }}</td>
                         <td>{{ ucfirst($leave->leave_type) }}</td>
-                        <td><span class="leave-start-date">{{ $leave->start_date }}</span> to <span class="leave-end-date">{{ $leave->end_date }}</span></td>
+                        <td>
+                            <span class="leave-date-range">
+                                <span class="leave-start-date">{{ $leave->start_date->format('M d, Y') }}</span>
+                                <span class="text-muted">to</span>
+                                <span class="leave-end-date">{{ $leave->end_date->format('M d, Y') }}</span>
+                            </span>
+                        </td>
                         <td>{{ $leave->total_days }}</td>
-                        <td>{{ $leave->reason }}</td>
+                        <td class="leave-reason">{{ $leave->reason }}</td>
                         <td>
                             @if($leave->status == 'approved')
                                 @if($leave->is_absent)
