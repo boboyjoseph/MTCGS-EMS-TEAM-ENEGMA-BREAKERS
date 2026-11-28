@@ -1416,6 +1416,29 @@
                 }
             });
 
+            const sidebarScrollKey = 'mtcgs-sidebar-scroll-y';
+
+            function preserveSidebarScroll(event) {
+                const link = event.target.closest('.sidebar a[href]:not([href="#"]):not([data-turbo="false"]), #sidebar a[href]:not([href="#"]):not([data-turbo="false"])');
+                if (!link) return;
+                sessionStorage.setItem(sidebarScrollKey, String(window.scrollY));
+            }
+
+            function restoreSidebarScroll() {
+                const savedScroll = sessionStorage.getItem(sidebarScrollKey);
+                if (savedScroll === null) return;
+
+                sessionStorage.removeItem(sidebarScrollKey);
+                window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                        window.scrollTo({ top: Number(savedScroll) || 0, left: 0, behavior: 'auto' });
+                    });
+                });
+            }
+
+            restoreSidebarScroll();
+            document.addEventListener('click', preserveSidebarScroll);
+
             function closeSidebar() {
                 const sidebar = document.getElementById('sidebar');
                 if (window.innerWidth <= 992 && sidebar) {
